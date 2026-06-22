@@ -1,5 +1,5 @@
 /* ============================================================
-   Autism Party 2026 — app.js
+   Autism Party 2026 - app.js
    Zero-dependency SPA. Hash router + localStorage "backend".
    Routes: #/ (main, tabbed)  #/admin  #/present  #/results
    ============================================================ */
@@ -8,20 +8,56 @@
   "use strict";
 
   /* ----------------------------------------------------------
-     CONFIG — tweak the party here
+     CONFIG - tweak the party here
      ---------------------------------------------------------- */
   const CONFIG = {
     partyName: "Autism Party",
     edition: "Electric Stimaloo", // this year's theme name
     year: 2026,
     date: "Friday, July 24th",
+    time: "8 PM EST", // doors / start time
     adminPassword: "spectrum", // mock-only gate; not real security
   };
 
   /* ----------------------------------------------------------
-     PHOTOS — last year's pics (shown as a collage on the home page)
+     RETURNING GUESTS - last year's attendees. If someone enters a
+     matching name they get a "welcome back" bonus before the test.
+     Matched on first name + last initial (case-insensitive).
      ---------------------------------------------------------- */
-  // champion goes FIRST — it's the centered highlight of the collage
+  const RETURN_BONUS = 5; // bonus 'tism points for coming back
+  const RETURNING_GUESTS = [
+    { first: "Mikayla", initial: "F", full: "Mikayla Fishel" },
+    { first: "Robert", initial: "M", full: "Robert Mallow" },
+    { first: "Stephen", initial: "T", full: "Stephen Thouvenot" },
+    { first: "Elijah", initial: "F", full: "Elijah Fishel" },
+    { first: "Dan", initial: "S", full: "Dan Shapiro" },
+    { first: "Danny", initial: "S", full: "Dan Shapiro" },
+    { first: "Matt", initial: "M", full: "Matt Milburn" },
+    { first: "James", initial: "O", full: "James Owens" },
+    { first: "Andy", initial: "L", full: "Andy Lieu" },
+    { first: "Greg", initial: "R", full: "Greg Righter" },
+    { first: "Pat", initial: "D", full: "Pat Dunleavy" },
+    { first: "Brian", initial: "R", full: "Brian Righter" },
+    { first: "Conor", initial: "M", full: "Conor Moore" },
+    { first: "Justin", initial: "C", full: "Justin Cenname" },
+    { first: "Cory", initial: "G", full: "Cory Grubbs" },
+    { first: "Chris", initial: "B", full: "Chris Belden" },
+    { first: "Rob", initial: "M", full: "Robert Mallow" },
+    { first: "Samiha", initial: "M", full: "Samiha M" },
+    { first: "Roman", initial: "B", full: "Roman Bost" },
+    { first: "Alexa", initial: "C", full: "Alexa Cimino" },
+  ];
+  function findReturningGuest(firstName, lastInitial) {
+    const f = (firstName || "").trim().toLowerCase();
+    const i = (lastInitial || "").trim().toUpperCase().slice(0, 1);
+    if (!f || !i) return null;
+    return RETURNING_GUESTS.find(g => g.first.toLowerCase() === f && g.initial === i) || null;
+  }
+
+  /* ----------------------------------------------------------
+     PHOTOS - last year's pics (shown as a collage on the home page)
+     ---------------------------------------------------------- */
+  // champion goes FIRST - it's the centered highlight of the collage
   const PHOTOS = [
     { src: "photos/2025/champion.jpg", cap: "Reigning Champion 🏆" },
     { src: "photos/2025/the-gang.png", cap: "The whole gang 🌈" },
@@ -30,18 +66,19 @@
     { src: "photos/2025/the-crew.jpg", cap: "Good company" },
     { src: "photos/2025/mascot.jpg", cap: "Mascot 🐾" },
   ];
-  // collage layout: index 0 = champion (centered, front, big); rest scatter around it
+  // collage layout: index 0 = champion (centered, front, big); the rest sit symmetrically around it
+  // (matching top pair + matching bottom pair, mirrored L/R, with the mascot peeking up top-centre)
   const COLLAGE_POS = [
-    { r: "-2deg", t: "23%", l: "25%", z: 10, w: "52%" }, // champion — center highlight
-    { r: "-8deg", t: "1%",  l: "2%",  z: 3,  w: "39%" }, // top-left
-    { r: "7deg",  t: "0%",  l: "58%", z: 4,  w: "38%" }, // top-right
-    { r: "-7deg", t: "59%", l: "4%",  z: 5,  w: "39%" }, // bottom-left
-    { r: "8deg",  t: "61%", l: "56%", z: 6,  w: "39%" }, // bottom-right
-    { r: "6deg",  t: "36%", l: "74%", z: 2,  w: "29%" }, // right-side peek
+    { r: "-2deg", t: "27%", l: "16%",   z: 10, w: "52%" }, // champion - center highlight
+    { r: "-6deg", t: "11%", l: "-6%",   z: 5,  w: "37%" }, // top-left
+    { r: "6deg",  t: "11%", l: "53%",   z: 5,  w: "37%" }, // top-right   (mirrors top-left)
+    { r: "6deg",  t: "61%", l: "-6%",   z: 4,  w: "37%" }, // bottom-left
+    { r: "-6deg", t: "61%", l: "53%",   z: 4,  w: "37%" }, // bottom-right (mirrors bottom-left)
+    { r: "2deg",  t: "0%",  l: "23.5%", z: 2,  w: "37%" }, // mascot - top-centre peek above champion
   ];
 
   /* ----------------------------------------------------------
-     EMOJI — the avatar palette for character creation
+     EMOJI - the avatar palette for character creation
      ---------------------------------------------------------- */
   const EMOJI_CHOICES = [
     "😎","🤓","🥳","🧠","😴","🤠","🥸","🤖","👽","👾","🦾","🧙","🦸","🧛","🧜",
@@ -50,29 +87,84 @@
   ];
 
   /* ----------------------------------------------------------
-     BUILD-A-HUMAN — parametric SVG avatar
+     BUILD-A-HUMAN - parametric SVG avatar
      ---------------------------------------------------------- */
-  const SKINS = ["#ffdab3", "#f4c896", "#e6a866", "#c98a52", "#a96a3d", "#824c2c", "#5c3620"];
+  const SKINS = ["#ffe0c2", "#ffdab3", "#f4c896", "#e6a866", "#c98a52", "#a96a3d", "#824c2c", "#5c3620"];
   const HAIRCOLORS = ["#1c1c1c", "#3b2417", "#6b4423", "#a86a32", "#e3b04b", "#c0531f", "#9a9a9a", "#ededed", "#ff4d97", "#2f9bff", "#2ec27e", "#8b5cf6"];
-  const SHIRTS = ["#2f9bff", "#ff3d7f", "#ffd23f", "#2ec27e", "#8b5cf6", "#ff8a3d", "#2a2a2a", "#ededed"];
+  const SHIRTS = ["#2f9bff", "#ff3d7f", "#ffd23f", "#2ec27e", "#8b5cf6", "#ff8a3d", "#16b5b5", "#e23d4b", "#2a2a2a", "#ededed"];
+  // soft backdrops for the avatar circle
+  const BGS = ["#ffffff", "#fff0c8", "#ffe0ec", "#dcecff", "#e3f9e5", "#ece2ff", "#ffe6d4", "#d8f3ff"];
   const HAIRSTYLES = [
     { id: "bald", label: "Bald" }, { id: "buzz", label: "Buzz" }, { id: "short", label: "Short" },
-    { id: "curly", label: "Curly" }, { id: "afro", label: "Afro" }, { id: "long", label: "Long" },
-    { id: "bun", label: "Bun" }, { id: "mohawk", label: "Mohawk" },
+    { id: "curly", label: "Curly" }, { id: "afro", label: "Afro" }, { id: "spiky", label: "Spiky" },
+    { id: "long", label: "Long" }, { id: "wavy", label: "Wavy" }, { id: "bun", label: "Bun" },
+    { id: "pony", label: "Ponytail" }, { id: "pigtails", label: "Pigtails" }, { id: "mohawk", label: "Mohawk" },
   ];
-  // a crown cap that reliably covers the top of the head down to the hairline
-  const cap = c => `<path d="M25,45 C22,14 78,14 75,45 C75,27 64,22 50,22 C36,22 25,27 25,45 Z" fill="${c}"/>`;
-  const capHi = c => `<path d="M27,44 C25,23 75,23 73,44 C72,33 64,29 50,29 C36,29 28,33 27,44 Z" fill="${c}"/>`;
+  // facial expressions: each returns the mouth markup; eyes get a shared highlight
+  const MOODS = [
+    { id: "smile", label: "🙂 Smile" }, { id: "grin", label: "😁 Grin" }, { id: "chill", label: "😌 Chill" },
+    { id: "wow", label: "😮 Wow" }, { id: "smirk", label: "😏 Smirk" },
+  ];
+  // a crown cap that reliably covers the top of the head down to the hairline.
+  // outer controls sit well above the head top (y=16) so the bezier actually
+  // crests over the crown; inner curve is the hairline.
+  const cap = c => `<path d="M24,46 C20,2 80,2 76,46 C72,40 62,31 50,31 C38,31 28,40 24,46 Z" fill="${c}"/>`;
   const HAIR = {
     bald: {},
-    buzz: { top: c => capHi(c) },
+    // buzz: a tight skull-hugging cap with a high hairline + faint stipple, so it reads much
+    // shorter than the fuller "short" dome
+    buzz: { top: c => `<g><path d="M26,45 C22,6 78,6 74,45 C72,40 63,36 50,36 C37,36 28,40 26,45 Z" fill="${c}"/><g fill="rgba(255,255,255,0.16)"><circle cx="40" cy="26" r=".8"/><circle cx="50" cy="22" r=".8"/><circle cx="60" cy="26" r=".8"/><circle cx="34" cy="34" r=".7"/><circle cx="45" cy="30" r=".7"/><circle cx="55" cy="30" r=".7"/><circle cx="66" cy="34" r=".7"/><circle cx="50" cy="33" r=".7"/></g></g>` },
     short: { top: c => cap(c) },
-    curly: { back: c => `<g fill="${c}"><circle cx="32" cy="28" r="11"/><circle cx="50" cy="20" r="13"/><circle cx="68" cy="28" r="11"/><circle cx="40" cy="22" r="9"/><circle cx="60" cy="22" r="9"/></g>`, top: c => cap(c) },
+    // curly: tighter curls (smaller side volume + a curl-textured crown), no longer puffy
+    curly: { back: c => `<g fill="${c}"><circle cx="34" cy="31" r="8"/><circle cx="50" cy="27" r="9"/><circle cx="66" cy="31" r="8"/><circle cx="40" cy="28" r="6.5"/><circle cx="60" cy="28" r="6.5"/></g>`, top: c => `<g fill="${c}">${cap(c)}<circle cx="36" cy="19" r="4.5"/><circle cx="50" cy="15.5" r="5"/><circle cx="64" cy="19" r="4.5"/><circle cx="28" cy="27" r="4"/><circle cx="72" cy="27" r="4"/></g>` },
     afro: { back: c => `<circle cx="50" cy="30" r="28" fill="${c}"/>`, top: c => cap(c) },
-    long: { back: c => `<path d="M22,42 C22,14 78,14 78,42 L78,84 L65,84 L65,44 C65,30 59,25 50,25 C41,25 35,30 35,44 L35,84 L22,84 Z" fill="${c}"/>`, top: c => cap(c) },
+    // spiky: proven cap base + a zig-zag crest poking up above it
+    spiky: { top: c => `<g fill="${c}">${cap(c)}<path d="M25,33 L31,11 L37,28 L44,9 L50,26 L56,9 L63,28 L69,11 L75,33 Z"/></g>` },
+    // `drape: true` = the back piece hangs below a hat, so it survives when headwear is on
+    long: { drape: true, back: c => `<path d="M22,42 C22,14 78,14 78,42 L78,84 L65,84 L65,44 C65,30 59,25 50,25 C41,25 35,30 35,44 L35,84 L22,84 Z" fill="${c}"/>`, top: c => cap(c) },
+    // wavy: long base with a scalloped, wavy hem
+    wavy: { drape: true, back: c => `<path d="M21,42 C21,14 79,14 79,42 C79,58 75,64 78,72 C73,70 72,64 68,68 C66,62 62,66 63,58 L63,46 C63,31 58,26 50,26 C42,26 37,31 37,46 L37,58 C38,66 34,62 32,68 C28,64 27,70 22,72 C25,64 21,58 21,42 Z" fill="${c}"/>`, top: c => cap(c) },
     bun: { top: c => `<g fill="${c}"><circle cx="50" cy="13" r="7.5"/>${cap(c)}</g>` },
+    // ponytail: cap base + a tail sweeping down behind the right side
+    pony: { drape: true, back: c => `<path d="M71,40 C86,44 86,64 79,74 C76,79 70,77 72,72 C78,64 76,54 70,48 C67,45 66,42 71,40 Z" fill="${c}"/>`, top: c => `<g fill="${c}">${cap(c)}<circle cx="70" cy="42" r="3.2"/></g>` },
+    // pigtails: cap base + two puffs low on each side
+    pigtails: { drape: true, back: c => `<g fill="${c}"><ellipse cx="20" cy="54" rx="9" ry="12"/><ellipse cx="80" cy="54" rx="9" ry="12"/></g>`, top: c => `<g fill="${c}">${cap(c)}<circle cx="26" cy="44" r="3"/><circle cx="74" cy="44" r="3"/></g>` },
     mohawk: { top: c => `<path d="M44,8 L56,8 L53,34 L47,34 Z" fill="${c}"/>` },
   };
+  // mouth shape per expression; femme gets lipstick-red, masc a soft line
+  function mouthFor(mood, fem) {
+    const lip = fem ? "#d6334c" : "#9c4a3a";
+    const w = fem ? 2.6 : 2.4;
+    switch (mood) {
+      case "grin": {
+        const lips = fem ? `<path d="M41.5,52.4 Q50,49.4 58.5,52.4" stroke="#d6334c" stroke-width="2.2" fill="none" stroke-linecap="round"/>` : "";
+        return `<g><path d="M42,52.5 Q50,63 58,52.5 Q50,55 42,52.5 Z" fill="#9c2c3e"/><path d="M44,53 Q50,55.4 56,53 Q50,53.4 44,53 Z" fill="#fff"/>${lips}</g>`;
+      }
+      case "chill":
+        return `<path d="M44.5,55 q5.5,1.4 11,0" stroke="${lip}" stroke-width="${w}" fill="none" stroke-linecap="round"/>`;
+      case "wow": {
+        const ring = fem ? `<ellipse cx="50" cy="55.5" rx="3.6" ry="4.6" fill="none" stroke="#d6334c" stroke-width="1.6"/>` : "";
+        return `<g><ellipse cx="50" cy="55.5" rx="3.4" ry="4.4" fill="#9c2c3e"/>${ring}</g>`;
+      }
+      case "smirk":
+        return `<path d="M43.5,55.6 Q50,56.6 57,51" stroke="${lip}" stroke-width="${w}" fill="none" stroke-linecap="round"/>`;
+      default: // smile
+        return fem
+          ? `<g><path d="M43,53 Q46.5,50.8 50,52.2 Q53.5,50.8 57,53 Q53.5,57.6 50,57.6 Q46.5,57.6 43,53 Z" fill="#d6334c"/><path d="M44,53.2 Q50,54.6 56,53.2" stroke="#a52840" stroke-width="0.8" fill="none" stroke-linecap="round"/></g>`
+          : `<path d="M44,54 q6,5 12,0" stroke="#9c4a3a" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+    }
+  }
+  const DRINKS = [
+    { id: "none", label: "None" }, { id: "beer", label: "🍺 Beer" }, { id: "seltzer", label: "🥤 Seltzer" }, { id: "shirley", label: "🍒 Dirty Shirley" },
+  ];
+  // a drink held up in one hand, drawn at the bottom-right of the bust
+  function drinkSVG(drink, skin) {
+    if (!drink || drink === "none") return "";
+    const hand = `<ellipse cx="67.5" cy="78" rx="2.3" ry="3" fill="${skin}" stroke="rgba(0,0,0,.35)" stroke-width=".7"/><ellipse cx="73" cy="80.5" rx="6.6" ry="4.6" fill="${skin}" stroke="rgba(0,0,0,.4)" stroke-width="1"/>`;
+    if (drink === "beer") return `<g><rect x="68" y="60" width="10" height="20" rx="2" fill="#f6b93b" stroke="#1a1a1a" stroke-width="1.4"/><rect x="70" y="63" width="1.6" height="12" rx=".8" fill="#fff" opacity=".5"/><ellipse cx="73" cy="60" rx="5.6" ry="2.7" fill="#fff7e6" stroke="#1a1a1a" stroke-width="1"/>${hand}</g>`;
+    if (drink === "seltzer") return `<g><rect x="69" y="58" width="8.5" height="22" rx="2.5" fill="#eef4fb" stroke="#1a1a1a" stroke-width="1.4"/><rect x="69.5" y="56.6" width="7.5" height="2.6" rx="1" fill="#b9c0c6" stroke="#1a1a1a" stroke-width=".8"/><rect x="69" y="66" width="8.5" height="7" fill="#2f9bff"/><circle cx="73.2" cy="69.5" r="1.9" fill="#ff3d7f"/>${hand}</g>`;
+    return `<g><rect x="71" y="51" width="1.8" height="17" rx=".9" fill="#ff7aa0" transform="rotate(10 72 59)"/><rect x="68" y="64" width="10" height="16" rx="2" fill="#ff3158"/><rect x="68" y="59" width="10" height="21" rx="2" fill="rgba(255,255,255,.22)" stroke="#1a1a1a" stroke-width="1.4"/><path d="M76,55 Q78,51 80.5,52.5" stroke="#6b4a1f" stroke-width="1" fill="none"/><circle cx="76" cy="57" r="2.6" fill="#c0162f" stroke="#1a1a1a" stroke-width=".8"/>${hand}</g>`;
+  }
   function avatarSVG(cfg) {
     cfg = cfg || {};
     const skin = cfg.skin || SKINS[2];
@@ -80,22 +172,43 @@
     const shirt = cfg.shirt || SHIRTS[0];
     const fem = (cfg.face || "masc") === "femme";
     const h = HAIR[cfg.hairStyle] || HAIR.short;
+    const bg = cfg.bg || "#ffffff";
+    // a hat replaces the crown, so hide crown hair; keep only hair that drapes below it
+    const hatOn = cfg.headwear === "beanie" || cfg.headwear === "cap";
+    const backHair = h.back && (!hatOn || h.drape) ? h.back(c) : "";
+    const topHair = h.top && !hatOn ? h.top(c) : "";
 
     const brows = fem
       ? `<path d="M36,36.5 q5,-2.5 10,-0.5" stroke="${c}" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M54,36 q5,-2 10,0.5" stroke="${c}" stroke-width="1.6" fill="none" stroke-linecap="round"/>`
       : `<path d="M35,37 q6,-3 11,0" stroke="${c}" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M54,37 q5,-3 11,0" stroke="${c}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
     const lashes = fem ? `<path d="M35.5,42.6 l-2.6,-1.6" stroke="#2a2a2a" stroke-width="1.4" stroke-linecap="round"/><path d="M64.5,42.6 l2.6,-1.6" stroke="#2a2a2a" stroke-width="1.4" stroke-linecap="round"/>` : "";
-    const mouth = fem
-      ? `<path d="M44,54 q6,4 12,0 q-6,3.6 -12,0 Z" fill="#d96b7a"/>`
-      : `<path d="M44,54 q6,5 12,0" stroke="#9c4a3a" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+    const mouth = mouthFor(cfg.mood || "smile", fem);
+    // pupils with a tiny catch-light so the avatar feels alive
+    const eyes = `<circle cx="41" cy="44" r="2.6" fill="#2a2a2a"/><circle cx="59" cy="44" r="2.6" fill="#2a2a2a"/><circle cx="40.1" cy="43.1" r="0.85" fill="#fff"/><circle cx="58.1" cy="43.1" r="0.85" fill="#fff"/>`;
 
     let beard = "";
-    if (cfg.facialHair === "stubble") beard = `<path d="M30,47 C31,63 41,70 50,70 C59,70 69,63 70,47 C66,58 60,61 50,61 C40,61 34,58 30,47 Z" fill="${c}" opacity="0.28"/>`;
+    if (cfg.facialHair === "stubble") {
+      // a stippled 5 o'clock shadow over the lower face (clearly different from a solid beard)
+      let dots = "";
+      for (let yy = 49.5; yy <= 69; yy += 3) {
+        for (let xx = 31; xx <= 69; xx += 3) {
+          const inFace = ((xx - 50) / 22) ** 2 + ((yy - 42) / 25) ** 2 <= 1;
+          const lipGap = yy > 51.5 && yy < 57 && xx > 42 && xx < 58;
+          if (inFace && !lipGap) dots += `<circle cx="${xx}" cy="${yy.toFixed(1)}" r=".62" fill="${c}" opacity=".5"/>`;
+        }
+      }
+      beard = `<g>${dots}</g>`;
+    }
     else if (cfg.facialHair === "beard") beard = `<path d="M29,45 C30,66 42,74 50,74 C58,74 70,66 71,45 C66,59 60,62 50,62 C40,62 34,59 29,45 Z" fill="${c}"/>`;
-    else if (cfg.facialHair === "mustache") beard = `<path d="M41,52 Q50,50 59,52 Q54,56 50,53.5 Q46,56 41,52 Z" fill="${c}"/>`;
+    else if (cfg.facialHair === "mustache") beard = (cfg.mood === "smirk")
+      ? `<path d="M41,54 Q47,51.5 50,52.6 Q53,50 59,49 Q56,53 50,53.9 Q45,55.6 41,54 Z" fill="${c}"/>` // right wing lifts to follow the smirk
+      : (cfg.mood === "wow")
+        ? `<path d="M41,48 Q50,46.5 59,48 Q54,50.5 50,49 Q46,50.5 41,48 Z" fill="${c}"/>` // raised so it clears the open mouth
+        : `<path d="M41,52 Q50,50 59,52 Q54,56 50,53.5 Q46,56 41,52 Z" fill="${c}"/>`;
 
     let eyewear = "";
     if (cfg.eyewear === "glasses") eyewear = `<g stroke="#1f1f1f" stroke-width="2" fill="rgba(255,255,255,0.12)"><circle cx="41" cy="44" r="6.5"/><circle cx="59" cy="44" r="6.5"/><path d="M47.5,44 h5" fill="none"/><path d="M34.5,43 l-5,-1.5" fill="none"/><path d="M65.5,43 l5,-1.5" fill="none"/></g>`;
+    else if (cfg.eyewear === "square") eyewear = `<g stroke="#1f1f1f" stroke-width="2" fill="rgba(255,255,255,0.12)"><rect x="34.5" y="38.7" width="13" height="11" rx="2"/><rect x="52.5" y="38.7" width="13" height="11" rx="2"/><path d="M47.5,44 h5" fill="none"/><path d="M34.5,42 l-5,-1.5" fill="none"/><path d="M65.5,42 l5,-1.5" fill="none"/></g>`;
     else if (cfg.eyewear === "shades") eyewear = `<g fill="#1b1b1b"><rect x="33" y="40" width="14" height="8" rx="3.5"/><rect x="53" y="40" width="14" height="8" rx="3.5"/><rect x="46" y="42.5" width="8" height="2.2"/><path d="M33,42 l-4.5,-1.5" stroke="#1b1b1b" stroke-width="2"/><path d="M67,42 l4.5,-1.5" stroke="#1b1b1b" stroke-width="2"/></g>`;
 
     const earrings = cfg.earrings ? `<circle cx="27" cy="50.5" r="2.2" fill="#ffd23f" stroke="#b8860b" stroke-width="0.5"/><circle cx="73" cy="50.5" r="2.2" fill="#ffd23f" stroke="#b8860b" stroke-width="0.5"/>` : "";
@@ -103,38 +216,41 @@
     const blush = cfg.blush ? `<g fill="#ff7d96" opacity="0.45"><ellipse cx="37" cy="50" rx="4.5" ry="2.6"/><ellipse cx="63" cy="50" rx="4.5" ry="2.6"/></g>` : "";
 
     let headwear = "";
-    if (cfg.headwear === "beanie") headwear = `<g><path d="M24,42 C24,17 76,17 76,42 Z" fill="${shirt}"/><rect x="23" y="38" width="54" height="8" rx="4" fill="${shirt}"/><rect x="23" y="38" width="54" height="8" rx="4" fill="rgba(255,255,255,0.14)"/></g>`;
-    else if (cfg.headwear === "cap") headwear = `<g fill="${shirt}"><path d="M25,40 C25,18 75,18 75,40 Z"/><path d="M73,40 C85,40 91,42 93,46 L74,46 C74,43 74,41 73,40 Z"/></g>`;
+    if (cfg.headwear === "beanie") headwear = `<g><path d="M24,38 C22,2 78,2 76,38 Z" fill="${shirt}"/><rect x="23" y="31" width="54" height="8" rx="4" fill="${shirt}"/><rect x="23" y="31" width="54" height="8" rx="4" fill="rgba(255,255,255,0.14)"/></g>`;
+    else if (cfg.headwear === "cap") headwear = `<g fill="${shirt}"><path d="M25,40 C23,4 77,4 75,40 Z"/><path d="M73,40 C85,40 91,42 93,46 L74,46 C74,43 74,41 73,40 Z"/></g>`;
 
-    const headphones = cfg.headphones ? `<g><path d="M23,42 C23,19 77,19 77,42" stroke="#2a2a2a" stroke-width="4" fill="none"/><rect x="19" y="41" width="9" height="14" rx="3.5" fill="#2a2a2a"/><rect x="72" y="41" width="9" height="14" rx="3.5" fill="#e23d6d"/></g>` : "";
+    const headphones = cfg.headphones ? `<g><path d="M22,42 C21,4 79,4 78,42" stroke="#2a2a2a" stroke-width="4" fill="none"/><rect x="19" y="41" width="9" height="14" rx="3.5" fill="#e23d6d"/><rect x="72" y="41" width="9" height="14" rx="3.5" fill="#e23d6d"/></g>` : "";
+    const drink = drinkSVG(cfg.drink, skin);
 
     return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-      ${h.back ? h.back(c) : ""}
+      <rect x="0" y="0" width="100" height="100" fill="${bg}"/>
+      ${backHair}
       <path d="M14,100 C14,75 30,67 50,67 C70,67 86,75 86,100 Z" fill="${shirt}"/>
       <rect x="43" y="55" width="14" height="16" rx="6" fill="${skin}"/>
       <circle cx="27" cy="45" r="5" fill="${skin}"/><circle cx="73" cy="45" r="5" fill="${skin}"/>
       ${earrings}
       <ellipse cx="50" cy="42" rx="23" ry="26" fill="${skin}"/>
       ${beard}
-      ${h.top ? h.top(c) : ""}
-      <circle cx="41" cy="44" r="2.6" fill="#2a2a2a"/><circle cx="59" cy="44" r="2.6" fill="#2a2a2a"/>
+      ${topHair}
+      ${eyes}
       ${lashes}${brows}${freckles}${blush}${mouth}${eyewear}${headwear}${headphones}
+      ${drink}
     </svg>`;
   }
   function avatarChip(cfg, px) {
     return `<span class="avchip" style="width:${px}px;height:${px}px">${avatarSVG(cfg)}</span>`;
   }
-  const DEFAULT_AVATAR = { face: "masc", skin: SKINS[2], hairStyle: "short", hairColor: HAIRCOLORS[1], shirt: SHIRTS[0], eyewear: "none", facialHair: "none", headwear: "none", earrings: false, freckles: false, blush: false, headphones: false };
+  const DEFAULT_AVATAR = { face: "masc", skin: SKINS[2], hairStyle: "short", hairColor: HAIRCOLORS[1], shirt: SHIRTS[0], mood: "smile", bg: "#fff0c8", eyewear: "none", facialHair: "none", headwear: "none", drink: "none", earrings: false, freckles: false, blush: false, headphones: false };
   const AV_PRESETS = { masc: { face: "masc", hairStyle: "short" }, femme: { face: "femme", hairStyle: "long" } };
 
   /* ----------------------------------------------------------
-     QUIZ — 12 questions, each option scored 0..3
+     QUIZ - 12 questions, each option scored 0..3
      ---------------------------------------------------------- */
   const QUESTIONS = [
     {
       q: "The plan changes at the last minute. Your internal weather:",
       opts: [
-        ["Sunny — whatever, let's roll", 0],
+        ["Sunny - whatever, let's roll", 0],
         ["A few clouds, I adapt", 1],
         ["Storm warning, I need a minute", 2],
         ["The plan was sacred. This is a betrayal.", 3],
@@ -243,7 +359,7 @@
   const MAX_RAW = QUESTIONS.length * 3; // 36
 
   /* ----------------------------------------------------------
-     TIERS — score is 0..100
+     TIERS - score is 0..100
      ---------------------------------------------------------- */
   const TIERS = [
     { min: 0,  emoji: "🧍", name: "Refreshingly Neurotypical", blurb: "You read rooms like a barcode scanner and small talk doesn't even hurt. Honestly, suspicious. We'll keep an eye on you." },
@@ -259,7 +375,7 @@
   }
 
   /* ----------------------------------------------------------
-     STORE — localStorage backed
+     STORE - localStorage backed
      ---------------------------------------------------------- */
   const LS = {
     subs: "ap_submissions_v1",
@@ -427,13 +543,26 @@
 
     const footer = el(`
       <footer class="site-footer">
-        <div class="wrap">
-          <div class="cause">💛 Want to help a cause? <a href="https://autisticadvocacy.org/donate/" target="_blank" rel="noopener">Support autistic-led advocacy →</a></div>
-          <div>${CONFIG.partyName} ${CONFIG.year} · ${CONFIG.date}</div>
-          <div class="host-links">
-            <button data-nav="/admin">Host login</button>
-            <button data-nav="/present">Presentation mode</button>
+        <div class="footer-rainbow"></div>
+        <div class="wrap footer-inner">
+          <div class="footer-brand">
+            <img class="footer-logo" src="logo.png" alt="${CONFIG.partyName} logo" />
+            <div class="footer-brand-text">
+              <div class="footer-edition grad-text">${CONFIG.edition}</div>
+              <div class="footer-tag">The 2nd Annual ${CONFIG.partyName} · ${CONFIG.date}, ${CONFIG.year}</div>
+            </div>
           </div>
+          <div class="footer-spotify">
+            <a class="fs-head" href="https://open.spotify.com/playlist/1nIuCQUJ9KvYf3iUD2ifti?si=3e3cce49b5434445" target="_blank" rel="noopener">
+              <svg class="fs-logo" viewBox="0 0 168 168" aria-hidden="true"><path fill="#1ED760" d="M83.996.277C37.747.277.253 37.77.253 84.019c0 46.251 37.494 83.741 83.743 83.741 46.254 0 83.744-37.49 83.744-83.741 0-46.246-37.49-83.738-83.745-83.738zm38.404 120.78a5.217 5.217 0 01-7.18 1.73c-19.662-12.012-44.414-14.73-73.564-8.07a5.222 5.222 0 01-6.249-3.93 5.213 5.213 0 013.926-6.25c31.9-7.291 59.263-4.155 81.337 9.33 2.46 1.51 3.24 4.72 1.73 7.19zm10.25-22.805c-1.89 3.075-5.91 4.045-8.98 2.155-22.51-13.839-56.823-17.846-83.448-9.764-3.453 1.043-7.1-.903-8.148-4.35a6.538 6.538 0 014.354-8.143c30.413-9.228 68.222-4.758 94.072 11.127 3.07 1.89 4.04 5.91 2.15 8.976zm.88-23.744c-26.99-16.031-71.52-17.505-97.289-9.684-4.138 1.255-8.514-1.081-9.768-5.219a7.835 7.835 0 015.221-9.771c29.581-8.98 78.756-7.245 109.83 11.202a7.823 7.823 0 012.74 10.733c-2.2 3.722-7.02 4.949-10.73 2.739z"/></svg>
+              <span>Official Party Playlist</span>
+            </a>
+            <iframe class="fs-embed" title="Electric Stimaloo playlist on Spotify" loading="lazy"
+              src="https://open.spotify.com/embed/playlist/1nIuCQUJ9KvYf3iUD2ifti?utm_source=generator"
+              width="100%" height="80" frameborder="0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+          </div>
+          <div class="cause">💛 Want to help a cause? <a href="https://autisticadvocacy.org/donate/" target="_blank" rel="noopener">Support autistic-led advocacy →</a></div>
         </div>
       </footer>`);
     frag.appendChild(footer);
@@ -457,7 +586,7 @@
   }
 
   /* ----------------------------------------------------------
-     ROUTE: HOME (landing — hero + CTA + photos + fun facts)
+     ROUTE: HOME (landing - hero + CTA + photos + fun facts)
      ---------------------------------------------------------- */
   route("/", function () {
     const root = wrapDiv("");
@@ -469,16 +598,37 @@
       "TAKE THE TEST",
       "FIND YOUR SPECTRUM",
       "INVITE YOUR FRIENDS",
-      "FREE PIZZA 🍕",
-      "FREE DRINKS 🍻",
+      "FREE PIZZA",
+      "FREE DRINKS",
       "EVERY BRAIN INVITED",
       CONFIG.date.toUpperCase(),
     ];
-    const stars = ["⚡", "∞"];
-    const marqueeText = marqueeBits
-      .map((b, i) => `<span class="star">${stars[i % stars.length]}</span><span>${b}</span>`)
-      .join("");
-    const marquee = el(`<div class="marquee"><div class="track">${marqueeText}${marqueeText}</div></div>`);
+    // a drawn steam train: a black locomotive pulling proper railway carriages (dark roof, a band
+    // of windows, a nameboard with the word, dark underframe, two bogies of wheels), linked by
+    // couplers. track = two identical halves animated -50% (seamless infinite); one half exceeds
+    // any viewport so the loop never shows a gap. classic 3-livery palette, not rainbow.
+    const carColors = ["#2f6b50", "#7e2b34", "#2b4a73"]; // brunswick green, maroon, navy
+    const loco = `<div class="loco">
+        <div class="smoke"><i></i><i></i><i></i></div>
+        <div class="boiler"></div><div class="dome"></div><div class="stack"></div>
+        <div class="cab"></div><div class="beam"></div><div class="light"></div>
+        <div class="rod"></div>
+        <div class="w w1"></div><div class="w w2"></div><div class="w w3"></div>
+      </div>`;
+    const carriage = (word, ci) =>
+      `<div class="coupler"></div><div class="carriage" style="--car:${carColors[ci % carColors.length]}">` +
+        `<div class="roof"></div><div class="win"></div><div class="name">${esc(word)}</div>` +
+        `<div class="bogie bl"><div class="w"></div><div class="w"></div></div>` +
+        `<div class="bogie br"><div class="w"></div><div class="w"></div></div>` +
+      `</div>`;
+    // a short train = a gap, then an engine pulling one full set of message cars. repeat a few
+    // trains per half so the engine comes around often; the gap separates each train from the next.
+    let half = "", ci = 0;
+    for (let t = 0; t < 3; t++) {
+      half += `<div class="train-gap"></div>` + loco;
+      for (const b of marqueeBits) half += carriage(b, ci++);
+    }
+    const marquee = el(`<div class="train-marquee"><div class="rails"></div><div class="train">${half}${half}</div></div>`);
     root.appendChild(marquee);
 
     const polaroids = PHOTOS.map((p, i) => {
@@ -490,22 +640,45 @@
         </figure>`;
     }).join("");
 
+    // futuristic radial burst behind the hero: rotating rainbow rays, expanding rings,
+    // and a field of twinkling sparks - all radiating from the centre.
+    const SPARK_COLORS = ["#ff3d7f", "#2f9bff", "#2ec27e", "#ffd23f", "#8b5cf6", "#ff8a3d", "#16b5b5", "#ffffff"];
+    let sparks = "";
+    for (let i = 0; i < 34; i++) {
+      const x = (Math.random() * 100).toFixed(1), y = (Math.random() * 100).toFixed(1);
+      const s = (3 + Math.random() * 6).toFixed(1);
+      const c = SPARK_COLORS[Math.floor(Math.random() * SPARK_COLORS.length)];
+      const d = (Math.random() * 3).toFixed(2), dur = (1.8 + Math.random() * 2.4).toFixed(2);
+      sparks += `<span class="spark" style="left:${x}%;top:${y}%;width:${s}px;height:${s}px;color:${c};animation-delay:${d}s;animation-duration:${dur}s"></span>`;
+    }
+    const heroFx = `<div class="hero-fx" aria-hidden="true">
+        <div class="fx-core"></div>
+        <div class="fx-rays"></div>
+        <div class="fx-ring" style="animation-delay:0s"></div>
+        <div class="fx-ring" style="animation-delay:1.6s"></div>
+        <div class="fx-ring" style="animation-delay:3.2s"></div>
+        <div class="fx-sparks">${sparks}</div>
+      </div>`;
     const hero = el(`
       <section class="home-wrap">
+        ${heroFx}
         <div class="wrap home">
           <div class="home-copy">
             <span class="eyebrow"><span class="bolt bolt-xs">⚡</span> The 2nd Annual ${CONFIG.partyName} · ${CONFIG.year}</span>
             <h1 class="home-title">
               <span class="line-1">presents</span>
               <span class="line-big">${ed[0]}</span>
-              <span class="line-big">${ed.slice(1).join(" ")} <span class="bolt">⚡</span></span>
+              <span class="line-big">${ed.slice(1).join(" ")}</span>
             </h1>
-            <p class="sub">One night. One test. One spectrum. Find out exactly how delightfully wired you are — then we plot you on the big graph for all to see.</p>
+            <div class="bolt-row" aria-hidden="true">
+              <span class="bolt">⚡</span><span class="bolt">⚡</span><span class="bolt">⚡</span><span class="bolt">⚡</span><span class="bolt">⚡</span><span class="bolt">⚡</span>
+            </div>
+            <p class="sub">One night. One test. One spectrum. Find out exactly how delightfully wired you are - then we plot you on the big graph for all to see.</p>
             <div class="hero-cta">
-              <button class="btn btn-rainbow btn-lg" data-nav="/test"><span class="bolt bolt-sm">⚡</span> Take the Test <span class="bolt bolt-sm">⚡</span></button>
+              <button class="btn btn-rainbow btn-lg btn-hero" data-nav="/test">Take the Test <span class="btn-sub">~20 min</span></button>
               <button class="btn btn-ghost" data-nav="/details">📍 Getting There</button>
             </div>
-            <p class="home-foot">📅 ${CONFIG.date} · 🎟️ ${CONFIG.year}</p>
+            <p class="home-foot">📅 ${CONFIG.date} · 🕗 ${CONFIG.time} · 🎟️ ${CONFIG.year}</p>
           </div>
           <div class="collage">${polaroids}</div>
         </div>
@@ -545,19 +718,19 @@
       {
         icon: "🚶", name: "ON FOOT",
         tag: "For the locals & the brave",
-        body: "Already in Murray Hill / Gramercy / Kips Bay? Then you are, geographically speaking, already at the party. Point yourself at <b>3rd Ave &amp; 25th St</b> and walk with purpose. If you can see Madison Square Park, you've gone too far west — turn around and reflect.",
+        body: "Already in Murray Hill / Gramercy / Kips Bay? Then you are, geographically speaking, already at the party. Point yourself at <b>3rd Ave &amp; 25th St</b> and walk with purpose. If you can see Madison Square Park, you've gone too far west - turn around and reflect.",
         links: [ml(dir("walking"), "Walking directions")],
       },
       {
         icon: "🚇", name: "BY SUBWAY",
         tag: "The people's chariot",
-        body: "Take the <b>6 train</b> to <b>28 St</b> or <b>23 St</b> (Lexington Ave) and walk two short blocks east to 3rd Ave. Coming on the <b>N / R / W</b>? Hop off at <b>28 St</b> (Broadway) and head east — it's a character-building stroll across town.",
+        body: "Take the <b>6 train</b> to <b>28 St</b> or <b>23 St</b> (Lexington Ave) and walk two short blocks east to 3rd Ave. Coming on the <b>N / R / W</b>? Hop off at <b>23 St</b> (Broadway) and head east - it's a character-building stroll across town.",
         links: [ml(dir("transit"), "Transit directions")],
       },
       {
         icon: "🚆", name: "BY RAIL",
         tag: "Arriving from distant lands",
-        body: "Long-haul travelers funnel through <b>Penn Station</b> (LIRR, NJ Transit, Amtrak/Acela) or <b>Grand Central</b> (Metro-North). Both are a ~15-min victory lap away — grab the 6 from Grand Central or just walk it off.",
+        body: "Long-haul travelers funnel through <b>Penn Station</b> (LIRR, NJ Transit, Amtrak/Acela) or <b>Grand Central</b> (Metro-North). Both are a ~15-min victory lap away - grab the 6 from Grand Central or just walk it off.",
         links: [
           ml(dir("transit", "Penn Station, New York, NY"), "From Penn Station"),
           ml(dir("transit", "Grand Central Terminal, New York, NY"), "From Grand Central"),
@@ -566,7 +739,7 @@
       {
         icon: "✈️", name: "BY AIR",
         tag: "VIPs, out-of-towners & people who overcommit",
-        body: "<b>LaGuardia (LGA)</b> is closest (~20–30 min by car). <b>JFK</b> and <b>Newark (EWR)</b> are also viable if you enjoy a journey. Clear customs, collect your bags, and proceed directly to the snacks.",
+        body: "<b>LaGuardia (LGA)</b> is closest (~20-30 min by car). <b>JFK</b> and <b>Newark (EWR)</b> are also viable if you enjoy a journey. Clear customs, collect your bags, and proceed directly to the snacks.",
         links: [
           ml(dir("transit", "LaGuardia Airport, Queens, NY"), "From LGA"),
           ml(dir("transit", "John F. Kennedy International Airport"), "From JFK"),
@@ -576,13 +749,13 @@
       {
         icon: "🚗", name: "BY CAR / RIDESHARE",
         tag: "Bold. Foolish. Respected.",
-        body: "Have your driver pull up on <b>3rd Ave</b> near 25th St for a cinematic drop-off. Parking in Manhattan is less a task and more a spiritual trial — we recommend a garage, a prayer, or simply not driving.",
+        body: "Have your driver pull up on <b>3rd Ave</b> near 25th St for a cinematic drop-off. Parking in Manhattan is less a task and more a spiritual trial - we recommend a garage, a prayer, or simply not driving.",
         links: [ml(dir("driving"), "Driving directions")],
       },
       {
         icon: "🚲", name: "BY CITI BIKE",
         tag: "Eco-friendly & smug about it",
-        body: "Docks dot the neighborhood. Pedal in, lock up at the nearest station, and arrive glowing (literally — it's humid). Helmet optional, vibes mandatory.",
+        body: "Docks dot the neighborhood - the nearest is at <b>Baruch Plaza</b>. Pedal in, lock up, and arrive glowing (literally - it's humid). Helmet optional, vibes mandatory.",
         links: [ml(dir("bicycling"), "Bike directions")],
       },
       {
@@ -594,19 +767,19 @@
     ];
 
     const faqs = [
-      ["Is the food <i>actually</i> free?", "Yes. Free, hot, and plentiful. <b>Pizza 🍕</b> will be flowing all night. Eat with abandon — it's on the house."],
-      ["And the drinks?", "Also free. <b>Free drinks 🍻</b> all evening — soft stuff too, so everyone's covered. Pace yourself; the test rewards honesty, not blackouts."],
+      ["Is the food <i>actually</i> free?", "Yes. Free, hot, and plentiful. <b>Domino's 🍕</b> all night - <b>cheese</b> plus <b>pepperoni &amp; sausage</b>. Eat with abandon; it's on the house."],
+      ["And the drinks?", "Also free. <b>Beer 🍺</b>, <b>seltzer</b>, and <b>dirty Shirleys 🍒</b> all evening - something for everyone. Pace yourself; the test rewards honesty, not blackouts."],
       ["Wait… are there prizes?", "There are. The top of the spectrum is a <b>competitive event</b>. We award <b>🥇 1st</b>, <b>🥈 2nd</b>, and <b>🥉 3rd place</b> on the night."],
       ["What are the prizes?", "Classified. Past years have featured medals, trophies, and the kind of bragging rights that last 365 days. Win and find out. 🏆"],
       ["Will there be surprises?", "Several. We can't spoil them (that's the entire point of a surprise) but the answer is an enthusiastic <b>yes</b>. Expect at least one thing you didn't expect."],
       ["What should I wear?", "Come as you are. Propeller caps, rainbow everything, and questionable fashion choices are all warmly encouraged."],
-      ["What do I need to bring?", "Just yourself and an <b>honest brain</b> for the test. No tickets, no wristbands, no buzzer — walk right in and take the elevator to the 15th floor."],
-      ["When should I show up?", `Doors swing open the evening of <b>${CONFIG.date}</b>. Arrive early enough to take the test before the big reveal.`],
+      ["What do I need to bring?", "Just yourself and an <b>honest brain</b> for the test. No tickets, no wristbands, no buzzer - walk right in and take the elevator to the 15th floor."],
+      ["When should I show up?", `Doors swing open <b>${CONFIG.date} at ${CONFIG.time}</b>. Take the test right here on the site before you come (about 20 minutes), so you're locked in and ready for the big reveal.`],
     ];
 
     const root = wrapDiv(`<section class="section fade-in"><div class="wrap">
       <div class="details-hero">
-        <span class="eyebrow"><span class="bolt bolt-xs">⚡</span> Festival Logistics &amp; Survival Guide</span>
+        <span class="eyebrow"><span class="bolt bolt-xs">⚡</span> Party Logistics &amp; Survival Guide</span>
         <h2 class="section-title">Getting to the Grounds 🎪</h2>
         <p class="section-sub">A comprehensive, multi-modal transit dossier for a destination that is, in reality, one (1) apartment. We take access seriously.</p>
       </div>
@@ -616,7 +789,8 @@
           <div class="addr-label">📍 THE VENUE</div>
           <div class="addr-line">344 3rd Ave · <span class="grad-text">Apt 15G</span></div>
           <div class="addr-sub">New York, NY 10010 · "Manhattan Promenade", Gramercy / Kips Bay</div>
-          <div class="addr-note">🛗 No buzzer, no code, no nonsense — walk straight in and take the elevator up to the <b>15th floor</b>, Apt 15G.</div>
+          <div class="addr-when">🗓️ ${CONFIG.date} · 🕗 Doors at ${CONFIG.time}</div>
+          <div class="addr-note">🛗 No buzzer, no code, no nonsense - walk straight in and take the elevator up to the <b>15th floor</b>, Apt 15G.</div>
         </div>
         <div class="addr-actions">${ml(pin, "Open in Google Maps")}</div>
       </div>
@@ -650,14 +824,15 @@
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
-    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), done: false, score: 0 };
+    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), done: false, score: 0, bonus: 0, welcome: false, returningFull: "" };
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
     const container = el(`<section class="section"><div class="quiz-shell"></div></section>`);
     const shellEl = $(".quiz-shell", container);
 
     function computeScore() {
       const raw = state.answers.reduce((a, v) => a + (v == null ? 0 : v), 0);
-      return Math.round((raw / MAX_RAW) * 100);
+      const base = Math.round((raw / MAX_RAW) * 100);
+      return Math.min(100, base + (state.bonus || 0)); // returning-guest bonus, capped at 100
     }
 
     function paint() {
@@ -668,9 +843,9 @@
         const node = el(`
           <div class="card char-create fade-in">
             <div class="step-tag"><span class="step-num">1</span> Create your character <span class="step-arrow">→</span> <span class="step-faded">2 · take the test</span></div>
-            <h2 class="section-title">First, build your human</h2>
-            <p class="section-sub">Make your little character below — <b>this isn't the test yet</b>. When you're happy with them, hit start and the 12 questions begin.</p>
-            <div class="char-note">🛂 <span><b>Use your real name.</b> The host approves every contestant by hand and will only wave through names he actually recognizes. Fake names, bits, and aliases get rejected at the door.</span></div>
+            <h2 class="section-title">First, build your autist</h2>
+            <p class="section-sub">Make your little character below - <b>this isn't the test yet</b>. When you're happy with them, hit start and the 12 questions begin.</p>
+            <div class="char-note"><span class="char-note-icon">📛</span> <span><b>Use your real name.</b> The host approves every contestant by hand and will only wave through names he actually recognizes. Fake names, bits, and aliases get rejected at the door.</span></div>
             <div class="char-layout">
               <div class="char-form">
                 <div class="char-row">
@@ -689,12 +864,11 @@
                     <div class="opts">
                       <button type="button" class="opt-btn" data-preset="masc">🧑 Masc</button>
                       <button type="button" class="opt-btn" data-preset="femme">👩 Femme</button>
-                      <button type="button" class="opt-btn" id="randomize">🎲 Randomize</button>
                     </div>
                   </div>
                   <div class="builder-group">
                     <span class="builder-label">Skin</span>
-                    <div class="swatches" data-opt="skin">${SKINS.map(s => `<button type="button" class="swatch" data-v="${s}" style="background:${s}"></button>`).join("")}</div>
+                    <div class="swatches" data-opt="skin">${SKINS.map(s => `<button type="button" class="swatch" data-v="${s}" style="background:${s}" title="skin tone"></button>`).join("")}</div>
                   </div>
                   <div class="builder-group">
                     <span class="builder-label">Hair</span>
@@ -702,17 +876,26 @@
                   </div>
                   <div class="builder-group">
                     <span class="builder-label">Hair color</span>
-                    <div class="swatches" data-opt="hairColor">${HAIRCOLORS.map(s => `<button type="button" class="swatch" data-v="${s}" style="background:${s}"></button>`).join("")}</div>
+                    <div class="swatches" data-opt="hairColor">${HAIRCOLORS.map(s => `<button type="button" class="swatch" data-v="${s}" style="background:${s}" title="hair color"></button>`).join("")}</div>
+                  </div>
+                  <div class="builder-group">
+                    <span class="builder-label">Expression</span>
+                    <div class="opts" data-opt="mood">${MOODS.map(m => `<button type="button" class="opt-btn" data-v="${m.id}">${m.label}</button>`).join("")}</div>
                   </div>
                   <div class="builder-group">
                     <span class="builder-label">Shirt</span>
-                    <div class="swatches" data-opt="shirt">${SHIRTS.map(s => `<button type="button" class="swatch" data-v="${s}" style="background:${s}"></button>`).join("")}</div>
+                    <div class="swatches" data-opt="shirt">${SHIRTS.map(s => `<button type="button" class="swatch" data-v="${s}" style="background:${s}" title="shirt color"></button>`).join("")}</div>
+                  </div>
+                  <div class="builder-group">
+                    <span class="builder-label">Backdrop</span>
+                    <div class="swatches" data-opt="bg">${BGS.map(s => `<button type="button" class="swatch swatch-bg" data-v="${s}" style="background:${s}" title="backdrop"></button>`).join("")}</div>
                   </div>
                   <div class="builder-group">
                     <span class="builder-label">Eyewear</span>
                     <div class="opts" data-opt="eyewear">
                       <button type="button" class="opt-btn" data-v="none">None</button>
-                      <button type="button" class="opt-btn" data-v="glasses">👓 Glasses</button>
+                      <button type="button" class="opt-btn" data-v="glasses">👓 Round</button>
+                      <button type="button" class="opt-btn" data-v="square">🤓 Square</button>
                       <button type="button" class="opt-btn" data-v="shades">🕶️ Shades</button>
                     </div>
                   </div>
@@ -734,6 +917,10 @@
                     </div>
                   </div>
                   <div class="builder-group">
+                    <span class="builder-label">Drink in hand</span>
+                    <div class="opts" data-opt="drink">${DRINKS.map(d => `<button type="button" class="opt-btn" data-v="${d.id}">${d.label}</button>`).join("")}</div>
+                  </div>
+                  <div class="builder-group">
                     <span class="builder-label">Extras</span>
                     <div class="opts">
                       <button type="button" class="opt-btn" data-flag="earrings">💎 Earrings</button>
@@ -748,15 +935,19 @@
                 <div class="avatar"><div class="avatar-inner" id="av-art">${avatarSVG(state.avatar)}</div></div>
                 <div class="avatar-name" id="av-name">${esc(displayName()) || "Your name"}</div>
                 <div class="avatar-sub">your spectrum human</div>
+                <div class="dice-row">
+                  <button type="button" class="btn-dice" id="randomize">🎲 Surprise me</button>
+                  <button type="button" class="btn-reset" id="reset-av" title="Reset to default">↺</button>
+                </div>
               </div>
             </div>
             <label class="terms">
               <input type="checkbox" id="agree" ${state.agreed ? "checked" : ""} />
-              <span>I'll take this seriously and answer <b>honestly</b> — not just pick answers to score the highest. Wherever I land on the spectrum is where I land. 🤝</span>
+              <span>I'll take this seriously and answer <b>honestly</b> - not just pick answers to score the highest. Wherever I land on the spectrum is where I land. 🤝</span>
             </label>
-            <div class="quiz-nav">
-              <span></span>
-              <button class="btn btn-primary" id="start-btn" disabled>Save character &amp; start test →</button>
+            <div class="quiz-nav start-row">
+              <span class="start-hint" id="start-hint"></span>
+              <button class="btn btn-primary" id="start-btn">Save character &amp; start test →</button>
             </div>
           </div>`);
         shellEl.appendChild(node);
@@ -764,8 +955,10 @@
         const lasti = $("#lasti-in", node);
         const agree = $("#agree", node);
         const startBtn = $("#start-btn", node);
+        const startHint = $("#start-hint", node);
         const avArt = $("#av-art", node);
         const avName = $("#av-name", node);
+        const humanList = a => a.length === 1 ? a[0] : a.length === 2 ? a[0] + " and " + a[1] : a.slice(0, -1).join(", ") + ", and " + a[a.length - 1];
         const markSel = () => {
           node.querySelectorAll("[data-opt]").forEach(group => {
             const key = group.getAttribute("data-opt");
@@ -774,10 +967,26 @@
           node.querySelectorAll("[data-flag]").forEach(b => b.classList.toggle("selected", !!state.avatar[b.getAttribute("data-flag")]));
           node.querySelectorAll("[data-preset]").forEach(b => b.classList.toggle("selected", AV_PRESETS[b.getAttribute("data-preset")].face === state.avatar.face));
         };
-        const paintAvatar = () => { avArt.innerHTML = avatarSVG(state.avatar); markSel(); };
+        const paintAvatar = () => {
+          avArt.innerHTML = avatarSVG(state.avatar);
+          markSel();
+          if (avArt.animate) avArt.animate([{ transform: "scale(.9)" }, { transform: "scale(1)" }], { duration: 170, easing: "cubic-bezier(.2,1.5,.4,1)" });
+        };
         const refresh = () => {
           avName.textContent = displayName() || "Your name";
-          startBtn.disabled = !(state.firstName.trim() && state.lastInitial.trim() && agree.checked);
+          // gray the button out until ready, but always show a hint of what's still missing
+          const missing = [];
+          if (!state.firstName.trim()) missing.push("a first name");
+          if (!state.lastInitial.trim()) missing.push("a last initial");
+          if (!agree.checked) missing.push("the honesty checkbox");
+          startBtn.disabled = missing.length > 0;
+          if (missing.length) {
+            startHint.textContent = "👆 Add " + humanList(missing) + " first";
+            startHint.classList.remove("ready");
+          } else {
+            startHint.textContent = "✓ All set - you're good to go!";
+            startHint.classList.add("ready");
+          }
         };
         first.addEventListener("input", e => { state.firstName = e.target.value; refresh(); });
         lasti.addEventListener("input", e => { state.lastInitial = e.target.value.toUpperCase().slice(0, 1); e.target.value = state.lastInitial; refresh(); });
@@ -789,26 +998,53 @@
         node.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => { Object.assign(state.avatar, AV_PRESETS[b.getAttribute("data-preset")]); paintAvatar(); }));
         $("#randomize", node).addEventListener("click", () => {
           const pick = a => a[Math.floor(Math.random() * a.length)];
+          const f = pick(["masc", "femme"]);
           state.avatar = {
-            face: pick(["masc", "femme"]), skin: pick(SKINS), hairStyle: pick(HAIRSTYLES).id, hairColor: pick(HAIRCOLORS), shirt: pick(SHIRTS),
-            eyewear: pick(["none", "none", "glasses", "shades"]), facialHair: pick(["none", "none", "stubble", "beard", "mustache"]),
-            headwear: pick(["none", "none", "none", "beanie", "cap"]), earrings: Math.random() > 0.65, freckles: Math.random() > 0.6, blush: Math.random() > 0.7, headphones: Math.random() > 0.82,
+            face: f, skin: pick(SKINS), hairStyle: pick(HAIRSTYLES).id, hairColor: pick(HAIRCOLORS), shirt: pick(SHIRTS),
+            mood: pick(MOODS).id, bg: pick(BGS),
+            eyewear: pick(["none", "none", "glasses", "square", "shades"]),
+            facialHair: f === "femme" ? "none" : pick(["none", "none", "stubble", "beard", "mustache"]),
+            headwear: pick(["none", "none", "none", "beanie", "cap"]), drink: pick(["none", "none", "none", "beer", "seltzer", "shirley"]),
+            earrings: Math.random() > 0.6, freckles: Math.random() > 0.6, blush: Math.random() > 0.7, headphones: Math.random() > 0.82,
           };
           paintAvatar();
         });
+        $("#reset-av", node).addEventListener("click", () => { state.avatar = Object.assign({}, DEFAULT_AVATAR); paintAvatar(); });
         agree.addEventListener("change", () => { state.agreed = agree.checked; refresh(); });
         const go = () => {
           if (!state.firstName.trim()) { first.focus(); toast("Enter your first name!"); return; }
           if (!state.lastInitial.trim()) { lasti.focus(); toast("Add your last initial!"); return; }
           if (!agree.checked) { toast("Check the honesty box to start 🤝"); return; }
           state.name = displayName();
-          state.step = 0; paint();
+          const ret = findReturningGuest(state.firstName, state.lastInitial);
+          if (ret) { state.bonus = RETURN_BONUS; state.returningFull = ret.full; state.welcome = true; state.step = 0; paint(); }
+          else { state.bonus = 0; state.returningFull = ""; state.welcome = false; state.step = 0; paint(); }
         };
         startBtn.addEventListener("click", go);
         [first, lasti].forEach(inp => inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); }));
         markSel();
         refresh();
         setTimeout(() => first.focus(), 60);
+        return;
+      }
+
+      // welcome-back interstitial for returning guests (after Start, before Q1)
+      if (state.welcome) {
+        const node = el(`
+          <div class="card welcome-back fade-in">
+            <span class="wb-tag">⚡ Returning guest detected</span>
+            <div class="wb-avatar"><span class="avchip" style="width:96px;height:96px">${avatarSVG(state.avatar)}</span></div>
+            <h2 class="section-title">Welcome back, <span class="grad-text">${esc(state.returningFull)}</span>!</h2>
+            <p class="wb-text">That was <b>pretty autistic</b> of you to come back for round two. 🏆<br>
+              For your loyalty, you're starting the test with a head start:</p>
+            <div class="wb-bonus"><span class="wb-plus">+${state.bonus}</span> bonus 'tism points 🧠</div>
+            <div class="quiz-nav" style="justify-content:center;margin-top:8px">
+              <button class="btn btn-primary btn-lg" id="wb-begin">Let's gooo →</button>
+            </div>
+          </div>`);
+        shellEl.appendChild(node);
+        confetti.burst(90);
+        $("#wb-begin", node).addEventListener("click", () => { state.welcome = false; paint(); });
         return;
       }
 
@@ -825,6 +1061,7 @@
               <div class="meter-track"><div class="meter-pin" style="left:0%"></div></div>
               <div class="meter-scale"><span>Neurotypical</span><span>Maximum Autism</span></div>
             </div>
+            ${state.bonus > 0 ? `<div class="bonus-note">🧠 Includes <b>+${state.bonus} returning-guest bonus points</b> for ${esc(state.returningFull)}.</div>` : ""}
             <div class="submitted-banner">
               ✅ Submitted! You're in the queue. The host will approve you, then you'll appear on the spectrum graph at the party.
             </div>
@@ -836,7 +1073,7 @@
         setTimeout(() => { $(".meter-pin", node).style.left = state.score + "%"; }, 150);
         confetti.burst(150);
         $("#retake", node).addEventListener("click", () => {
-          state.step = -1; state.done = false; state.answers = QUESTIONS.map(() => null); paint();
+          state.step = -1; state.done = false; state.welcome = false; state.bonus = 0; state.returningFull = ""; state.answers = QUESTIONS.map(() => null); paint();
         });
         return;
       }
@@ -907,6 +1144,8 @@
       score: state.score,
       answers: state.answers.slice(),
       agreed: !!state.agreed,
+      returning: state.returningFull || "",
+      bonus: state.bonus || 0,
       status: "pending",
       createdAt: Date.now(),
     });
@@ -919,10 +1158,10 @@
     const facts = [
       { emoji: "🧠", h: "Pattern-seeking superpowers", p: "Spectrum brains are wildly good at spotting patterns, details, and inconsistencies everyone else glides right past." },
       { emoji: "🎯", h: "The hyperfixation engine", p: "When the interest hits, focus goes nuclear. Hours vanish. Expertise accumulates. It's basically a cheat code." },
-      { emoji: "♾️", h: "Why the rainbow infinity?", p: "The infinity loop stands for infinite variation — every brain wired a little differently, none of them wrong." },
+      { emoji: "♾️", h: "Why the rainbow infinity?", p: "The infinity loop stands for infinite variation - every brain wired a little differently, none of them wrong." },
       { emoji: "🔊", h: "Sensory dials go to 11", p: "Sounds, lights, textures and tastes can land way louder than 'normal'. Noise-cancelling headphones: elite tier." },
       { emoji: "💬", h: "Info-dumping is love", p: "Sharing every fact about a beloved topic is a genuine act of affection. Receiving one is a compliment." },
-      { emoji: "📊", h: "It's a spectrum, not a line", p: "Nobody's just 'a little' or 'a lot'. It's a whole mixing board of traits — which is exactly what tonight celebrates." },
+      { emoji: "📊", h: "It's a spectrum, not a line", p: "Nobody's just 'a little' or 'a lot'. It's a whole mixing board of traits - which is exactly what tonight celebrates." },
     ];
     const stats = [
       { n: "2", l: "years running", s: "and counting" },
@@ -931,7 +1170,7 @@
     ];
     const root = wrapDiv(`<section class="section fade-in"><div class="wrap">
       <h2 class="section-title">Fun Facts</h2>
-      <p class="section-sub">A little appreciation for the beautifully wired brain — and a few stats from parties past.</p>
+      <p class="section-sub">A little appreciation for the beautifully wired brain - and a few stats from parties past.</p>
       <div class="grid grid-3" style="margin-bottom:28px">
         ${stats.map(s => `<div class="card fact" style="text-align:center">
           <div class="big-num">${s.n}</div><h3>${s.l}</h3><p>${s.s}</p></div>`).join("")}
@@ -1111,7 +1350,7 @@
     if (toggle) {
       const detail = $(".answers-detail", row);
       detail.innerHTML = s.answers.map((a, i) =>
-        a == null ? "" : `<div class="qa"><b>${esc(QUESTIONS[i].q)}</b>${esc((QUESTIONS[i].opts.find(o => o[1] === a) || ["—"])[0])} <span style="color:var(--ink-faint)">(+${a})</span></div>`
+        a == null ? "" : `<div class="qa"><b>${esc(QUESTIONS[i].q)}</b>${esc((QUESTIONS[i].opts.find(o => o[1] === a) || ["-"])[0])} <span style="color:var(--ink-faint)">(+${a})</span></div>`
       ).join("") || `<div class="qa">No detailed answers (demo entry).</div>`;
       toggle.addEventListener("click", () => {
         detail.classList.toggle("open");
@@ -1130,14 +1369,14 @@
     const guests = store.approved(); // ascending by score
     const root = wrapDiv(`<section class="section fade-in"><div class="wrap">
       <h2 class="section-title">The Reveal</h2>
-      <p class="section-sub">Approved guests, least → most autistic. Reveal them one at a time — then the <b>Final 3</b> get the podium treatment. 🥁</p>
-      <div id="reveal-stage" class="reveal-stage"></div>
-      <div id="podium" class="podium" style="display:none">
-        <div class="podium-slot second" data-fi="1"><div class="medal">🥈</div><div class="slot-body"></div><div class="pedestal">2nd</div></div>
-        <div class="podium-slot first" data-fi="2"><div class="medal">👑</div><div class="slot-body"></div><div class="pedestal">1st</div></div>
-        <div class="podium-slot third" data-fi="0"><div class="medal">🥉</div><div class="slot-body"></div><div class="pedestal">3rd</div></div>
-      </div>
+      <p class="section-sub">Approved guests, least → most autistic. Reveal them one at a time - then the <b>Final 3</b> get the podium treatment. 🥁</p>
       <div class="graph-wrap">
+        <div id="reveal-stage" class="reveal-stage"></div>
+        <div id="podium" class="podium" style="display:none">
+          <div class="podium-slot second" data-fi="1"><div class="medal">🥈</div><div class="slot-body"></div><div class="pedestal">2nd</div></div>
+          <div class="podium-slot first" data-fi="2"><div class="medal">👑</div><div class="slot-body"></div><div class="pedestal">1st</div></div>
+          <div class="podium-slot third" data-fi="0"><div class="medal">🥉</div><div class="slot-body"></div><div class="pedestal">3rd</div></div>
+        </div>
         <div class="graph" id="graph">
           <div class="graph-axis"></div>
           <div class="graph-axis-labels"><span>Neurotypical</span><span>Quirky</span><span>Spicy</span><span>Spectrum-coded</span><span>Maximum</span></div>
@@ -1180,7 +1419,7 @@
         dots.push(dot);
         if (idx < presentRevealed) dot.classList.add("show");
       });
-      updateStageToLast();
+      updateStage();
       updateUI();
     }
     function updateUI() {
@@ -1227,11 +1466,32 @@
         <div class="tier">${t.emoji} ${t.name} · <b>${g.score}</b>/100</div>
       </div>`;
     }
-    function updateStageToLast() {
+    // a teaser of the three finalists shown the moment the regulars are done,
+    // before their podium places get revealed one at a time
+    function renderFinalePreview() {
+      const finalists = guests.slice(finaleStart); // ascending [3rd, 2nd, 1st]
+      // shuffle display order so left→right doesn't telegraph the ranking
+      const order = finalists.map((_, i) => i);
+      for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+      const people = order.map(i => {
+        const g = finalists[i];
+        return `<div class="fp-person"><span class="avchip" style="width:74px;height:74px">${avatarSVG(g.avatar)}</span><div class="fp-name">${esc(g.name)}</div></div>`;
+      }).join("");
+      stage.innerHTML = `<div class="fade-in finale-preview">
+        <div class="finale-preview-title">🥁 Meet your Final 3</div>
+        <div class="finale-preview-people">${people}</div>
+        <div class="finale-preview-sub">The very top of the spectrum - but who takes <b>1st</b>? Reveal them one at a time…</div>
+      </div>`;
+    }
+    function updateStage() {
+      // about to announce the podium → preview the three finalists
+      if (hasPodium && presentRevealed === finaleStart) { renderFinalePreview(); return; }
       if (presentRevealed === 0) {
         stage.innerHTML = `<div class="placeholder">Ready when you are. Hit <b>Reveal next</b> to begin the ascent. 🚀</div>`;
         return;
       }
+      // already into the podium → re-show the most recently revealed finalist
+      if (hasPodium && presentRevealed > finaleStart) { renderFinaleStage(presentRevealed - 1); return; }
       const g = guests[presentRevealed - 1];
       const t = tierFor(g.score);
       stage.innerHTML = `<div class="fade-in">
@@ -1246,8 +1506,7 @@
       dots[idx].classList.add("show");
       presentRevealed++;
       const g = guests[idx];
-      if (hasPodium && idx >= finaleStart) renderFinaleStage(idx);
-      else updateStageToLast();
+      updateStage();
       updateUI();
       const rect = graph.getBoundingClientRect();
       const isChamp = idx === guests.length - 1;
@@ -1278,7 +1537,7 @@
         <div class="locked">
           <div class="glyph">🤫</div>
           <h2 class="section-title">Results are under wraps</h2>
-          <p class="section-sub">The spectrum gets revealed live at the party. Check back after — the host unlocks the full graph here.</p>
+          <p class="section-sub">The spectrum gets revealed live at the party. Check back after - the host unlocks the full graph here.</p>
           <button class="btn btn-ghost" data-nav="/">← Back home</button>
         </div>
       </div></section>`));
@@ -1286,7 +1545,7 @@
 
     const root = wrapDiv(`<section class="section fade-in"><div class="wrap">
       <h2 class="section-title">The ${CONFIG.edition} Spectrum</h2>
-      <p class="section-sub">${isHost && !isPublic ? "👑 Host preview — not yet public." : "Every approved guest, plotted least → most autistic."}</p>
+      <p class="section-sub">${isHost && !isPublic ? "👑 Host preview - not yet public." : "Every approved guest, plotted least → most autistic."}</p>
       <div class="graph-wrap">
         <div class="graph" id="rgraph">
           <div class="graph-axis"></div>

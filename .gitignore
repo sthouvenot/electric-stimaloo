@@ -13,3 +13,7 @@ desktop.ini
 # Node (in case we add a build later)
 node_modules/
 dist/
+
+# Local-only guest list (real names) - kept out of the public repo
+guests-*.xlsx
+*.py

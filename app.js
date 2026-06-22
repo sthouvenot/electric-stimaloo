@@ -528,7 +528,8 @@
             <img class="brand-logo" src="logo.png" alt="${CONFIG.partyName} logo" />
             <span>${CONFIG.partyName} <small>'${String(CONFIG.year).slice(2)}</small></span>
           </button>
-          <nav class="header-links">
+          <button class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+          <nav class="header-links" id="site-nav">
             <button data-nav="/" class="${key === "/" ? "active" : ""}">Home</button>
             <button data-nav="/test" class="${key === "/test" ? "active" : ""}">Take the Test</button>
             <button data-nav="/details" class="${key === "/details" ? "active" : ""}">Details</button>
@@ -538,6 +539,15 @@
         </div>
       </header>`);
     frag.appendChild(header);
+    // mobile hamburger: toggle the nav open/closed (navigating re-renders the shell, closing it)
+    const navToggle = $("#nav-toggle", header);
+    const siteNav = $("#site-nav", header);
+    if (navToggle && siteNav) {
+      navToggle.addEventListener("click", () => {
+        const open = header.classList.toggle("nav-open");
+        navToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+    }
 
     frag.appendChild(contentNode);
 

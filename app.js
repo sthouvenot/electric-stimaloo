@@ -562,17 +562,7 @@
               <div class="footer-tag">The 2nd Annual ${CONFIG.partyName} · ${CONFIG.date}, ${CONFIG.year}</div>
             </div>
           </div>
-          <div class="footer-spotify">
-            <a class="fs-head" href="https://open.spotify.com/playlist/1nIuCQUJ9KvYf3iUD2ifti?si=3e3cce49b5434445" target="_blank" rel="noopener">
-              <svg class="fs-logo" viewBox="0 0 168 168" aria-hidden="true"><path fill="#1ED760" d="M83.996.277C37.747.277.253 37.77.253 84.019c0 46.251 37.494 83.741 83.743 83.741 46.254 0 83.744-37.49 83.744-83.741 0-46.246-37.49-83.738-83.745-83.738zm38.404 120.78a5.217 5.217 0 01-7.18 1.73c-19.662-12.012-44.414-14.73-73.564-8.07a5.222 5.222 0 01-6.249-3.93 5.213 5.213 0 013.926-6.25c31.9-7.291 59.263-4.155 81.337 9.33 2.46 1.51 3.24 4.72 1.73 7.19zm10.25-22.805c-1.89 3.075-5.91 4.045-8.98 2.155-22.51-13.839-56.823-17.846-83.448-9.764-3.453 1.043-7.1-.903-8.148-4.35a6.538 6.538 0 014.354-8.143c30.413-9.228 68.222-4.758 94.072 11.127 3.07 1.89 4.04 5.91 2.15 8.976zm.88-23.744c-26.99-16.031-71.52-17.505-97.289-9.684-4.138 1.255-8.514-1.081-9.768-5.219a7.835 7.835 0 015.221-9.771c29.581-8.98 78.756-7.245 109.83 11.202a7.823 7.823 0 012.74 10.733c-2.2 3.722-7.02 4.949-10.73 2.739z"/></svg>
-              <span>Official Party Playlist</span>
-            </a>
-            <iframe class="fs-embed" title="Electric Stimaloo playlist on Spotify" loading="lazy"
-              src="https://open.spotify.com/embed/playlist/1nIuCQUJ9KvYf3iUD2ifti?utm_source=generator"
-              width="100%" height="80" frameborder="0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
-          </div>
-          <div class="cause">💛 Want to help a cause? <a href="https://autisticadvocacy.org/donate/" target="_blank" rel="noopener">Support autistic-led advocacy →</a></div>
+          <p class="cause">💛 Want to help a cause? <a href="https://autisticadvocacy.org/donate/" target="_blank" rel="noopener">Support autistic-led advocacy →</a></p>
         </div>
       </footer>`);
     frag.appendChild(footer);
@@ -815,6 +805,18 @@
             <p class="route-body">${m.body}</p>
             <div class="route-links">${m.links.join("")}</div>
           </div>`).join("")}
+      </div>
+
+      <h3 class="block-head">🎧 The Soundtrack</h3>
+      <div class="soundtrack card">
+        <a class="fs-head" href="https://open.spotify.com/playlist/1nIuCQUJ9KvYf3iUD2ifti?si=3e3cce49b5434445" target="_blank" rel="noopener">
+          <svg class="fs-logo" viewBox="0 0 168 168" aria-hidden="true"><path fill="#1ED760" d="M83.996.277C37.747.277.253 37.77.253 84.019c0 46.251 37.494 83.741 83.743 83.741 46.254 0 83.744-37.49 83.744-83.741 0-46.246-37.49-83.738-83.745-83.738zm38.404 120.78a5.217 5.217 0 01-7.18 1.73c-19.662-12.012-44.414-14.73-73.564-8.07a5.222 5.222 0 01-6.249-3.93 5.213 5.213 0 013.926-6.25c31.9-7.291 59.263-4.155 81.337 9.33 2.46 1.51 3.24 4.72 1.73 7.19zm10.25-22.805c-1.89 3.075-5.91 4.045-8.98 2.155-22.51-13.839-56.823-17.846-83.448-9.764-3.453 1.043-7.1-.903-8.148-4.35a6.538 6.538 0 014.354-8.143c30.413-9.228 68.222-4.758 94.072 11.127 3.07 1.89 4.04 5.91 2.15 8.976zm.88-23.744c-26.99-16.031-71.52-17.505-97.289-9.684-4.138 1.255-8.514-1.081-9.768-5.219a7.835 7.835 0 015.221-9.771c29.581-8.98 78.756-7.245 109.83 11.202a7.823 7.823 0 012.74 10.733c-2.2 3.722-7.02 4.949-10.73 2.739z"/></svg>
+          <span>Official Party Playlist on Spotify →</span>
+        </a>
+        <iframe class="fs-embed" title="Electric Stimaloo playlist on Spotify" loading="lazy"
+          src="https://open.spotify.com/embed/playlist/1nIuCQUJ9KvYf3iUD2ifti?utm_source=generator"
+          width="100%" height="352" frameborder="0"
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
       </div>
 
       <h3 class="block-head">❓ Frequently Asked (Loudly)</h3>

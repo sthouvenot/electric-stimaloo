@@ -192,10 +192,10 @@ a { color: inherit; }
 /* ---------- hero ---------- */
 .hero { text-align: center; padding: 56px 0 26px; position: relative; }
 .eyebrow {
-  display: inline-block; font-family: "Space Mono", ui-monospace, monospace; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-  font-size: 12px; color: #2e2a22; background: #d9d5cb; white-space: nowrap;
-  padding: 8px 16px; border: 2px solid #b3ad9f; border-radius: 8px; box-shadow: none;
-  margin-bottom: 26px; transform: rotate(-1.5deg); max-width: 100%;
+  display: inline-block; font-family: var(--font-head); font-weight: 800; font-style: italic; letter-spacing: .06em; text-transform: uppercase;
+  font-size: 13.5px; color: var(--ink); background: none; white-space: nowrap;
+  padding: 0; border: 0; box-shadow: none;
+  margin-bottom: 22px; transform: rotate(-1.5deg); max-width: 100%;
 }
 .hero h1 { margin: 0 0 6px; line-height: .9; }
 .hero .line-1 { display: block; font-family: var(--font-head); font-weight: 800; font-size: clamp(22px, 4.5vw, 40px); text-transform: uppercase; letter-spacing: .02em; color: var(--ink-soft); }
@@ -473,7 +473,7 @@ a { color: inherit; }
 @media (max-width: 680px) {
   .char-layout { grid-template-columns: 1fr; }
   /* smaller eyebrow so it stays one line without overflowing the phone */
-  .eyebrow { font-size: 11px; letter-spacing: .03em; padding: 9px 15px; }
+  .eyebrow { font-size: 11.5px; letter-spacing: .05em; padding: 0; }
   /* shorter train band so the train fills it instead of sitting low with empty space above */
   .train-marquee { height: 62px; }
   /* side padding so the creator card isn't edge-to-edge on phones */

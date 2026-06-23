@@ -269,17 +269,42 @@
   const AV_PRESETS = { masc: { face: "masc", hairStyle: "short" }, femme: { face: "femme", hairStyle: "long" } };
 
   /* ----------------------------------------------------------
-     QUIZ - 12 questions, each option scored 0..3
+     QUIZ - 6 mini-games, each scored 0..3
      ---------------------------------------------------------- */
+  const COMMON_PINS = new Set([
+    "0000","1111","2222","3333","4444","5555","6666","7777","8888","9999",
+    "1234","2345","3456","4567","5678","6789","9876","8765","7654","6543","5432","4321",
+    "1122","2233","3344","4455","5566","6677","7788","8899",
+    "1212","2323","3434","4545","5656","6767","7878","8989",
+    "1221","2112","1100","0011","1010","0101","2020","1001","2002",
+    "6969","8008","5150","4200","3141","0420","1337",
+  ]);
+  function pinSequential(p) {
+    let up = true, down = true;
+    for (let i = 1; i < 4; i++) { const a = +p[i-1], b = +p[i]; if (b !== a+1) up = false; if (b !== a-1) down = false; }
+    return up || down;
+  }
+  function pinAllSame(p) { return p[0]===p[1] && p[1]===p[2] && p[2]===p[3]; }
+  function pinPairs(p) { return p[0]===p[2] && p[1]===p[3]; }
+  function scorePin(pin) {
+    const noRepeat = new Set(pin.split("")).size === 4;
+    const pattern = COMMON_PINS.has(pin) || pinSequential(pin) || pinAllSame(pin) || pinPairs(pin);
+    const n = parseInt(pin, 10);
+    const birthYear = n >= 1950 && n <= 2026;
+    const checks = [
+      { ok: noRepeat,    good: "No repeated digits",       bad: "Repeats a digit" },
+      { ok: !pattern,    good: "Not an obvious pattern",   bad: "Classic guessable pattern" },
+      { ok: !birthYear,  good: "Not a birth year",         bad: "That's literally a birth year" },
+    ];
+    return { pts: checks.reduce((a, c) => a + (c.ok ? 1 : 0), 0), checks };
+  }
+  const TYPING_SENTENCE = "I would rather reorganize my entire bookshelf than make small talk.";
+
   const QUESTIONS = [
     {
-      q: "The plan changes at the last minute. Your internal weather:",
-      opts: [
-        ["Sunny - whatever, let's roll", 0],
-        ["A few clouds, I adapt", 1],
-        ["Storm warning, I need a minute", 2],
-        ["The plan was sacred. This is a betrayal.", 3],
-      ],
+      kind: "bankpin",
+      q: "Create a 4-digit PIN for your bank account.",
+      opts: [["Wildly guessable",0],["A little obvious",1],["Pretty solid",2],["Paranoid and unguessable",3]],
     },
     {
       kind: "train",
@@ -292,68 +317,9 @@
       ],
     },
     {
-      q: "You discover a topic you love. How deep do you go?",
-      opts: [
-        ["I learn the basics and move on", 0],
-        ["I read a few articles", 1],
-        ["I now own three books on it", 2],
-        ["I could lecture for 6 hours, unprompted, tonight", 3],
-      ],
-    },
-    {
-      kind: "eyecontact",
-      q: "Hold eye contact for as long as you can.",
-      opts: [
-        ["Held it, totally unbothered", 0],
-        ["Lasted a good while", 1],
-        ["Cracked pretty fast", 2],
-        ["Bailed almost immediately", 3],
-      ],
-    },
-    {
-      q: "Your ideal Friday night:",
-      opts: [
-        ["Big party, lots of people", 0],
-        ["Drinks with a few friends", 1],
-        ["One trusted person + a shared activity", 2],
-        ["Me, my hyperfixation, and zero humans", 3],
-      ],
-    },
-    {
-      q: "Small talk is:",
-      opts: [
-        ["Easy and pleasant", 0],
-        ["Manageable", 1],
-        ["A weird ritual I perform", 2],
-        ["An elaborate form of psychological warfare", 3],
-      ],
-    },
-    {
-      q: "Certain textures, sounds, or bright lights:",
-      opts: [
-        ["Never really notice them", 0],
-        ["Occasionally bug me", 1],
-        ["Can absolutely ruin my day", 2],
-        ["I have a detailed list and avoidance strategy", 3],
-      ],
-    },
-    {
-      q: "Your daily routine is:",
-      opts: [
-        ["Loose, I improvise", 0],
-        ["Roughly the same most days", 1],
-        ["A system. It has steps.", 2],
-        ["A sacred sequence. Do not disrupt the sequence.", 3],
-      ],
-    },
-    {
-      q: "Someone says 'we should hang out sometime':",
-      opts: [
-        ["Great, I'll text them", 0],
-        ["Nice, vaguely meant", 1],
-        ["Do they mean it? Should I propose a date?", 2],
-        ["I need exact day, time, location, and an agenda", 3],
-      ],
+      kind: "color",
+      q: "Memorize this color.",
+      opts: [["Way off",0],["Close-ish",1],["Pretty close",2],["Spot on",3]],
     },
     {
       kind: "dodge",
@@ -366,45 +332,17 @@
       ],
     },
     {
-      q: "Group chats make you feel:",
-      opts: [
-        ["Energized, love them", 0],
-        ["Fine, I keep up", 1],
-        ["47 unread and rising anxiety", 2],
-        ["I left to preserve my soul", 3],
-      ],
+      kind: "typing",
+      q: "Type this sentence as fast as you can.",
+      opts: [["Slow",0],["Decent",1],["Fast",2],["Blazing",3]],
     },
     {
-      q: "When you're really into something, you:",
-      opts: [
-        ["Enjoy it casually", 0],
-        ["Get pretty enthusiastic", 1],
-        ["Info-dump on anyone nearby", 2],
-        ["Restructure my entire identity around it", 3],
-      ],
-    },
-    {
-      kind: "eyes",
-      eyes: "anxious",
-      q: "Quick — what is this person feeling?",
-      opts: [
-        ["Anxious", 0],
-        ["A little worried", 1],
-        ["Honestly, I can't tell", 2],
-        ["They're eyes. This is an unfair question.", 3],
-      ],
-    },
-    {
-      q: "Your sock / clothing tag situation:",
-      opts: [
-        ["No opinions, never think about it", 0],
-        ["Mild preferences", 1],
-        ["Tags get cut, seams matter", 2],
-        ["I have one acceptable fabric and we do not negotiate", 3],
-      ],
+      kind: "reenterpin",
+      q: "One more thing — re-enter your bank PIN.",
+      opts: [["Wrong",0],["Correct",3]],
     },
   ];
-  const MAX_RAW = QUESTIONS.length * 3; // 36
+  const MAX_RAW = QUESTIONS.length * 3; // 18
 
   /* ----------------------------------------------------------
      TIERS - score is 0..100
@@ -1085,11 +1023,168 @@
     ov.querySelector(".dodge-go").addEventListener("click", start);
   }
 
+  function renderBankPinGame(body, Q, setAnswer, state) {
+    body.innerHTML = `
+      <div class="pinq">
+        <p class="pinq-note">Choose something you'd actually use. We'll rate it for security.</p>
+        <input class="pinq-input" id="pin-in" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off" />
+        <div class="pinq-checks" id="pin-checks" hidden></div>
+        <div class="pinq-roast" id="pin-roast" hidden></div>
+        <button class="btn btn-primary" id="pin-submit" disabled>Lock it in →</button>
+      </div>`;
+    const inp = $("#pin-in", body), checks = $("#pin-checks", body), roast = $("#pin-roast", body), btn = $("#pin-submit", body);
+    const ROASTS = [
+      "Your PIN is '1234'. A toddler could guess that.",
+      "Bold choice. Your bank manager is sweating.",
+      "Not bad. You're not the easiest target.",
+      "Basically uncrackable. Suspicious, honestly.",
+    ];
+    inp.addEventListener("input", () => {
+      const v = inp.value.replace(/\D/g, "").slice(0, 4);
+      inp.value = v;
+      btn.disabled = v.length < 4;
+      if (v.length === 4) {
+        const { pts, checks: c } = scorePin(v);
+        checks.hidden = false;
+        checks.innerHTML = c.map(ck =>
+          `<div class="pinq-check ${ck.ok ? "ok" : "bad"}">${ck.ok ? "✅" : "❌"} ${ck.ok ? ck.good : ck.bad}</div>`
+        ).join("");
+        roast.hidden = false;
+        roast.textContent = ROASTS[pts];
+      } else {
+        checks.hidden = true;
+        roast.hidden = true;
+      }
+    });
+    btn.addEventListener("click", () => {
+      const v = inp.value.replace(/\D/g, "").slice(0, 4);
+      if (v.length < 4) return;
+      const { pts } = scorePin(v);
+      state.bankPin = v;
+      btn.textContent = "PIN saved ✓";
+      btn.disabled = true;
+      inp.disabled = true;
+      setAnswer(pts);
+    });
+    setTimeout(() => inp.focus(), 60);
+  }
+
+  function renderColorGame(body, Q, setAnswer) {
+    const hue = Math.floor(Math.random() * 360);
+    let phase = "show";
+    body.innerHTML = `
+      <div class="colq">
+        <div class="colq-swatch" id="colq-sw" style="background:hsl(${hue},72%,56%)"></div>
+        <div class="colq-msg" id="colq-msg">Memorize this color — you have <b id="colq-cd">3</b>s</div>
+        <div class="colq-guess" id="colq-guess" hidden>
+          <p class="colq-hint">Drag the slider to match the color you saw.</p>
+          <input type="range" class="hue-slider" id="hue-sl" min="0" max="359" value="180" />
+          <div class="colq-preview" id="colq-prev" style="background:hsl(180,72%,56%)"></div>
+          <button class="btn btn-primary" id="colq-submit">That's it →</button>
+        </div>
+      </div>`;
+    const sw = $("#colq-sw", body), cdEl = $("#colq-cd", body), msg = $("#colq-msg", body);
+    const guessDiv = $("#colq-guess", body), sl = $("#hue-sl", body), prev = $("#colq-prev", body), submitBtn = $("#colq-submit", body);
+    sl.addEventListener("input", () => { prev.style.background = `hsl(${sl.value},72%,56%)`; });
+    submitBtn.addEventListener("click", () => {
+      const guess = +sl.value;
+      let diff = Math.abs(hue - guess);
+      if (diff > 180) diff = 360 - diff;
+      const pts = diff < 15 ? 3 : diff < 35 ? 2 : diff < 70 ? 1 : 0;
+      const msgs = ["Way off — but maybe you're colorblind and we respect that.", "Getting warm.", "Pretty close!", "Perfect match. Suspicious."];
+      submitBtn.disabled = true;
+      submitBtn.textContent = `Off by ${diff}° — ${msgs[pts]}`;
+      setAnswer(pts);
+    });
+    let cd = 3;
+    const tick = setInterval(() => {
+      cd--;
+      if (cd > 0) { cdEl.textContent = cd; return; }
+      clearInterval(tick);
+      sw.style.background = "#888";
+      msg.innerHTML = "Now match it!";
+      guessDiv.hidden = false;
+      phase = "guess";
+    }, 1000);
+  }
+
+  function renderTypingGame(body, Q, setAnswer) {
+    body.innerHTML = `
+      <div class="typeq">
+        <div class="typeq-target" id="tq-target">${esc(TYPING_SENTENCE)}</div>
+        <textarea class="typeq-input" id="tq-in" rows="3" placeholder='Click "Start" then type…' disabled></textarea>
+        <div class="typeq-timer" id="tq-timer">0.00s</div>
+        <button class="btn btn-primary" id="tq-start">▶ Start</button>
+        <div class="typeq-result" id="tq-result" hidden></div>
+      </div>`;
+    const target = TYPING_SENTENCE;
+    const inp = $("#tq-in", body), timerEl = $("#tq-timer", body), startBtn = $("#tq-start", body), result = $("#tq-result", body);
+    let startT = 0, tick = null;
+    startBtn.addEventListener("click", () => {
+      inp.disabled = false;
+      inp.value = "";
+      inp.focus();
+      startBtn.disabled = true;
+      startT = Date.now();
+      tick = setInterval(() => { timerEl.textContent = ((Date.now() - startT) / 1000).toFixed(2) + "s"; }, 50);
+    });
+    inp.addEventListener("input", () => {
+      if (inp.disabled) return;
+      const v = inp.value;
+      const correct = target.startsWith(v);
+      inp.classList.toggle("typeq-ok", v === target);
+      inp.classList.toggle("typeq-wrong", !correct && v.length > 0);
+      if (v === target) {
+        clearInterval(tick);
+        const secs = (Date.now() - startT) / 1000;
+        inp.disabled = true;
+        const pts = secs < 8 ? 3 : secs < 13 ? 2 : secs < 20 ? 1 : 0;
+        const msgs = ["Blazing fast. Were you… prepared for this?", "Pretty quick — you've typed that before.", "Decent. You got there.", "You typed it correctly though, so."];
+        result.hidden = false;
+        result.innerHTML = `Finished in <b>${secs.toFixed(2)}s</b> — ${msgs[pts]}`;
+        timerEl.textContent = secs.toFixed(2) + "s";
+        setAnswer(pts);
+      }
+    });
+  }
+
+  function renderReenterPinGame(body, Q, setAnswer, state) {
+    const saved = state.bankPin || "";
+    body.innerHTML = `
+      <div class="pinq">
+        <p class="pinq-note">You set a bank PIN earlier. What was it?</p>
+        <input class="pinq-input" id="repin-in" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off" />
+        <div class="pinq-roast" id="repin-roast" hidden></div>
+        <button class="btn btn-primary" id="repin-submit" disabled>Submit →</button>
+      </div>`;
+    const inp = $("#repin-in", body), roast = $("#repin-roast", body), btn = $("#repin-submit", body);
+    inp.addEventListener("input", () => {
+      const v = inp.value.replace(/\D/g, "").slice(0, 4);
+      inp.value = v;
+      btn.disabled = v.length < 4;
+    });
+    btn.addEventListener("click", () => {
+      const v = inp.value.replace(/\D/g, "").slice(0, 4);
+      if (v.length < 4) return;
+      const correct = saved && v === saved;
+      roast.hidden = false;
+      roast.textContent = correct
+        ? "Correct. You remembered your own PIN. Deeply autistic."
+        : saved ? `Nope. It was ${saved}. You forgot your own PIN in under 10 minutes.`
+        : "No PIN was set — you skipped question 1 somehow.";
+      inp.disabled = true;
+      btn.textContent = correct ? "✓ Correct" : "✗ Wrong";
+      btn.disabled = true;
+      setAnswer(correct ? 3 : 0);
+    });
+    setTimeout(() => inp.focus(), 60);
+  }
+
   /* ----------------------------------------------------------
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
-    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "" };
+    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "" };
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
     const container = el(`<section class="section"><div class="quiz-shell"></div></section>`);
     const shellEl = $(".quiz-shell", container);
@@ -1386,7 +1481,7 @@
         setTimeout(() => { $(".meter-pin", node).style.left = state.score + "%"; }, 150);
         confetti.burst(150);
         $("#retake", node).addEventListener("click", () => {
-          state.step = -1; state.done = false; state.welcome = false; state.dateStep = ""; state.returningFull = ""; state.returningSentence = ""; state.answers = QUESTIONS.map(() => null); state.metrics = {}; paint();
+          state.step = -1; state.done = false; state.welcome = false; state.dateStep = ""; state.returningFull = ""; state.returningSentence = ""; state.answers = QUESTIONS.map(() => null); state.metrics = {}; state.bankPin = ""; paint();
         });
         return;
       }
@@ -1432,10 +1527,14 @@
         });
       } else if (kind === "train") {
         renderTrainGame(qbody, Q, setAnswer);
-      } else if (kind === "eyecontact") {
-        renderEyeContactGame(qbody, Q, setAnswer);
-      } else if (kind === "eyes") {
-        renderEyesGame(qbody, Q, setAnswer);
+      } else if (kind === "bankpin") {
+        renderBankPinGame(qbody, Q, setAnswer, state);
+      } else if (kind === "color") {
+        renderColorGame(qbody, Q, setAnswer);
+      } else if (kind === "typing") {
+        renderTypingGame(qbody, Q, setAnswer);
+      } else if (kind === "reenterpin") {
+        renderReenterPinGame(qbody, Q, setAnswer, state);
       } else if (kind === "dodge") {
         renderDodgeGame(qbody, Q, setAnswer, state.avatar);
       }
@@ -1942,7 +2041,7 @@
     $("#reset-btn", root).addEventListener("click", () => {
       presentRevealed = 0;
       dots.forEach(d => d.classList.remove("show", "current"));
-      updateStageToLast(); updateUI();
+      updateStage(); updateUI();
     });
 
     setTimeout(placeAll, 30);

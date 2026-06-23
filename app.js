@@ -1091,7 +1091,7 @@
       if (state.dateStep === "survey") {
         const node = el(`
           <div class="card date-survey fade-in">
-            <span class="wb-tag date-tag">💘 Special guest detected</span>
+            <span class="wb-tag date-tag">💘 Person I've been on a date with detected</span>
             <h2 class="section-title">Hold on, <span class="grad-text">${esc(state.firstName.trim())}</span>…</h2>
             <p class="wb-text">Instead of filling out this autism quiz, why don't you fill out <b>this</b> survey instead?</p>
             <div class="date-q">

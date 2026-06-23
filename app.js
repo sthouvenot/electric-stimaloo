@@ -17,6 +17,7 @@
     date: "Friday, July 24th",
     time: "8 PM EST", // doors / start time
     adminPassword: "spectrum", // mock-only gate; not real security
+    devPin: "4444", // gag "under development" gate shown before the test
   };
 
   /* ----------------------------------------------------------
@@ -332,9 +333,24 @@
       ],
     },
     {
+      kind: "whg",
+      q: "Get the red square across. Don't touch the blue.",
+      opts: [
+        ["Never made it", 0],
+        ["Squeaked across, barely", 1],
+        ["Crossed it, a few deaths", 2],
+        ["Flawless run, no deaths", 3],
+      ],
+    },
+    {
       kind: "typing",
       q: "Type this sentence as fast as you can.",
       opts: [["Slow",0],["Decent",1],["Fast",2],["Blazing",3]],
+    },
+    {
+      kind: "qebday",
+      q: "When was Queen Elizabeth II born?",
+      opts: [["No clue",0],["Right ballpark",1],["Very close",2],["Nailed the exact day",3]],
     },
     {
       kind: "reenterpin",
@@ -342,7 +358,7 @@
       opts: [["Wrong",0],["Correct",3]],
     },
   ];
-  const MAX_RAW = QUESTIONS.length * 3; // 18
+  const MAX_RAW = QUESTIONS.length * 3; // 24
 
   /* ----------------------------------------------------------
      TIERS - score is 0..100
@@ -367,6 +383,7 @@
     subs: "ap_submissions_v1",
     flag: "ap_results_public_v1",
     auth: "ap_admin_auth_v1",
+    pin: "ap_dev_unlocked_v1",
   };
   function load(key, fallback) {
     try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); }
@@ -476,6 +493,60 @@
       else { raf = null; ctx.clearRect(0, 0, canvas.width, canvas.height); }
     }
     return { burst };
+  })();
+
+  /* ----------------------------------------------------------
+     SFX - tiny Web Audio synth (no asset files). Used for the
+     presentation reveal: a ding per guest, a building drum roll,
+     then a crash + fanfare for the 1st/2nd place reveal.
+     ---------------------------------------------------------- */
+  const sfx = (function () {
+    let ctx = null;
+    function ac() {
+      if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+      if (ctx.state === "suspended") ctx.resume();
+      return ctx;
+    }
+    function tone(freq, dur, type, gain, when) {
+      const c = ac(); if (!c) return;
+      const t0 = c.currentTime + (when || 0);
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = type || "sine"; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(gain || 0.2, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g).connect(c.destination); o.start(t0); o.stop(t0 + dur + 0.03);
+    }
+    function noise(dur, gain) {
+      const c = ac(); if (!c) return;
+      const t0 = c.currentTime;
+      const b = c.createBuffer(1, Math.max(1, Math.floor(c.sampleRate * dur)), c.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+      const s = c.createBufferSource(); s.buffer = b;
+      const g = c.createGain(); g.gain.value = gain || 0.2;
+      s.connect(g).connect(c.destination); s.start(t0);
+    }
+    return {
+      pop() { tone(420, 0.12, "triangle", 0.18); },
+      ding() { tone(660, 0.16, "sine", 0.2); tone(990, 0.22, "sine", 0.13, 0.04); },
+      crash() { noise(0.6, 0.28); tone(1320, 0.5, "sawtooth", 0.06); },
+      fanfare() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.55, "sawtooth", 0.14, i * 0.1)); },
+      drumroll(ms, cb) {
+        const c = ac();
+        const dur = ms || 1800, start = (c ? c.currentTime * 1000 : 0);
+        if (!c) { if (cb) setTimeout(cb, dur); return; }
+        let elapsedMs = 0;
+        const hit = () => {
+          if (elapsedMs >= dur) { if (cb) cb(); return; }
+          noise(0.03, 0.12);
+          const gap = Math.max(26, 95 - (elapsedMs / dur) * 64); // accelerate toward the end
+          elapsedMs += gap;
+          setTimeout(hit, gap);
+        };
+        hit();
+      },
+    };
   })();
 
   /* ----------------------------------------------------------
@@ -1180,11 +1251,198 @@
     setTimeout(() => inp.focus(), 60);
   }
 
+  // Queen Elizabeth II: born 21 April 1926. Knowing an obscure date to the
+  // day = peak autism energy. Guess month/day/year; scored on how close.
+  const QE_BIRTH = { y: 1926, m: 4, d: 21 };
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  function dayOfYear(m, d) { const cum = [0,31,59,90,120,151,181,212,243,273,304,334]; return cum[m-1] + d; }
+  function renderQueenBdayGame(body, Q, setAnswer) {
+    body.innerHTML = `
+      <div class="qbq">
+        <p class="qbq-note">She reigned for 70 years. Surely you know the day. 👑</p>
+        <div class="qbq-fields">
+          <label class="qbq-field">Month
+            <select class="qbq-sel" id="qb-m">${MONTHS.map((mn,i)=>`<option value="${i+1}"${i+1===4?" selected":""}>${mn}</option>`).join("")}</select>
+          </label>
+          <label class="qbq-field">Day
+            <input class="qbq-in" id="qb-d" type="number" min="1" max="31" inputmode="numeric" placeholder="1" />
+          </label>
+          <label class="qbq-field">Year
+            <input class="qbq-in" id="qb-y" type="number" min="1900" max="1970" inputmode="numeric" placeholder="19__" />
+          </label>
+        </div>
+        <button class="btn btn-primary" id="qb-submit" disabled>Lock in guess →</button>
+        <div class="qbq-reveal" id="qb-reveal" hidden></div>
+      </div>`;
+    const mSel = $("#qb-m", body), dIn = $("#qb-d", body), yIn = $("#qb-y", body), btn = $("#qb-submit", body), reveal = $("#qb-reveal", body);
+    const check = () => { btn.disabled = !(dIn.value && yIn.value); };
+    dIn.addEventListener("input", check); yIn.addEventListener("input", check);
+    btn.addEventListener("click", () => {
+      const m = +mSel.value, d = Math.max(1, Math.min(31, +dIn.value || 1)), y = +yIn.value || 0;
+      let dist = Math.abs(dayOfYear(m, d) - dayOfYear(QE_BIRTH.m, QE_BIRTH.d));
+      if (dist > 182) dist = 365 - dist; // wrap around the calendar
+      const yearOff = Math.abs(y - QE_BIRTH.y);
+      const exact = m === QE_BIRTH.m && d === QE_BIRTH.d && y === QE_BIRTH.y;
+      let pts;
+      if (exact || (dist === 0 && yearOff <= 1)) pts = 3;
+      else if (dist <= 7 && yearOff <= 5) pts = 2;
+      else if (dist <= 31) pts = 1;
+      else pts = 0;
+      const roasts = [
+        "Way off — honestly, healthy. Normal people don't keep this filed away.",
+        "Right season, at least. We'll allow it.",
+        "Spookily close. Slightly concerned about you.",
+        "You KNEW that. Why do you know that? (You're among friends.)",
+      ];
+      reveal.hidden = false;
+      reveal.innerHTML = `The answer: <b>21 April 1926</b>.<br>${exact ? "🎯 Exact match. " : ""}${roasts[pts]}`;
+      btn.disabled = true; btn.textContent = "Locked in";
+      mSel.disabled = dIn.disabled = yIn.disabled = true;
+      setAnswer(pts);
+    });
+  }
+
+  // World's Hardest Game clone: red square crosses a checkerboard field full of
+  // bouncing blue dots, from the pink start zone (left) to the pink end zone
+  // (right). Keyboard arrows / WASD on desktop, on-screen D-pad on mobile.
+  // Skill under pressure = more autistic. setInterval loop (rAF throttles in bg
+  // tabs); self-cleans if the quiz navigates away.
+  function renderWhgGame(body, Q, setAnswer) {
+    body.innerHTML = `
+      <div class="whg-wrap">
+        <div class="whg-hud"><span class="whg-deaths">Deaths: 0</span><span class="whg-coins"></span></div>
+        <div class="whg-field" id="whg-field">
+          <div class="whg-zone whg-start"></div>
+          <div class="whg-zone whg-end"></div>
+          <div class="whg-layer" id="whg-layer"></div>
+          <div class="whg-player" id="whg-player"></div>
+          <div class="whg-overlay" id="whg-ov">
+            <div class="whg-msg">Cross to the other side.<small>Arrow keys / WASD — or the buttons below. Touch a blue dot and you restart from the left.</small></div>
+            <button class="btn btn-primary whg-go" type="button">▶ Start</button>
+          </div>
+        </div>
+        <div class="whg-dpad">
+          <button class="whg-dbtn whg-up"    data-dir="up"    type="button" aria-label="up">▲</button>
+          <button class="whg-dbtn whg-left"  data-dir="left"  type="button" aria-label="left">◀</button>
+          <button class="whg-dbtn whg-down"  data-dir="down"  type="button" aria-label="down">▼</button>
+          <button class="whg-dbtn whg-right" data-dir="right" type="button" aria-label="right">▶</button>
+        </div>
+        <button class="btn btn-ghost btn-sm whg-skip" type="button">😵 Too hard — skip this one</button>
+        <div class="whg-reveal" hidden></div>
+      </div>`;
+    // virtual coordinate system; scaled to the measured field on every frame
+    const VW = 640, VH = 380, PS = 26;
+    const startX2 = 92, endX1 = VW - 92; // inner edges of the two pink zones
+    const laneYs = [70, 130, 190, 250, 310];
+    const enemies = [];
+    laneYs.forEach((y, li) => {
+      const sign = li % 2 === 0 ? 1 : -1;
+      const span = endX1 - startX2;
+      for (let k = 0; k < 2; k++) {
+        const x = startX2 + span * ((k + (li % 2 ? 0.5 : 0)) / 2) + 40;
+        enemies.push({ x, y, r: 15, vx: sign * (1.7 + li * 0.16), xMin: startX2 + 4, xMax: endX1 - 4 });
+      }
+    });
+    const coins = [{ x: VW * 0.42, y: 100, got: false }, { x: VW * 0.58, y: 280, got: false }];
+
+    const field = $("#whg-field", body), layer = $("#whg-layer", body), player = $("#whg-player", body);
+    const ov = $("#whg-ov", body), reveal = $(".whg-reveal", body), deathsEl = $(".whg-deaths", body), coinsEl = $(".whg-coins", body);
+    let W = 0, H = 0, sx = 1, sy = 1;
+    function measure() { const r = field.getBoundingClientRect(); W = r.width; H = r.height; sx = W / VW; sy = H / VH; }
+    let px = 46, py = VH / 2;
+    const dir = { up: false, down: false, left: false, right: false };
+    let running = false, loop = null, last = 0, deaths = 0, answered = false, progressed = 46;
+    let enemyEls = [], coinEls = [];
+
+    function buildSprites() {
+      layer.innerHTML = "";
+      enemyEls = enemies.map(() => { const d = document.createElement("div"); d.className = "whg-enemy"; layer.appendChild(d); return d; });
+      coinEls = coins.map(() => { const d = document.createElement("div"); d.className = "whg-coin"; layer.appendChild(d); return d; });
+    }
+    function paintSprites() {
+      measure();
+      enemies.forEach((e, i) => { const el = enemyEls[i]; const d = e.r * 2 * sx; el.style.width = el.style.height = d + "px"; el.style.left = (e.x * sx - d / 2) + "px"; el.style.top = (e.y * sy - d / 2) + "px"; });
+      coins.forEach((c, i) => { const el = coinEls[i]; el.style.display = c.got ? "none" : ""; const d = 15 * sx; el.style.width = el.style.height = d + "px"; el.style.left = (c.x * sx - d / 2) + "px"; el.style.top = (c.y * sy - d / 2) + "px"; });
+      const ps = PS * sx; player.style.width = player.style.height = ps + "px"; player.style.left = (px * sx - ps / 2) + "px"; player.style.top = (py * sy - ps / 2) + "px";
+      coinsEl.textContent = `Coins: ${coins.filter(c => c.got).length}/${coins.length}`;
+    }
+    function resetPlayer() { px = 46; py = VH / 2; }
+    function die() { deaths++; deathsEl.textContent = "Deaths: " + deaths; resetPlayer(); }
+    function cleanup() { running = false; clearInterval(loop); removeEventListener("keydown", onKey); removeEventListener("keyup", onKey); }
+    function settle(won) {
+      if (answered) return;
+      answered = true; cleanup();
+      let pts;
+      if (won) pts = deaths === 0 ? 3 : deaths <= 3 ? 2 : 1;
+      else pts = progressed > endX1 * 0.5 ? 1 : 0;
+      const cleanMsgs = ["You finished, but left a trail of bodies. Still counts.", "Crossed it with a few scars. Respectable.", "Flawless. No deaths. We are genuinely unsettled by you."];
+      ov.style.display = "";
+      ov.innerHTML = won
+        ? `<div class="whg-msg">🏁 You made it! <b>${deaths}</b> death${deaths === 1 ? "" : "s"}</div><button class="btn btn-primary whg-go" type="button">↻ Run it again</button>`
+        : `<div class="whg-msg">😵 Tapped out at <b>${deaths}</b> death${deaths === 1 ? "" : "s"}.</div><button class="btn btn-primary whg-go" type="button">↻ Try again</button>`;
+      ov.querySelector(".whg-go").addEventListener("click", start);
+      reveal.hidden = false;
+      reveal.innerHTML = won
+        ? `🏁 Crossed in <b>${deaths}</b> death${deaths === 1 ? "" : "s"}. ${deaths === 0 ? cleanMsgs[2] : deaths <= 3 ? cleanMsgs[1] : cleanMsgs[0]}<br><span class="whg-twist">…the calmer you stayed under fire, the more autistic we're afraid you are.</span>`
+        : `Tapped out after <b>${deaths}</b> death${deaths === 1 ? "" : "s"}. The blue dots win this round.`;
+      setAnswer(pts, { whgDeaths: deaths, whgWon: won ? 1 : 0 });
+    }
+    function tick() {
+      if (!document.body.contains(field)) { cleanup(); return; }
+      if (!running) return;
+      const t = Date.now(); let dt = last ? t - last : 16; last = t; if (dt > 60) dt = 60; const f = dt / 16;
+      const sp = 3.1 * f;
+      if (dir.left) px -= sp; if (dir.right) px += sp; if (dir.up) py -= sp; if (dir.down) py += sp;
+      px = Math.max(PS / 2, Math.min(VW - PS / 2, px)); py = Math.max(PS / 2, Math.min(VH - PS / 2, py));
+      progressed = Math.max(progressed, px);
+      for (const e of enemies) { e.x += e.vx * f; if (e.x <= e.xMin) { e.x = e.xMin; e.vx = Math.abs(e.vx); } else if (e.x >= e.xMax) { e.x = e.xMax; e.vx = -Math.abs(e.vx); } }
+      for (const c of coins) { if (!c.got && Math.abs(c.x - px) < 15 && Math.abs(c.y - py) < 15) c.got = true; }
+      const half = PS / 2;
+      for (const e of enemies) {
+        const nx = Math.max(px - half, Math.min(e.x, px + half));
+        const ny = Math.max(py - half, Math.min(e.y, py + half));
+        const dx = e.x - nx, dy = e.y - ny;
+        if (dx * dx + dy * dy < e.r * e.r) { die(); break; }
+      }
+      if (px >= endX1 + 4) { paintSprites(); settle(true); return; }
+      paintSprites();
+    }
+    function start() {
+      if (running) return;
+      buildSprites(); resetPlayer(); deaths = 0; deathsEl.textContent = "Deaths: 0"; coins.forEach(c => c.got = false);
+      answered = false; progressed = 46;
+      ov.style.display = "none"; reveal.hidden = true;
+      running = true; last = 0;
+      addEventListener("keydown", onKey); addEventListener("keyup", onKey);
+      loop = setInterval(tick, 24);
+      paintSprites();
+    }
+    function onKey(e) {
+      const map = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", w: "up", s: "down", a: "left", d: "right", W: "up", S: "down", A: "left", D: "right" };
+      const k = map[e.key]; if (!k) return;
+      if (location.hash !== "#/test") { cleanup(); return; }
+      e.preventDefault();
+      dir[k] = e.type === "keydown";
+    }
+    body.querySelectorAll(".whg-dbtn").forEach(b => {
+      const d = b.getAttribute("data-dir");
+      const on = (e) => { e.preventDefault(); if (!running && !answered) start(); dir[d] = true; b.classList.add("active"); };
+      const off = (e) => { e.preventDefault(); dir[d] = false; b.classList.remove("active"); };
+      b.addEventListener("pointerdown", on);
+      b.addEventListener("pointerup", off);
+      b.addEventListener("pointerleave", off);
+      b.addEventListener("pointercancel", off);
+    });
+    $(".whg-skip", body).addEventListener("click", () => settle(false));
+    ov.querySelector(".whg-go").addEventListener("click", start);
+    buildSprites(); paintSprites();
+  }
+
   /* ----------------------------------------------------------
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
-    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "" };
+    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", unlocked: load(LS.pin, false), done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "" };
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
     const container = el(`<section class="section"><div class="quiz-shell"></div></section>`);
     const shellEl = $(".quiz-shell", container);
@@ -1486,6 +1744,36 @@
         return;
       }
 
+      // dev "under construction" gate — shows AFTER the start button and AFTER
+      // the returning/date gags, right before the real questions. Once the
+      // correct code is entered it's remembered, so it won't nag on retakes.
+      if (!state.unlocked) {
+        const node = el(`
+          <div class="card dev-gate fade-in">
+            <div class="dev-glyph">🚧</div>
+            <span class="dev-tag">⚠ Restricted area</span>
+            <h2 class="section-title">You shouldn't be here.</h2>
+            <p class="wb-text">This site is still <b>under development</b>. If someone gave you the access code, punch it in. If not… how did you even get this far? 👀</p>
+            <input class="dev-pin" id="dev-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off" />
+            <div class="dev-err" id="dev-err" hidden>🚫 That's not the code. Nice try.</div>
+            <div class="quiz-nav" style="justify-content:center;margin-top:10px">
+              <button class="btn btn-primary btn-lg" id="dev-enter">Enter →</button>
+            </div>
+          </div>`);
+        shellEl.appendChild(node);
+        const inp = $("#dev-pin", node), err = $("#dev-err", node);
+        const tryUnlock = () => {
+          const v = inp.value.replace(/\D/g, "").slice(0, 4);
+          if (v === CONFIG.devPin) { state.unlocked = true; save(LS.pin, true); confetti.burst(60); paint(); window.scrollTo({ top: 0 }); }
+          else { err.hidden = false; node.classList.remove("shake"); void node.offsetWidth; node.classList.add("shake"); inp.value = ""; inp.focus(); }
+        };
+        inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(0, 4); err.hidden = true; });
+        inp.addEventListener("keydown", e => { if (e.key === "Enter") tryUnlock(); });
+        $("#dev-enter", node).addEventListener("click", tryUnlock);
+        setTimeout(() => inp.focus(), 60);
+        return;
+      }
+
       // question step
       const i = state.step;
       const Q = QUESTIONS[i];
@@ -1533,10 +1821,14 @@
         renderColorGame(qbody, Q, setAnswer);
       } else if (kind === "typing") {
         renderTypingGame(qbody, Q, setAnswer);
+      } else if (kind === "qebday") {
+        renderQueenBdayGame(qbody, Q, setAnswer);
       } else if (kind === "reenterpin") {
         renderReenterPinGame(qbody, Q, setAnswer, state);
       } else if (kind === "dodge") {
         renderDodgeGame(qbody, Q, setAnswer, state.avatar);
+      } else if (kind === "whg") {
+        renderWhgGame(qbody, Q, setAnswer);
       }
       const isLast = i === QUESTIONS.length - 1;
       const nextBtn = $("#next-btn", node);
@@ -1811,6 +2103,8 @@
     if (withE.length) { const g = top(withE, x => x.metrics.eyeContact); list.push({ emoji: "👁️", title: "The Iron Gaze", g, stat: `held eye contact for <b>${g.metrics.eyeContact}s</b> without flinching`, roast: "Nobody asked you to win this one. Please, blink." }); }
     if (withE.length > 1) { const g = bot(withE, x => x.metrics.eyeContact); list.push({ emoji: "🫣", title: "First to Crack", g, stat: `lasted <b>${g.metrics.eyeContact}s</b> of eye contact before bailing`, roast: "Honestly? The most relatable person in the room." }); }
     if (withD.length) { const g = top(withD, x => x.metrics.dodge); list.push({ emoji: "🎮", title: "Reflex Champion", g, stat: `kept their avatar alive for <b>${g.metrics.dodge}s</b>`, roast: "Unsettling hand-eye control. We see those gamer hours." }); }
+    const won = guests.filter(g => g.metrics && g.metrics.whgWon === 1 && typeof g.metrics.whgDeaths === "number");
+    if (won.length) { const g = bot(won, x => x.metrics.whgDeaths); list.push({ emoji: "🟥", title: "Ice in the Veins", g, stat: `beat the World's Hardest Game with just <b>${g.metrics.whgDeaths}</b> death${g.metrics.whgDeaths === 1 ? "" : "s"}`, roast: "Most people rage-quit. You went quiet and locked in. Terrifying." }); }
     if (guests.length) { const g = guests.slice().sort((a, b) => Math.abs(a.score - 50) - Math.abs(b.score - 50))[0]; list.push({ emoji: "🎯", title: "Dead Center", g, stat: `landed at exactly <b>${g.score}/100</b>`, roast: "The living embodiment of 'well… it's a spectrum.'" }); }
     return list;
   }
@@ -1946,19 +2240,21 @@
       updateStage();
       updateUI();
     }
+    const topTwoStart = guests.length - 2; // 2nd place index; 1st = topTwoStart+1
     function updateUI() {
       dots.forEach((d, i) => d.classList.toggle("current", i === presentRevealed - 1));
       const done = presentRevealed >= guests.length;
       revealBtn.disabled = done;
+      const atTopTwo = guests.length >= 2 && presentRevealed === topTwoStart;
       const inFinale = hasPodium && presentRevealed >= finaleStart;
-      countEl.textContent = (inFinale && !done)
-        ? `🥁 Final 3 · ${presentRevealed - finaleStart}/3 revealed`
-        : `${presentRevealed} / ${guests.length} revealed`;
+      if (done) countEl.textContent = `${guests.length} / ${guests.length} revealed`;
+      else if (atTopTwo) countEl.textContent = `🥁 The top two — together`;
+      else if (inFinale) countEl.textContent = `🥁 Final 3 · ${presentRevealed - finaleStart}/3 revealed`;
+      else countEl.textContent = `${presentRevealed} / ${guests.length} revealed`;
       if (done) revealBtn.textContent = "All revealed 🎉";
-      else if (inFinale) {
-        const n = presentRevealed - finaleStart; // 0=3rd, 1=2nd, 2=1st
-        revealBtn.textContent = n === 0 ? "🥉 Reveal 3rd place →" : n === 1 ? "🥈 Reveal 2nd place →" : "👑 Reveal the MOST autistic →";
-      } else revealBtn.textContent = "Reveal next →";
+      else if (atTopTwo) revealBtn.textContent = "🥁 Drum roll — reveal 1st & 2nd →";
+      else if (hasPodium && presentRevealed === finaleStart) revealBtn.textContent = "🥉 Reveal 3rd place →";
+      else revealBtn.textContent = "Reveal next →";
       renderPodium();
     }
     function renderPodium() {
@@ -2007,15 +2303,39 @@
         <div class="finale-preview-sub">The very top of the spectrum - but who takes <b>1st</b>? Reveal them one at a time…</div>
       </div>`;
     }
+    function renderFinaleBoth() {
+      const second = guests[guests.length - 2], first = guests[guests.length - 1];
+      const ts = tierFor(second.score), tf = tierFor(first.score);
+      stage.innerHTML = `<div class="fade-in finale-both">
+        <div class="finale-both-grid">
+          <div class="finale-col second">
+            <div class="finale-medal">🥈</div>
+            <div class="finale-place">2nd Most Autistic</div>
+            <span class="avchip" style="width:92px;height:92px">${avatarSVG(second.avatar)}</span>
+            <div class="name">${esc(second.name)}</div>
+            <div class="tier">${ts.emoji} ${ts.name} · <b>${second.score}</b>/100</div>
+          </div>
+          <div class="finale-col first">
+            <div class="finale-medal">👑</div>
+            <div class="finale-place">THE MOST AUTISTIC</div>
+            <span class="avchip" style="width:112px;height:112px">${avatarSVG(first.avatar)}</span>
+            <div class="name">${esc(first.name)}</div>
+            <div class="tier">${tf.emoji} ${tf.name} · <b>${first.score}</b>/100</div>
+          </div>
+        </div>
+      </div>`;
+    }
     function updateStage() {
+      // both finalists already out → keep them side by side
+      if (guests.length >= 2 && presentRevealed >= guests.length) { renderFinaleBoth(); return; }
       // about to announce the podium → preview the three finalists
       if (hasPodium && presentRevealed === finaleStart) { renderFinalePreview(); return; }
       if (presentRevealed === 0) {
         stage.innerHTML = `<div class="placeholder">Ready when you are. Hit <b>Reveal next</b> to begin the ascent. 🚀</div>`;
         return;
       }
-      // already into the podium → re-show the most recently revealed finalist
-      if (hasPodium && presentRevealed > finaleStart) { renderFinaleStage(presentRevealed - 1); return; }
+      // 3rd place just revealed (its own moment, before the top-two drum roll)
+      if (hasPodium && presentRevealed === finaleStart + 1) { renderFinaleStage(finaleStart); return; }
       const g = guests[presentRevealed - 1];
       const t = tierFor(g.score);
       stage.innerHTML = `<div class="fade-in">
@@ -2026,15 +2346,38 @@
     }
     function reveal() {
       if (presentRevealed >= guests.length) return;
+      // the final two are announced together, after a drum roll
+      if (guests.length >= 2 && presentRevealed === topTwoStart) { revealTopTwo(); return; }
       const idx = presentRevealed;
       dots[idx].classList.add("show");
       presentRevealed++;
       const g = guests[idx];
       updateStage();
       updateUI();
+      sfx.ding();
       const rect = graph.getBoundingClientRect();
-      const isChamp = idx === guests.length - 1;
-      confetti.burst(isChamp ? 280 : (g.score > 70 ? 120 : 60), rect.left + rect.width * (g.score / 100));
+      confetti.burst(g.score > 70 ? 120 : 60, rect.left + rect.width * (g.score / 100));
+    }
+    function revealTopTwo() {
+      revealBtn.disabled = true;
+      stage.innerHTML = `<div class="fade-in finale-drumroll">
+        <div class="dr-emoji">🥁</div>
+        <div class="dr-text">The top two… revealed together</div>
+        <div class="dr-dots"><span>.</span><span>.</span><span>.</span></div>
+      </div>`;
+      renderPodium();
+      sfx.drumroll(2200, () => {
+        sfx.crash(); sfx.fanfare();
+        const second = guests.length - 2, first = guests.length - 1;
+        if (dots[second]) dots[second].classList.add("show");
+        if (dots[first]) dots[first].classList.add("show");
+        presentRevealed = guests.length;
+        renderFinaleBoth();
+        updateUI();
+        const rect = graph.getBoundingClientRect();
+        confetti.burst(170, rect.left + rect.width * (guests[second].score / 100));
+        confetti.burst(290, rect.left + rect.width * (guests[first].score / 100));
+      });
     }
 
     revealBtn.addEventListener("click", reveal);

@@ -353,12 +353,18 @@
       opts: [["No clue",0],["Right ballpark",1],["Very close",2],["Nailed the exact day",3]],
     },
     {
+      kind: "polo",
+      bare: true, // renders its own meme-style card; hide the default chrome
+      q: "How many holes in a Polo?",
+      opts: [["One", 3], ["Two", 1], ["Three", 0], ["Four", 2]],
+    },
+    {
       kind: "reenterpin",
       q: "One more thing — re-enter your bank PIN.",
       opts: [["Wrong",0],["Correct",3]],
     },
   ];
-  const MAX_RAW = QUESTIONS.length * 3; // 24
+  const MAX_RAW = QUESTIONS.length * 3; // 27
 
   /* ----------------------------------------------------------
      TIERS - score is 0..100
@@ -1469,6 +1475,53 @@
     buildSprites(); paintSprites();
   }
 
+  // "How many holes in a Polo?" — recreated to look like the hand-drawn trivia
+  // meme: white card, red scribbled number, blue marker question, 2×2 pink
+  // buttons with thick blue borders and side cables. The correct (precise)
+  // answer is ONE; nailing it instantly is peak autism, so it scores highest.
+  const POLO_CIRCLE = `<svg class="polo-ring" viewBox="0 0 110 110" aria-hidden="true"><path d="M59,9 C86,8 104,31 100,57 C96,85 71,103 45,99 C21,95 6,72 11,46 C15,23 34,11 57,11" fill="none" stroke="#ec1c24" stroke-width="6.5" stroke-linecap="round"/></svg>`;
+  function renderPoloGame(body, Q, setAnswer, num) {
+    const cells = Q.opts.map((o, idx) =>
+      `<button class="polo-opt ${idx % 2 === 0 ? "lcol" : "rcol"}" type="button" data-i="${idx}">
+         <i class="pw" style="--y:30%"></i><i class="pw" style="--y:70%"></i>
+         <span class="polo-lbl">${esc(o[0])}</span>
+       </button>`).join("");
+    body.innerHTML = `
+      <div class="polo">
+        <div class="polo-top">
+          <span class="polo-note">♫</span>
+          <span class="polo-num">${POLO_CIRCLE}<b>${num}.</b></span>
+          <div class="polo-q">${esc(Q.q)}</div>
+        </div>
+        <div class="polo-grid">${cells}</div>
+        <div class="polo-reveal" hidden></div>
+      </div>`;
+    const reveal = $(".polo-reveal", body);
+    const REVEALS = [
+      "✅ One hole. You answered instantly and precisely — the most autistic possible response, and we mean that with love.",
+      "❌ It's one. 'Two' is what you say when you're hedging your bets.",
+      "❌ It's one. 'Three' is just pure chaos, honestly.",
+      "❌ It's one — unless you were counting the holes in a Polo *shirt*, in which case: respect, you topology gremlin.",
+    ];
+    let picked = false;
+    body.querySelectorAll(".polo-opt").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (picked) return;
+        picked = true;
+        const idx = +btn.dataset.i;
+        body.querySelectorAll(".polo-opt").forEach((b, j) => {
+          b.disabled = true;
+          if (j === 0) b.classList.add("correct"); // ONE is the right answer
+        });
+        if (idx !== 0) btn.classList.add("wrong");
+        btn.classList.add("sel");
+        reveal.hidden = false;
+        reveal.textContent = REVEALS[idx];
+        setAnswer(Q.opts[idx][1]);
+      });
+    });
+  }
+
   /* ----------------------------------------------------------
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
@@ -1809,11 +1862,12 @@
       const i = state.step;
       const Q = QUESTIONS[i];
       const pct = Math.round((i / QUESTIONS.length) * 100);
-      const node = el(`
-        <div class="fade-in">
+      const chrome = Q.bare ? "" : `
           <div class="progress-rail"><div class="progress-fill" style="width:${pct}%"></div></div>
           <div class="q-count">Question ${i + 1} of ${QUESTIONS.length}</div>
-          <h2 class="q-text">${Q.q}</h2>
+          <h2 class="q-text">${Q.q}</h2>`;
+      const node = el(`
+        <div class="fade-in">${chrome}
           <div class="q-body"></div>
           <div class="quiz-nav quiz-nav-next">
             <button class="btn btn-primary btn-sm" id="next-btn" disabled>Next →</button>
@@ -1853,6 +1907,8 @@
         renderTypingGame(qbody, Q, setAnswer);
       } else if (kind === "qebday") {
         renderQueenBdayGame(qbody, Q, setAnswer);
+      } else if (kind === "polo") {
+        renderPoloGame(qbody, Q, setAnswer, i + 1);
       } else if (kind === "reenterpin") {
         renderReenterPinGame(qbody, Q, setAnswer, state);
       } else if (kind === "dodge") {

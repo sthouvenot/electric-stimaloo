@@ -33,6 +33,7 @@
   --font-display: "Bagel Fat One", system-ui, sans-serif;
   --font-head: "Bricolage Grotesque", system-ui, sans-serif;
   --font-body: "Space Grotesk", system-ui, sans-serif;
+  --font-marker: "Permanent Marker", "Comic Sans MS", cursive;
 }
 
 * { box-sizing: border-box; }
@@ -881,6 +882,40 @@ a { color: inherit; }
 .qbq-sel, .qbq-in { font-family: var(--font-head); font-weight: 700; font-size: 16px; border: var(--border); border-radius: 12px; padding: 10px 12px; background: var(--paper-2); box-shadow: var(--shadow-sm); }
 .qbq-in { width: 92px; text-align: center; }
 .qbq-reveal { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--ink-soft); margin-top: 16px; line-height: 1.5; }
+
+/* ---- "How many holes in a Polo?" — hand-drawn trivia card ---- */
+.polo { --polo-blue: #2733e6; --polo-red: #ec1c24; --polo-pink: #f0cdf7;
+  background: #fff; border: 3px solid var(--ink); border-radius: 16px; box-shadow: var(--shadow);
+  padding: 20px 22px 28px; max-width: 700px; margin: 0 auto; }
+.polo-top { display: flex; align-items: center; gap: 12px; position: relative; padding: 6px 6px 0 4px; margin-bottom: 24px; }
+.polo-note { position: absolute; top: -8px; left: -8px; font-size: 20px; line-height: 1; }
+.polo-num { position: relative; flex: 0 0 auto; width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; }
+.polo-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.polo-num b { font-family: var(--font-marker); font-weight: 400; color: var(--polo-red); font-size: 30px; transform: rotate(-4deg); }
+.polo-q { font-family: var(--font-marker); font-weight: 400; color: var(--polo-blue); font-size: clamp(24px, 4.6vw, 40px); line-height: 1.06; text-transform: uppercase; letter-spacing: .5px; }
+.polo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 40px; padding: 0 30px; }
+.polo-opt { position: relative; background: var(--polo-pink); border: 5px solid var(--polo-blue); border-radius: 9px;
+  padding: 16px 8px; font-family: var(--font-marker); font-weight: 400; font-size: clamp(26px, 4.6vw, 44px); color: #111;
+  text-transform: uppercase; cursor: pointer; transition: transform .08s, background .12s; }
+.polo-opt:hover:not(:disabled) { transform: translateY(-2px); }
+.polo-opt:disabled { cursor: default; }
+.polo-opt.sel { box-shadow: 0 0 0 4px var(--ink); }
+.polo-opt.correct { background: #c9f4d6; }
+.polo-opt.wrong { background: #f7c9c9; }
+/* side cables + plugs */
+.polo-opt .pw { position: absolute; top: var(--y); height: 7px; width: 30px; background: var(--polo-blue); border-radius: 4px; transform: translateY(-50%); pointer-events: none; }
+.polo-opt.lcol .pw { left: -30px; }
+.polo-opt.rcol .pw { right: -30px; }
+.polo-opt .pw::after { content: ""; position: absolute; top: 50%; transform: translateY(-50%); width: 12px; height: 16px; background: var(--polo-blue); border-radius: 4px; }
+.polo-opt.lcol .pw::after { right: -3px; }
+.polo-opt.rcol .pw::after { left: -3px; }
+.polo-reveal { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--ink-soft); text-align: center; line-height: 1.5; margin-top: 22px; }
+@media (max-width: 560px) {
+  .polo-grid { gap: 12px 26px; padding: 0 22px; }
+  .polo-opt .pw { width: 22px; }
+  .polo-opt.lcol .pw { left: -22px; }
+  .polo-opt.rcol .pw { right: -22px; }
+}
 
 /* ---- World's Hardest Game ---- */
 .whg-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }

@@ -24,7 +24,17 @@
      matching name they get a "welcome back" bonus before the test.
      Matched on first name + last initial (case-insensitive).
      ---------------------------------------------------------- */
-  const RETURN_BONUS = 5; // bonus 'tism points for coming back
+  // host-written welcome line per returning guest (keyed by full name). Blanks fall back to the default.
+  const RETURNING_FALLBACK = "That was pretty autistic of you to come back for round two. 🏆";
+  const RETURNING_SENTENCES = {
+    "Mikayla Fishel": "You really should get bonus points for that time you set stuff on fire in our apartment.",
+    "Robert Mallow": "You really should get bonus points for owning a 3D printer.",
+    "Elijah Fishel": "You were the least autistic person last year. Why are you even here?",
+    "Dan Shapiro": "Everyone in vegas said you were autistic as hell.",
+    "Greg Righter": "We are hoping you wore that cute autistic shirt again this year.",
+    "Brian Righter": "Having sex with your subordinate? Now that's pretty autistic.",
+    "Alexa Cimino": "Filming my speech from last year? Pretty autistic.",
+  };
   const RETURNING_GUESTS = [
     { first: "Mikayla", initial: "F", full: "Mikayla Fishel" },
     { first: "Robert", initial: "M", full: "Robert Mallow" },
@@ -861,15 +871,14 @@
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
-    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), done: false, score: 0, bonus: 0, welcome: false, returningFull: "", dateStep: "" };
+    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "" };
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
     const container = el(`<section class="section"><div class="quiz-shell"></div></section>`);
     const shellEl = $(".quiz-shell", container);
 
     function computeScore() {
       const raw = state.answers.reduce((a, v) => a + (v == null ? 0 : v), 0);
-      const base = Math.round((raw / MAX_RAW) * 100);
-      return Math.min(100, base + (state.bonus || 0)); // returning-guest bonus, capped at 100
+      return Math.round((raw / MAX_RAW) * 100);
     }
 
     function paint() {
@@ -1055,10 +1064,10 @@
           if (!agree.checked) { toast("Check the honesty box to start 🤝"); return; }
           state.name = displayName();
           const date = findDateGuest(state.firstName, state.lastInitial);
-          if (date) { state.dateStep = "survey"; state.welcome = false; state.bonus = 0; state.step = 0; paint(); window.scrollTo({ top: 0, behavior: "auto" }); return; }
+          if (date) { state.dateStep = "survey"; state.welcome = false; state.step = 0; paint(); window.scrollTo({ top: 0, behavior: "auto" }); return; }
           const ret = findReturningGuest(state.firstName, state.lastInitial);
-          if (ret) { state.bonus = RETURN_BONUS; state.returningFull = ret.full; state.welcome = true; state.step = 0; paint(); }
-          else { state.bonus = 0; state.returningFull = ""; state.welcome = false; state.step = 0; paint(); }
+          if (ret) { state.returningFull = ret.full; state.returningSentence = RETURNING_SENTENCES[ret.full] || RETURNING_FALLBACK; state.welcome = true; state.step = 0; paint(); }
+          else { state.returningFull = ""; state.returningSentence = ""; state.welcome = false; state.step = 0; paint(); }
           window.scrollTo({ top: 0, behavior: "auto" }); // start the test from the top
         };
         startBtn.addEventListener("click", go);
@@ -1124,9 +1133,7 @@
             <span class="wb-tag">⚡ Returning guest detected</span>
             <div class="wb-avatar"><span class="avchip" style="width:96px;height:96px">${avatarSVG(state.avatar)}</span></div>
             <h2 class="section-title">Welcome back, <span class="grad-text">${esc(state.returningFull)}</span>!</h2>
-            <p class="wb-text">That was <b>pretty autistic</b> of you to come back for round two. 🏆<br>
-              For your loyalty, you're starting the test with a head start:</p>
-            <div class="wb-bonus"><span class="wb-plus">+${state.bonus}</span> bonus 'tism points 🧠</div>
+            <p class="wb-text">${esc(state.returningSentence || RETURNING_FALLBACK)}</p>
             <div class="quiz-nav" style="justify-content:center;margin-top:8px">
               <button class="btn btn-primary btn-lg" id="wb-begin">Let's gooo →</button>
             </div>
@@ -1150,7 +1157,6 @@
               <div class="meter-track"><div class="meter-pin" style="left:0%"></div></div>
               <div class="meter-scale"><span>Neurotypical</span><span>Maximum Autism</span></div>
             </div>
-            ${state.bonus > 0 ? `<div class="bonus-note">🧠 Includes <b>+${state.bonus} returning-guest bonus points</b> for ${esc(state.returningFull)}.</div>` : ""}
             <div class="submitted-banner">
               ✅ Submitted! You're in the queue. The host will approve you, then you'll appear on the spectrum graph at the party.
             </div>
@@ -1162,7 +1168,7 @@
         setTimeout(() => { $(".meter-pin", node).style.left = state.score + "%"; }, 150);
         confetti.burst(150);
         $("#retake", node).addEventListener("click", () => {
-          state.step = -1; state.done = false; state.welcome = false; state.dateStep = ""; state.bonus = 0; state.returningFull = ""; state.answers = QUESTIONS.map(() => null); paint();
+          state.step = -1; state.done = false; state.welcome = false; state.dateStep = ""; state.returningFull = ""; state.returningSentence = ""; state.answers = QUESTIONS.map(() => null); paint();
         });
         return;
       }
@@ -1234,7 +1240,6 @@
       answers: state.answers.slice(),
       agreed: !!state.agreed,
       returning: state.returningFull || "",
-      bonus: state.bonus || 0,
       status: "pending",
       createdAt: Date.now(),
     });

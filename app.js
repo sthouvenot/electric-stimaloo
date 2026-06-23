@@ -95,10 +95,10 @@
   // soft backdrops for the avatar circle
   const BGS = ["#ffffff", "#fff0c8", "#ffe0ec", "#dcecff", "#e3f9e5", "#ece2ff", "#ffe6d4", "#d8f3ff"];
   const HAIRSTYLES = [
-    { id: "bald", label: "Bald" }, { id: "buzz", label: "Buzz" }, { id: "short", label: "Short" },
-    { id: "curly", label: "Curly" }, { id: "afro", label: "Afro" }, { id: "spiky", label: "Spiky" },
-    { id: "long", label: "Long" }, { id: "wavy", label: "Wavy" }, { id: "bun", label: "Bun" },
-    { id: "pony", label: "Ponytail" }, { id: "pigtails", label: "Pigtails" }, { id: "mohawk", label: "Mohawk" },
+    { id: "bald", label: "Bald" }, { id: "short", label: "Short" }, { id: "curly", label: "Curly" },
+    { id: "afro", label: "Afro" }, { id: "spiky", label: "Spiky" }, { id: "long", label: "Long" },
+    { id: "wavy", label: "Wavy" }, { id: "bun", label: "Bun" }, { id: "pony", label: "Ponytail" },
+    { id: "pigtails", label: "Pigtails" }, { id: "mohawk", label: "Mohawk" },
   ];
   // facial expressions: each returns the mouth markup; eyes get a shared highlight
   const MOODS = [
@@ -111,15 +111,15 @@
   const cap = c => `<path d="M24,46 C20,2 80,2 76,46 C72,40 62,31 50,31 C38,31 28,40 24,46 Z" fill="${c}"/>`;
   const HAIR = {
     bald: {},
-    // buzz: a tight skull-hugging cap with a high hairline + faint stipple, so it reads much
-    // shorter than the fuller "short" dome
-    buzz: { top: c => `<g><path d="M26,45 C22,6 78,6 74,45 C72,40 63,36 50,36 C37,36 28,40 26,45 Z" fill="${c}"/><g fill="rgba(255,255,255,0.16)"><circle cx="40" cy="26" r=".8"/><circle cx="50" cy="22" r=".8"/><circle cx="60" cy="26" r=".8"/><circle cx="34" cy="34" r=".7"/><circle cx="45" cy="30" r=".7"/><circle cx="55" cy="30" r=".7"/><circle cx="66" cy="34" r=".7"/><circle cx="50" cy="33" r=".7"/></g></g>` },
     short: { top: c => cap(c) },
-    // curly: tighter curls (smaller side volume + a curl-textured crown), no longer puffy
-    curly: { back: c => `<g fill="${c}"><circle cx="34" cy="31" r="8"/><circle cx="50" cy="27" r="9"/><circle cx="66" cy="31" r="8"/><circle cx="40" cy="28" r="6.5"/><circle cx="60" cy="28" r="6.5"/></g>`, top: c => `<g fill="${c}">${cap(c)}<circle cx="36" cy="19" r="4.5"/><circle cx="50" cy="15.5" r="5"/><circle cx="64" cy="19" r="4.5"/><circle cx="28" cy="27" r="4"/><circle cx="72" cy="27" r="4"/></g>` },
+    // curly: a bumpy curl silhouette - cap base + a ring of curl bumps + small forehead curls
+    curly: {
+      back: c => `<g fill="${c}"><circle cx="27" cy="38" r="8"/><circle cx="73" cy="38" r="8"/><circle cx="24" cy="30" r="6.5"/><circle cx="76" cy="30" r="6.5"/></g>`,
+      top: c => `<g fill="${c}">${cap(c)}<circle cx="31" cy="22" r="7"/><circle cx="42" cy="16" r="7.5"/><circle cx="50" cy="13.5" r="7.5"/><circle cx="58" cy="16" r="7.5"/><circle cx="69" cy="22" r="7"/><circle cx="24" cy="33" r="5.5"/><circle cx="76" cy="33" r="5.5"/><circle cx="37" cy="30" r="3.4"/><circle cx="50" cy="28.5" r="3.4"/><circle cx="63" cy="30" r="3.4"/></g>`,
+    },
     afro: { back: c => `<circle cx="50" cy="30" r="28" fill="${c}"/>`, top: c => cap(c) },
-    // spiky: proven cap base + a zig-zag crest poking up above it
-    spiky: { top: c => `<g fill="${c}">${cap(c)}<path d="M25,33 L31,11 L37,28 L44,9 L50,26 L56,9 L63,28 L69,11 L75,33 Z"/></g>` },
+    // spiky: cap base + a row of uniform, sharp upward spikes
+    spiky: { top: c => `<g fill="${c}">${cap(c)}<path d="M23,40 L28,9 L34,38 L39,8 L45,38 L50,7 L56,38 L61,8 L67,38 L72,9 L77,40 Z"/></g>` },
     // `drape: true` = the back piece hangs below a hat, so it survives when headwear is on
     long: { drape: true, back: c => `<path d="M22,42 C22,14 78,14 78,42 L78,84 L65,84 L65,44 C65,30 59,25 50,25 C41,25 35,30 35,44 L35,84 L22,84 Z" fill="${c}"/>`, top: c => cap(c) },
     // wavy: long base with a scalloped, wavy hem
@@ -155,7 +155,8 @@
     }
   }
   const DRINKS = [
-    { id: "none", label: "None" }, { id: "beer", label: "🍺 Beer" }, { id: "seltzer", label: "🥤 Seltzer" }, { id: "shirley", label: "🍒 Dirty Shirley" },
+    { id: "none", label: "None" }, { id: "beer", label: "🍺 Beer" }, { id: "seltzer", label: "🥤 Seltzer" },
+    { id: "shirley", label: "🍒 Dirty Shirley" }, { id: "lolly", label: "🍭 Lollipop" },
   ];
   // a drink held up in one hand, drawn at the bottom-right of the bust
   function drinkSVG(drink, skin) {
@@ -163,6 +164,7 @@
     const hand = `<ellipse cx="67.5" cy="78" rx="2.3" ry="3" fill="${skin}" stroke="rgba(0,0,0,.35)" stroke-width=".7"/><ellipse cx="73" cy="80.5" rx="6.6" ry="4.6" fill="${skin}" stroke="rgba(0,0,0,.4)" stroke-width="1"/>`;
     if (drink === "beer") return `<g><rect x="68" y="60" width="10" height="20" rx="2" fill="#f6b93b" stroke="#1a1a1a" stroke-width="1.4"/><rect x="70" y="63" width="1.6" height="12" rx=".8" fill="#fff" opacity=".5"/><ellipse cx="73" cy="60" rx="5.6" ry="2.7" fill="#fff7e6" stroke="#1a1a1a" stroke-width="1"/>${hand}</g>`;
     if (drink === "seltzer") return `<g><rect x="69" y="58" width="8.5" height="22" rx="2.5" fill="#eef4fb" stroke="#1a1a1a" stroke-width="1.4"/><rect x="69.5" y="56.6" width="7.5" height="2.6" rx="1" fill="#b9c0c6" stroke="#1a1a1a" stroke-width=".8"/><rect x="69" y="66" width="8.5" height="7" fill="#2f9bff"/><circle cx="73.2" cy="69.5" r="1.9" fill="#ff3d7f"/>${hand}</g>`;
+    if (drink === "lolly") return `<g><rect x="72.2" y="56" width="1.8" height="26" rx=".9" fill="#fafafa" stroke="#1a1a1a" stroke-width=".7"/><circle cx="73" cy="56" r="7.5" fill="#ff5da2" stroke="#1a1a1a" stroke-width="1.4"/><path d="M73,51 A5,5 0 1 1 68.4,57.6" fill="none" stroke="#fff" stroke-width="1.4" opacity=".75"/><circle cx="73" cy="56" r="1.6" fill="none" stroke="#fff" stroke-width="1.1" opacity=".75"/>${hand}</g>`;
     return `<g><rect x="71" y="51" width="1.8" height="17" rx=".9" fill="#ff7aa0" transform="rotate(10 72 59)"/><rect x="68" y="64" width="10" height="16" rx="2" fill="#ff3158"/><rect x="68" y="59" width="10" height="21" rx="2" fill="rgba(255,255,255,.22)" stroke="#1a1a1a" stroke-width="1.4"/><path d="M76,55 Q78,51 80.5,52.5" stroke="#6b4a1f" stroke-width="1" fill="none"/><circle cx="76" cy="57" r="2.6" fill="#c0162f" stroke="#1a1a1a" stroke-width=".8"/>${hand}</g>`;
   }
   function avatarSVG(cfg) {
@@ -174,7 +176,7 @@
     const h = HAIR[cfg.hairStyle] || HAIR.short;
     const bg = cfg.bg || "#ffffff";
     // a hat replaces the crown, so hide crown hair; keep only hair that drapes below it
-    const hatOn = cfg.headwear === "beanie" || cfg.headwear === "cap";
+    const hatOn = ["beanie", "cap", "propeller", "party"].includes(cfg.headwear);
     const backHair = h.back && (!hatOn || h.drape) ? h.back(c) : "";
     const topHair = h.top && !hatOn ? h.top(c) : "";
 
@@ -188,13 +190,14 @@
 
     let beard = "";
     if (cfg.facialHair === "stubble") {
-      // a stippled 5 o'clock shadow over the lower face (clearly different from a solid beard)
-      let dots = "";
-      for (let yy = 49.5; yy <= 69; yy += 3) {
-        for (let xx = 31; xx <= 69; xx += 3) {
-          const inFace = ((xx - 50) / 22) ** 2 + ((yy - 42) / 25) ** 2 <= 1;
-          const lipGap = yy > 51.5 && yy < 57 && xx > 42 && xx < 58;
-          if (inFace && !lipGap) dots += `<circle cx="${xx}" cy="${yy.toFixed(1)}" r=".62" fill="${c}" opacity=".5"/>`;
+      // a neat, brick-offset 5 o'clock shadow over the jaw/chin (clearly not a solid beard)
+      let dots = "", row = 0;
+      for (let yy = 50; yy <= 67.5; yy += 2.7, row++) {
+        const xoff = (row % 2) * 1.35;
+        for (let xx = 32 + xoff; xx <= 68; xx += 2.7) {
+          const inFace = ((xx - 50) / 21) ** 2 + ((yy - 43) / 24) ** 2 <= 1;
+          const lipGap = yy > 51.5 && yy < 56.5 && xx > 42.5 && xx < 57.5;
+          if (inFace && !lipGap) dots += `<circle cx="${xx.toFixed(1)}" cy="${yy.toFixed(1)}" r=".56" fill="${c}" opacity=".45"/>`;
         }
       }
       beard = `<g>${dots}</g>`;
@@ -218,6 +221,8 @@
     let headwear = "";
     if (cfg.headwear === "beanie") headwear = `<g><path d="M24,38 C22,2 78,2 76,38 Z" fill="${shirt}"/><rect x="23" y="31" width="54" height="8" rx="4" fill="${shirt}"/><rect x="23" y="31" width="54" height="8" rx="4" fill="rgba(255,255,255,0.14)"/></g>`;
     else if (cfg.headwear === "cap") headwear = `<g fill="${shirt}"><path d="M25,40 C23,4 77,4 75,40 Z"/><path d="M73,40 C85,40 91,42 93,46 L74,46 C74,43 74,41 73,40 Z"/></g>`;
+    else if (cfg.headwear === "propeller") headwear = `<g><path d="M27,40 C25,16 75,16 73,40 Z" fill="${shirt}" stroke="#1a1a1a" stroke-width="1.4"/><path d="M27,40 C25,16 75,16 73,40" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="1"/><rect x="48.7" y="12" width="2.6" height="9" rx="1" fill="#5a3a1a"/><g class="av-prop"><rect x="38" y="11.4" width="24" height="3" rx="1.5" fill="#ff3d7f"/><rect x="38" y="11.4" width="24" height="3" rx="1.5" fill="#2f9bff" transform="rotate(90 50 12.9)"/></g><circle cx="50" cy="12.9" r="2.1" fill="#1a1a1a"/></g>`;
+    else if (cfg.headwear === "party") headwear = `<g><path d="M50,3 L41,35 L59,35 Z" fill="${shirt}" stroke="#1a1a1a" stroke-width="1.6"/><path d="M45.5,23 h9" stroke="#fff" stroke-width="2.4" opacity=".85"/><path d="M47.5,14 h5" stroke="#fff" stroke-width="2.2" opacity=".85"/><circle cx="50" cy="3.5" r="3.3" fill="#ffd23f" stroke="#1a1a1a" stroke-width="1"/></g>`;
 
     const headphones = cfg.headphones ? `<g><path d="M22,42 C21,4 79,4 78,42" stroke="#2a2a2a" stroke-width="4" fill="none"/><rect x="19" y="41" width="9" height="14" rx="3.5" fill="#e23d6d"/><rect x="72" y="41" width="9" height="14" rx="3.5" fill="#e23d6d"/></g>` : "";
     const drink = drinkSVG(cfg.drink, skin);
@@ -857,7 +862,7 @@
             <div class="step-tag"><span class="step-num">1</span> Create your character <span class="step-arrow">→</span> <span class="step-faded">2 · take the test</span></div>
             <h2 class="section-title">First, build your autist</h2>
             <p class="section-sub">Make your little character below - <b>this isn't the test yet</b>. When you're happy with them, hit start and the 12 questions begin.</p>
-            <div class="char-note"><span class="char-note-icon">📛</span> <span><b>Use your real name.</b> The host approves every contestant by hand and will only wave through names he actually recognizes. Fake names, bits, and aliases get rejected at the door.</span></div>
+            <div class="char-note"><span class="char-note-icon">✋</span> <span><b>Use your real name.</b> The host approves every contestant by hand and will only wave through names he actually recognizes. Fake names, bits, and aliases get rejected at the door.</span></div>
             <div class="char-layout">
               <div class="char-form">
                 <div class="char-row">
@@ -926,6 +931,8 @@
                       <button type="button" class="opt-btn" data-v="none">None</button>
                       <button type="button" class="opt-btn" data-v="beanie">🧢 Beanie</button>
                       <button type="button" class="opt-btn" data-v="cap">Cap</button>
+                      <button type="button" class="opt-btn" data-v="propeller">🚁 Propeller</button>
+                      <button type="button" class="opt-btn" data-v="party">🎉 Party hat</button>
                     </div>
                   </div>
                   <div class="builder-group">
@@ -1016,7 +1023,7 @@
             mood: pick(MOODS).id, bg: pick(BGS),
             eyewear: pick(["none", "none", "glasses", "square", "shades"]),
             facialHair: f === "femme" ? "none" : pick(["none", "none", "stubble", "beard", "mustache"]),
-            headwear: pick(["none", "none", "none", "beanie", "cap"]), drink: pick(["none", "none", "none", "beer", "seltzer", "shirley"]),
+            headwear: pick(["none", "none", "none", "beanie", "cap", "propeller", "party"]), drink: pick(["none", "none", "none", "beer", "seltzer", "shirley", "lolly"]),
             earrings: Math.random() > 0.6, freckles: Math.random() > 0.6, blush: Math.random() > 0.7, headphones: Math.random() > 0.82,
           };
           paintAvatar();
@@ -1031,8 +1038,17 @@
           const ret = findReturningGuest(state.firstName, state.lastInitial);
           if (ret) { state.bonus = RETURN_BONUS; state.returningFull = ret.full; state.welcome = true; state.step = 0; paint(); }
           else { state.bonus = 0; state.returningFull = ""; state.welcome = false; state.step = 0; paint(); }
+          window.scrollTo({ top: 0, behavior: "auto" }); // start the test from the top
         };
         startBtn.addEventListener("click", go);
+        // tapping the name on the preview jumps back up to the name fields
+        avName.style.cursor = "pointer";
+        avName.title = "Edit your name";
+        avName.addEventListener("click", () => {
+          const y = first.getBoundingClientRect().top + window.scrollY - 92;
+          window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+          setTimeout(() => first.focus({ preventScroll: true }), 320);
+        });
         [first, lasti].forEach(inp => inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); }));
         markSel();
         refresh();
@@ -1557,7 +1573,7 @@
 
     const root = wrapDiv(`<section class="section fade-in"><div class="wrap">
       <h2 class="section-title">The ${CONFIG.edition} Spectrum</h2>
-      <p class="section-sub">${isHost && !isPublic ? "👑 Host preview - not yet public." : "Every approved guest, plotted least → most autistic."}</p>
+      <p class="section-sub">Every approved guest, plotted least → most autistic.</p>
       <div class="graph-wrap">
         <div class="graph" id="rgraph">
           <div class="graph-axis"></div>
@@ -1571,8 +1587,13 @@
     if (!guests.length) {
       graph.innerHTML += `<div class="placeholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink-faint)">No approved guests yet.</div>`;
     }
+    const byScore = guests.slice().sort((a, b) => b.score - a.score);
+    const medals = ["🥇", "🥈", "🥉"];
     guests.forEach((g, idx) => {
-      const dot = el(`<div class="guest-dot show" style="left:${g.score}%">
+      const rank = byScore.indexOf(g);
+      const medal = rank < 3 ? medals[rank] : "";
+      const dot = el(`<div class="guest-dot show${medal ? " ranked" : ""}" style="left:${g.score}%">
+        ${medal ? `<div class="rank-medal">${medal}</div>` : ""}
         <div class="flag">${esc(g.name)}<span class="s">${g.score}</span></div>
         <div class="pin">${avatarSVG(g.avatar)}</div></div>`);
       graph.appendChild(dot);

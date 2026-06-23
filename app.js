@@ -689,7 +689,7 @@
         ${heroFx}
         <div class="wrap home">
           <div class="home-copy">
-            <span class="eyebrow">The 2nd Annual ${CONFIG.partyName} · ${CONFIG.year}</span>
+            <span class="eyebrow">The 2nd Annual ${CONFIG.partyName}</span>
             <h1 class="home-title">
               <span class="line-1">presents</span>
               <span class="line-big">${ed[0]}</span>

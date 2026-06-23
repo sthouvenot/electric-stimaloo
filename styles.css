@@ -286,11 +286,10 @@ a { color: inherit; }
 .home-copy { text-align: left; }
 .home-copy .eyebrow {
   margin-bottom: 18px; transform: rotate(-2deg);
-  /* match the site's signature look: solid bright fill + black stroke + hard offset shadow (like the big title) */
-  font-style: normal; font-size: clamp(14px, 2.2vw, 18px); letter-spacing: .02em;
+  /* bright fill + black outline (no shadow - it muddied legibility), big and bold */
+  font-style: normal; font-size: clamp(16px, 3vw, 26px); letter-spacing: .01em;
   color: var(--c3);
-  -webkit-text-stroke: 1.1px var(--ink); text-stroke: 1.1px var(--ink); paint-order: stroke fill;
-  filter: drop-shadow(2px 2px 0 var(--ink));
+  -webkit-text-stroke: 1.2px var(--ink); text-stroke: 1.2px var(--ink); paint-order: stroke fill;
 }
 .home-title { margin: 0 0 8px; line-height: .88; }
 .home-title .line-1 { display: block; font-family: var(--font-head); font-weight: 800; font-size: clamp(18px, 2.6vw, 30px); text-transform: uppercase; letter-spacing: .03em; color: var(--ink-soft); }

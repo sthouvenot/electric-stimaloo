@@ -282,6 +282,16 @@
       ],
     },
     {
+      kind: "train",
+      q: "Pick your favorite train car.",
+      opts: [
+        ["Picked one almost instantly", 0],
+        ["Took a moment to choose", 1],
+        ["Really watched it roll by", 2],
+        ["Watched the whole loop go round", 3],
+      ],
+    },
+    {
       q: "You discover a topic you love. How deep do you go?",
       opts: [
         ["I learn the basics and move on", 0],
@@ -291,12 +301,13 @@
       ],
     },
     {
-      q: "Eye contact during conversation feels:",
+      kind: "eyecontact",
+      q: "Hold eye contact for as long as you can.",
       opts: [
-        ["Totally natural", 0],
-        ["Fine in small doses", 1],
-        ["Like a task I'm consciously managing", 2],
-        ["Why are we doing this to each other", 3],
+        ["Held it, totally unbothered", 0],
+        ["Lasted a good while", 1],
+        ["Cracked pretty fast", 2],
+        ["Bailed almost immediately", 3],
       ],
     },
     {
@@ -363,12 +374,14 @@
       ],
     },
     {
-      q: "Reading the 'vibe' of a room:",
+      kind: "eyes",
+      eyes: "anxious",
+      q: "Quick — what is this person feeling?",
       opts: [
-        ["Instant and effortless", 0],
-        ["Usually get it", 1],
-        ["I decode it manually, a bit late", 2],
-        ["I find out three days later", 3],
+        ["Anxious", 0],
+        ["A little worried", 1],
+        ["Honestly, I can't tell", 2],
+        ["They're eyes. This is an unfair question.", 3],
       ],
     },
     {
@@ -868,6 +881,127 @@
   });
 
   /* ----------------------------------------------------------
+     QUIZ MINI-GAMES - interactive question types.
+     Each game maps its interaction to a 0..3 score via setAnswer(),
+     so the overall scoring math (MAX_RAW) is unchanged. Game questions
+     keep an `opts` legend so the host answer-recap still renders.
+     ---------------------------------------------------------- */
+  const TRAIN_CARS = [
+    { c: "var(--c1)", label: "the pink car" },
+    { c: "var(--c2)", label: "the orange car" },
+    { c: "var(--c3)", label: "the yellow car" },
+    { c: "var(--c4)", label: "the green car" },
+    { c: "var(--c5)", label: "the blue car" },
+    { c: "var(--c6)", label: "the violet car" },
+  ];
+  const EYES_SVG = {
+    anxious: `<svg class="re-eyes" viewBox="0 0 240 132" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <line x1="40" y1="50" x2="98" y2="32" stroke="#16130c" stroke-width="8" stroke-linecap="round"/>
+      <line x1="200" y1="50" x2="142" y2="32" stroke="#16130c" stroke-width="8" stroke-linecap="round"/>
+      <ellipse cx="70" cy="82" rx="36" ry="28" fill="#fff" stroke="#16130c" stroke-width="4.5"/>
+      <ellipse cx="170" cy="82" rx="36" ry="28" fill="#fff" stroke="#16130c" stroke-width="4.5"/>
+      <circle cx="74" cy="76" r="14" fill="#16130c"/>
+      <circle cx="166" cy="76" r="14" fill="#16130c"/>
+      <circle cx="79" cy="71" r="4.5" fill="#fff"/>
+      <circle cx="171" cy="71" r="4.5" fill="#fff"/>
+    </svg>`,
+  };
+
+  function renderTrainGame(body, Q, setAnswer) {
+    const carRow = () => TRAIN_CARS.map((car, k) =>
+      `<button class="tw-car" data-i="${k}" style="--car:${car.c}" type="button" aria-label="train car ${k + 1}"><i></i><i></i></button>`).join("");
+    body.innerHTML = `
+      <div class="tw-stage">
+        <div class="tw-train"><span class="tw-loco">🚂</span>${carRow()}<span class="tw-loco">🚂</span>${carRow()}</div>
+        <div class="tw-track"></div>
+      </div>
+      <p class="tw-hint">↑ tap the car you like best</p>
+      <div class="tw-reveal" hidden></div>`;
+    const start = Date.now();
+    const stage = $(".tw-stage", body), reveal = $(".tw-reveal", body), hint = $(".tw-hint", body);
+    body.querySelectorAll(".tw-car").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const secs = (Date.now() - start) / 1000;
+        const points = secs < 3 ? 0 : secs < 7 ? 1 : secs < 14 ? 2 : 3;
+        stage.classList.add("tw-stopped");
+        body.querySelectorAll(".tw-car").forEach(b => b.classList.remove("tw-picked"));
+        btn.classList.add("tw-picked");
+        const car = TRAIN_CARS[+btn.dataset.i];
+        if (hint) hint.style.display = "none";
+        reveal.hidden = false;
+        reveal.innerHTML = `🚂 You watched for <b>${secs.toFixed(1)} seconds</b> before picking ${car.label}.<br><span class="tw-twist">…we weren't really asking about the car.</span>`;
+        setAnswer(points);
+      });
+    });
+  }
+
+  function renderEyesGame(body, Q, setAnswer) {
+    body.innerHTML = `<div class="re-face">${EYES_SVG[Q.eyes] || EYES_SVG.anxious}</div><div class="options re-opts"></div>`;
+    const wrap = $(".re-opts", body);
+    Q.opts.forEach(o => {
+      const b = el(`<button class="option" type="button"><span class="dot"></span><span>${esc(o[0])}</span></button>`);
+      b.addEventListener("click", () => {
+        wrap.querySelectorAll(".option").forEach(x => x.classList.remove("selected"));
+        b.classList.add("selected");
+        setAnswer(o[1]);
+      });
+      wrap.appendChild(b);
+    });
+  }
+
+  function renderEyeContactGame(body, Q, setAnswer) {
+    body.innerHTML = `
+      <div class="ec-wrap">
+        <svg class="ec-eyes" viewBox="0 0 240 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <ellipse cx="70" cy="62" rx="40" ry="32" fill="#fff" stroke="#16130c" stroke-width="4.5"/>
+          <ellipse cx="170" cy="62" rx="40" ry="32" fill="#fff" stroke="#16130c" stroke-width="4.5"/>
+          <circle cx="70" cy="62" r="16" fill="#2f9bff" stroke="#16130c" stroke-width="3"/>
+          <circle cx="170" cy="62" r="16" fill="#2f9bff" stroke="#16130c" stroke-width="3"/>
+          <circle cx="70" cy="62" r="7.5" fill="#16130c"/>
+          <circle cx="170" cy="62" r="7.5" fill="#16130c"/>
+        </svg>
+        <div class="ec-timer">0.0s</div>
+        <div class="ec-taunt">Press &amp; hold. Don't look away.</div>
+        <button class="btn btn-primary ec-hold" type="button">👁️ Hold eye contact</button>
+        <div class="ec-reveal" hidden></div>
+      </div>`;
+    const wrap = $(".ec-wrap", body), timerEl = $(".ec-timer", body), taunt = $(".ec-taunt", body), btn = $(".ec-hold", body), reveal = $(".ec-reveal", body);
+    const TAUNTS = [[0, "Don't look away."], [2, "They can see you."], [4, "They're still looking…"], [6, "Do NOT break."], [9, "This is a lot, huh."], [13, "Are you even blinking??"]];
+    const VERDICTS = ["Unbreakable. Suspiciously neurotypical.", "Pretty solid — you can fake it.", "You cracked fast.", "Nope. Instant abort."];
+    let startT = 0, tick = null, holding = false;
+    function down(e) {
+      e.preventDefault();
+      if (holding) return;
+      holding = true; startT = Date.now();
+      wrap.classList.add("ec-on"); reveal.hidden = true;
+      window.addEventListener("pointerup", up);
+      tick = setInterval(() => {
+        const s = (Date.now() - startT) / 1000;
+        timerEl.textContent = s.toFixed(1) + "s";
+        let t = TAUNTS[0][1];
+        for (const band of TAUNTS) if (s >= band[0]) t = band[1];
+        taunt.textContent = t;
+        wrap.style.setProperty("--ec", Math.min(1, s / 12));
+      }, 60);
+    }
+    function up() {
+      if (!holding) return;
+      holding = false; clearInterval(tick);
+      window.removeEventListener("pointerup", up);
+      wrap.classList.remove("ec-on"); wrap.style.setProperty("--ec", 0);
+      const s = (Date.now() - startT) / 1000;
+      const points = s >= 10 ? 0 : s >= 5 ? 1 : s >= 2 ? 2 : 3;
+      taunt.textContent = "Press & hold. Don't look away.";
+      timerEl.textContent = s.toFixed(1) + "s";
+      reveal.hidden = false;
+      reveal.innerHTML = `You held eye contact for <b>${s.toFixed(1)} seconds</b>.<br><span class="ec-verdict">${VERDICTS[points]}</span>`;
+      setAnswer(points);
+    }
+    btn.addEventListener("pointerdown", down);
+    btn.addEventListener("pointercancel", up);
+  }
+
+  /* ----------------------------------------------------------
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
@@ -1182,28 +1316,42 @@
           <div class="progress-rail"><div class="progress-fill" style="width:${pct}%"></div></div>
           <div class="q-count">Question ${i + 1} of ${QUESTIONS.length}</div>
           <h2 class="q-text">${Q.q}</h2>
-          <div class="options"></div>
+          <div class="q-body"></div>
           <div class="quiz-nav">
             <button class="btn btn-ghost btn-sm" id="back-btn">← Back</button>
             <button class="btn btn-primary btn-sm" id="next-btn" disabled>Next →</button>
           </div>
         </div>`);
-      const optWrap = $(".options", node);
-      Q.opts.forEach((o, idx) => {
-        const b = el(`<button class="option ${state.answers[i] === o[1] && state.__sel === idx ? "selected" : ""}">
-            <span class="dot"></span><span>${o[0]}</span></button>`);
-        // track selection by index for visual correctness
-        if (state.__selByStep && state.__selByStep[i] === idx) b.classList.add("selected");
-        b.addEventListener("click", () => {
-          state.answers[i] = o[1];
-          state.__selByStep = state.__selByStep || {};
-          state.__selByStep[i] = idx;
-          optWrap.querySelectorAll(".option").forEach(x => x.classList.remove("selected"));
-          b.classList.add("selected");
-          $("#next-btn", node).disabled = false;
+      const qbody = $(".q-body", node);
+      const setAnswer = (points) => {
+        state.answers[i] = points;
+        const nb = $("#next-btn", node);
+        if (nb) nb.disabled = false;
+      };
+      const kind = Q.kind || "choice";
+      if (kind === "choice") {
+        const optWrap = el(`<div class="options"></div>`);
+        qbody.appendChild(optWrap);
+        Q.opts.forEach((o, idx) => {
+          const b = el(`<button class="option" type="button"><span class="dot"></span><span>${o[0]}</span></button>`);
+          // track selection by index for visual correctness
+          if (state.__selByStep && state.__selByStep[i] === idx) b.classList.add("selected");
+          b.addEventListener("click", () => {
+            state.__selByStep = state.__selByStep || {};
+            state.__selByStep[i] = idx;
+            optWrap.querySelectorAll(".option").forEach(x => x.classList.remove("selected"));
+            b.classList.add("selected");
+            setAnswer(o[1]);
+          });
+          optWrap.appendChild(b);
         });
-        optWrap.appendChild(b);
-      });
+      } else if (kind === "train") {
+        renderTrainGame(qbody, Q, setAnswer);
+      } else if (kind === "eyecontact") {
+        renderEyeContactGame(qbody, Q, setAnswer);
+      } else if (kind === "eyes") {
+        renderEyesGame(qbody, Q, setAnswer);
+      }
       const isLast = i === QUESTIONS.length - 1;
       const nextBtn = $("#next-btn", node);
       nextBtn.textContent = isLast ? "See my result →" : "Next →";

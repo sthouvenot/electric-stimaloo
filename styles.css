@@ -406,6 +406,7 @@ a { color: inherit; }
 .option.selected { background: var(--c3); }
 .option.selected .dot { background: var(--ink); }
 .quiz-nav { display: flex; justify-content: space-between; margin-top: 28px; gap: 12px; }
+.quiz-nav.quiz-nav-next { justify-content: center; }
 
 /* ---- quiz mini-games ---- */
 /* Train Watcher: a looping train; you "pick a car" but you're scored on watch time */
@@ -451,9 +452,11 @@ a { color: inherit; }
   background: radial-gradient(circle at 50% -10%, #fffdf8, #f1e8d6); box-shadow: var(--shadow-sm);
   touch-action: none; -webkit-user-select: none; user-select: none; }
 .dodge-stage.dodge-playing { cursor: none; }
-.dodge-hud { position: absolute; top: 8px; left: 12px; z-index: 4; pointer-events: none;
+.dodge-hud { position: absolute; top: 8px; left: 12px; right: 12px; z-index: 4; pointer-events: none;
+  display: flex; align-items: center; justify-content: space-between;
   font-family: var(--font-display); font-weight: 400; font-size: 24px; color: var(--c5);
   -webkit-text-stroke: 1.6px var(--ink); paint-order: stroke fill; }
+.dodge-lives { font-size: 17px; -webkit-text-stroke: 0; letter-spacing: 1px; }
 .dodge-player { position: absolute; bottom: 10px; left: 0; width: 52px; height: 52px; z-index: 3; pointer-events: none; transition: left .03s linear; }
 .dodge-player .avchip { border: 3px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); background: var(--paper-2); }
 .dodge-rock { position: absolute; top: 0; left: 0; display: flex; align-items: center; justify-content: center; line-height: 1;
@@ -881,7 +884,10 @@ a { color: inherit; }
 
 /* ---- World's Hardest Game ---- */
 .whg-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.whg-hud { display: flex; gap: 18px; font-family: var(--font-head); font-weight: 800; font-size: 15px; }
+.whg-hud { display: flex; align-items: center; gap: 14px; width: min(640px, 96vw); font-family: var(--font-head); font-weight: 800; font-size: 15px; }
+.whg-level { background: var(--c5); color: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 3px 12px; }
+.whg-levelnum { color: var(--ink-soft); }
+.whg-lives { margin-left: auto; font-size: 17px; letter-spacing: 1px; }
 .whg-field { position: relative; width: min(640px, 96vw); aspect-ratio: 640 / 380; border: 7px solid #5b6ee1; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); touch-action: none; user-select: none;
   background-color: #d3d6ff;
   background-image:
@@ -903,7 +909,10 @@ a { color: inherit; }
 .whg-up { grid-area: up; } .whg-left { grid-area: left; } .whg-down { grid-area: down; } .whg-right { grid-area: right; }
 .whg-dbtn { font-size: 22px; font-weight: 800; border: var(--border); border-radius: 14px; background: var(--paper-2); box-shadow: var(--shadow-sm); cursor: pointer; touch-action: none; user-select: none; display: flex; align-items: center; justify-content: center; transition: transform .05s, background .1s; }
 .whg-dbtn.active { background: var(--c5); color: #fff; transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
-.whg-skip { opacity: .8; }
+.whg-field.whg-hit { animation: whgHit .16s ease; }
+@keyframes whgHit { 0%,100%{ box-shadow: var(--shadow); } 50%{ box-shadow: 0 0 0 4px #ff3d3d inset, var(--shadow); } }
+.whg-giveup { background: none; border: none; font-family: var(--font-head); font-weight: 700; font-size: 13px; color: var(--ink-faint); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; opacity: .7; }
+.whg-giveup:hover { opacity: 1; }
 .whg-reveal { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--ink-soft); text-align: center; line-height: 1.5; max-width: 480px; }
 .whg-twist { color: var(--c6); font-style: italic; }
 

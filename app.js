@@ -938,13 +938,16 @@
       <p class="tw-hint">↑ tap the car you like best</p>
       <div class="tw-reveal" hidden></div>`;
     const start = Date.now();
+    let picked = false; // lock after the first pick so the timing can't change
     const stage = $(".tw-stage", body), reveal = $(".tw-reveal", body), hint = $(".tw-hint", body);
     body.querySelectorAll(".tw-car").forEach(btn => {
       btn.addEventListener("click", () => {
+        if (picked) return;
+        picked = true;
         const secs = (Date.now() - start) / 1000;
         const points = secs < 3 ? 0 : secs < 7 ? 1 : secs < 14 ? 2 : 3;
         stage.classList.add("tw-stopped");
-        body.querySelectorAll(".tw-car").forEach(b => b.classList.remove("tw-picked"));
+        body.querySelectorAll(".tw-car").forEach(b => { b.classList.remove("tw-picked"); b.disabled = true; });
         btn.classList.add("tw-picked");
         const car = TRAIN_CARS[+btn.dataset.i];
         if (hint) hint.style.display = "none";
@@ -1028,17 +1031,17 @@
   function renderDodgeGame(body, Q, setAnswer, avatar) {
     body.innerHTML = `
       <div class="dodge-stage" id="dodge-stage">
-        <div class="dodge-hud"><span class="dodge-time">0.0s</span></div>
+        <div class="dodge-hud"><span class="dodge-time">0.0s</span><span class="dodge-lives" id="dodge-lives">❤️❤️❤️</span></div>
         <div class="dodge-player" id="dodge-player"><span class="avchip" style="width:100%;height:100%">${avatarSVG(avatar)}</span></div>
         <div class="dodge-overlay" id="dodge-ov">
-          <div class="dodge-msg">Keep your avatar alive.<small>Move with your mouse / finger — dodge the falling junk.</small></div>
+          <div class="dodge-msg">Keep your avatar alive.<small>Move with your mouse / finger — dodge the falling junk. You get 3 lives.</small></div>
           <button class="btn btn-primary dodge-go" type="button">▶ Start</button>
         </div>
       </div>
       <div class="dodge-reveal" hidden></div>`;
-    const stage = $("#dodge-stage", body), player = $("#dodge-player", body), timeEl = $(".dodge-time", body), ov = $("#dodge-ov", body), reveal = $(".dodge-reveal", body);
+    const stage = $("#dodge-stage", body), player = $("#dodge-player", body), timeEl = $(".dodge-time", body), ov = $("#dodge-ov", body), reveal = $(".dodge-reveal", body), livesEl = $("#dodge-lives", body);
     const PLAYER = 52, PAD = 4, EMOJI = ["🧱","🔨","📦","🪨","🧊","⚙️","🔧","💣"];
-    let running = false, loop = null, startT = 0, best = 0, elapsed = 0, last = 0, spawnAcc = 0, px = 0, W = 0, H = 0, rocks = [];
+    let running = false, loop = null, startT = 0, best = 0, elapsed = 0, last = 0, spawnAcc = 0, px = 0, W = 0, H = 0, rocks = [], lives = 3;
     function measure() { const r = stage.getBoundingClientRect(); W = r.width; H = r.height; return r; }
     function setPlayer(clientX) { const r = stage.getBoundingClientRect(); px = Math.max(PAD, Math.min(W - PLAYER - PAD, clientX - r.left - PLAYER / 2)); player.style.left = px + "px"; }
     function onMove(e) { setPlayer(e.clientX); }
@@ -1083,13 +1086,21 @@
     function gameOver() {
       cleanup(); stage.classList.remove("dodge-playing");
       if (elapsed > best) best = elapsed;
+      lives = Math.max(0, lives - 1);
+      if (livesEl) livesEl.textContent = lives > 0 ? "❤️".repeat(lives) : "💀";
       const points = best < 3 ? 0 : best < 7 ? 1 : best < 13 ? 2 : 3;
       const verdicts = ["Reflexes of a sleepy cat. We love that for you.", "Decent. You panicked, but on a delay.", "Sharp. Suspiciously locked in.", "Frightening hand-eye control. Textbook hyperfocus."];
-      ov.style.display = ""; ov.innerHTML = `<div class="dodge-msg">💥 You survived <b>${elapsed.toFixed(1)}s</b></div><button class="btn btn-primary dodge-go" type="button">↻ Try again</button>`;
-      ov.querySelector(".dodge-go").addEventListener("click", start);
+      // best run so far is always the answer; once lives run out, Next is forced
+      setAnswer(points, { dodge: +best.toFixed(1) });
       reveal.hidden = false;
       reveal.innerHTML = `Best run: <b>${best.toFixed(1)}s</b> — ${verdicts[points]}<br><span class="dodge-twist">…the better you are at this, the more autistic we're afraid you are.</span>`;
-      setAnswer(points, { dodge: +best.toFixed(1) });
+      ov.style.display = "";
+      if (lives > 0) {
+        ov.innerHTML = `<div class="dodge-msg">💥 You survived <b>${elapsed.toFixed(1)}s</b><small>${lives} ${lives === 1 ? "life" : "lives"} left</small></div><button class="btn btn-primary dodge-go" type="button">↻ Use a life</button>`;
+        ov.querySelector(".dodge-go").addEventListener("click", start);
+      } else {
+        ov.innerHTML = `<div class="dodge-msg">💀 Out of lives<small>Best run: ${best.toFixed(1)}s — hit Next →</small></div>`;
+      }
     }
     ov.querySelector(".dodge-go").addEventListener("click", start);
   }
@@ -1097,41 +1108,37 @@
   function renderBankPinGame(body, Q, setAnswer, state) {
     body.innerHTML = `
       <div class="pinq">
-        <p class="pinq-note">Choose something you'd actually use. We'll rate it for security.</p>
+        <p class="pinq-note">Pick a 4-digit PIN you'd actually use. We'll rate it once you lock it in.</p>
         <input class="pinq-input" id="pin-in" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off" />
+        <button class="btn btn-primary" id="pin-submit" disabled>Lock it in →</button>
         <div class="pinq-checks" id="pin-checks" hidden></div>
         <div class="pinq-roast" id="pin-roast" hidden></div>
-        <button class="btn btn-primary" id="pin-submit" disabled>Lock it in →</button>
       </div>`;
     const inp = $("#pin-in", body), checks = $("#pin-checks", body), roast = $("#pin-roast", body), btn = $("#pin-submit", body);
     const ROASTS = [
-      "Your PIN is '1234'. A toddler could guess that.",
-      "Bold choice. Your bank manager is sweating.",
-      "Not bad. You're not the easiest target.",
+      "Your PIN basically screams 'rob me'. A toddler could guess that.",
+      "Bold choice. Your bank manager is sweating a little.",
+      "Not bad. You're not the easiest target on the block.",
       "Basically uncrackable. Suspicious, honestly.",
     ];
+    // no live feedback while typing — only validate length
     inp.addEventListener("input", () => {
       const v = inp.value.replace(/\D/g, "").slice(0, 4);
       inp.value = v;
       btn.disabled = v.length < 4;
-      if (v.length === 4) {
-        const { pts, checks: c } = scorePin(v);
-        checks.hidden = false;
-        checks.innerHTML = c.map(ck =>
-          `<div class="pinq-check ${ck.ok ? "ok" : "bad"}">${ck.ok ? "✅" : "❌"} ${ck.ok ? ck.good : ck.bad}</div>`
-        ).join("");
-        roast.hidden = false;
-        roast.textContent = ROASTS[pts];
-      } else {
-        checks.hidden = true;
-        roast.hidden = true;
-      }
     });
     btn.addEventListener("click", () => {
       const v = inp.value.replace(/\D/g, "").slice(0, 4);
       if (v.length < 4) return;
-      const { pts } = scorePin(v);
+      const { pts, checks: c } = scorePin(v);
       state.bankPin = v;
+      // now reveal which of the three checks they passed
+      checks.hidden = false;
+      checks.innerHTML = c.map(ck =>
+        `<div class="pinq-check ${ck.ok ? "ok" : "bad"}">${ck.ok ? "✅" : "❌"} ${ck.ok ? ck.good : ck.bad}</div>`
+      ).join("");
+      roast.hidden = false;
+      roast.textContent = ROASTS[pts];
       btn.textContent = "PIN saved ✓";
       btn.disabled = true;
       inp.disabled = true;
@@ -1142,41 +1149,47 @@
 
   function renderColorGame(body, Q, setAnswer) {
     const hue = Math.floor(Math.random() * 360);
-    let phase = "show";
+    // Phase 1: memorize the swatch (no slider visible). After the countdown the
+    // whole memorize block is REPLACED by the matching slider.
     body.innerHTML = `
       <div class="colq">
-        <div class="colq-swatch" id="colq-sw" style="background:hsl(${hue},72%,56%)"></div>
-        <div class="colq-msg" id="colq-msg">Memorize this color — you have <b id="colq-cd">3</b>s</div>
-        <div class="colq-guess" id="colq-guess" hidden>
-          <p class="colq-hint">Drag the slider to match the color you saw.</p>
-          <input type="range" class="hue-slider" id="hue-sl" min="0" max="359" value="180" />
-          <div class="colq-preview" id="colq-prev" style="background:hsl(180,72%,56%)"></div>
-          <button class="btn btn-primary" id="colq-submit">That's it →</button>
+        <div class="colq-memorize" id="colq-mem">
+          <div class="colq-swatch" style="background:hsl(${hue},72%,56%)"></div>
+          <div class="colq-msg">Memorize this color — you have <b id="colq-cd">3</b>s</div>
         </div>
       </div>`;
-    const sw = $("#colq-sw", body), cdEl = $("#colq-cd", body), msg = $("#colq-msg", body);
-    const guessDiv = $("#colq-guess", body), sl = $("#hue-sl", body), prev = $("#colq-prev", body), submitBtn = $("#colq-submit", body);
-    sl.addEventListener("input", () => { prev.style.background = `hsl(${sl.value},72%,56%)`; });
-    submitBtn.addEventListener("click", () => {
-      const guess = +sl.value;
-      let diff = Math.abs(hue - guess);
-      if (diff > 180) diff = 360 - diff;
-      const pts = diff < 15 ? 3 : diff < 35 ? 2 : diff < 70 ? 1 : 0;
-      const msgs = ["Way off — but maybe you're colorblind and we respect that.", "Getting warm.", "Pretty close!", "Perfect match. Suspicious."];
-      submitBtn.disabled = true;
-      submitBtn.textContent = `Off by ${diff}° — ${msgs[pts]}`;
-      setAnswer(pts);
-    });
+    const colq = $(".colq", body), cdEl = $("#colq-cd", body), mem = $("#colq-mem", body);
     let cd = 3;
     const tick = setInterval(() => {
       cd--;
       if (cd > 0) { cdEl.textContent = cd; return; }
       clearInterval(tick);
-      sw.style.background = "#888";
-      msg.innerHTML = "Now match it!";
-      guessDiv.hidden = false;
-      phase = "guess";
+      showGuess();
     }, 1000);
+    function showGuess() {
+      // swap the memorize block out for the slider
+      mem.remove();
+      const guess = el(`
+        <div class="colq-guess">
+          <p class="colq-hint">Now match it — drag the slider to the color you saw.</p>
+          <input type="range" class="hue-slider" id="hue-sl" min="0" max="359" value="180" />
+          <div class="colq-preview" id="colq-prev" style="background:hsl(180,72%,56%)"></div>
+          <button class="btn btn-primary" id="colq-submit">That's it →</button>
+        </div>`);
+      colq.appendChild(guess);
+      const sl = $("#hue-sl", body), prev = $("#colq-prev", body), submitBtn = $("#colq-submit", body);
+      sl.addEventListener("input", () => { prev.style.background = `hsl(${sl.value},72%,56%)`; });
+      submitBtn.addEventListener("click", () => {
+        const g = +sl.value;
+        let diff = Math.abs(hue - g);
+        if (diff > 180) diff = 360 - diff;
+        const pts = diff < 15 ? 3 : diff < 35 ? 2 : diff < 70 ? 1 : 0;
+        const msgs = ["Way off — but maybe you're colorblind and we respect that.", "Getting warm.", "Pretty close!", "Perfect match. Suspicious."];
+        submitBtn.disabled = true;
+        submitBtn.textContent = `Off by ${diff}° — ${msgs[pts]}`;
+        setAnswer(pts);
+      });
+    }
   }
 
   function renderTypingGame(body, Q, setAnswer) {
@@ -1259,24 +1272,23 @@
   function renderQueenBdayGame(body, Q, setAnswer) {
     body.innerHTML = `
       <div class="qbq">
-        <p class="qbq-note">She reigned for 70 years. Surely you know the day. 👑</p>
         <div class="qbq-fields">
           <label class="qbq-field">Month
-            <select class="qbq-sel" id="qb-m">${MONTHS.map((mn,i)=>`<option value="${i+1}"${i+1===4?" selected":""}>${mn}</option>`).join("")}</select>
+            <select class="qbq-sel" id="qb-m"><option value="" selected>—</option>${MONTHS.map((mn,i)=>`<option value="${i+1}">${mn}</option>`).join("")}</select>
           </label>
           <label class="qbq-field">Day
-            <input class="qbq-in" id="qb-d" type="number" min="1" max="31" inputmode="numeric" placeholder="1" />
+            <input class="qbq-in" id="qb-d" type="number" min="1" max="31" inputmode="numeric" />
           </label>
           <label class="qbq-field">Year
-            <input class="qbq-in" id="qb-y" type="number" min="1900" max="1970" inputmode="numeric" placeholder="19__" />
+            <input class="qbq-in" id="qb-y" type="number" min="1000" max="2026" inputmode="numeric" />
           </label>
         </div>
         <button class="btn btn-primary" id="qb-submit" disabled>Lock in guess →</button>
         <div class="qbq-reveal" id="qb-reveal" hidden></div>
       </div>`;
     const mSel = $("#qb-m", body), dIn = $("#qb-d", body), yIn = $("#qb-y", body), btn = $("#qb-submit", body), reveal = $("#qb-reveal", body);
-    const check = () => { btn.disabled = !(dIn.value && yIn.value); };
-    dIn.addEventListener("input", check); yIn.addEventListener("input", check);
+    const check = () => { btn.disabled = !(mSel.value && dIn.value && yIn.value); };
+    mSel.addEventListener("change", check); dIn.addEventListener("input", check); yIn.addEventListener("input", check);
     btn.addEventListener("click", () => {
       const m = +mSel.value, d = Math.max(1, Math.min(31, +dIn.value || 1)), y = +yIn.value || 0;
       let dist = Math.abs(dayOfYear(m, d) - dayOfYear(QE_BIRTH.m, QE_BIRTH.d));
@@ -1310,14 +1322,18 @@
   function renderWhgGame(body, Q, setAnswer) {
     body.innerHTML = `
       <div class="whg-wrap">
-        <div class="whg-hud"><span class="whg-deaths">Deaths: 0</span><span class="whg-coins"></span></div>
+        <div class="whg-hud">
+          <span class="whg-level" id="whg-level">Easy</span>
+          <span class="whg-levelnum" id="whg-levelnum">Level 1 / 3</span>
+          <span class="whg-lives" id="whg-lives">❤️❤️❤️</span>
+        </div>
         <div class="whg-field" id="whg-field">
           <div class="whg-zone whg-start"></div>
           <div class="whg-zone whg-end"></div>
           <div class="whg-layer" id="whg-layer"></div>
           <div class="whg-player" id="whg-player"></div>
           <div class="whg-overlay" id="whg-ov">
-            <div class="whg-msg">Cross to the other side.<small>Arrow keys / WASD — or the buttons below. Touch a blue dot and you restart from the left.</small></div>
+            <div class="whg-msg">Cross all 3 levels.<small>Arrow keys / WASD — or the buttons below. Touch a blue dot and you lose a life. You get 3 total.</small></div>
             <button class="btn btn-primary whg-go" type="button">▶ Start</button>
           </div>
         </div>
@@ -1327,94 +1343,108 @@
           <button class="whg-dbtn whg-down"  data-dir="down"  type="button" aria-label="down">▼</button>
           <button class="whg-dbtn whg-right" data-dir="right" type="button" aria-label="right">▶</button>
         </div>
-        <button class="btn btn-ghost btn-sm whg-skip" type="button">😵 Too hard — skip this one</button>
+        <button class="whg-giveup" id="whg-giveup" type="button">give up →</button>
         <div class="whg-reveal" hidden></div>
       </div>`;
     // virtual coordinate system; scaled to the measured field on every frame
     const VW = 640, VH = 380, PS = 26;
     const startX2 = 92, endX1 = VW - 92; // inner edges of the two pink zones
-    const laneYs = [70, 130, 190, 250, 310];
-    const enemies = [];
-    laneYs.forEach((y, li) => {
-      const sign = li % 2 === 0 ? 1 : -1;
-      const span = endX1 - startX2;
-      for (let k = 0; k < 2; k++) {
-        const x = startX2 + span * ((k + (li % 2 ? 0.5 : 0)) / 2) + 40;
-        enemies.push({ x, y, r: 15, vx: sign * (1.7 + li * 0.16), xMin: startX2 + 4, xMax: endX1 - 4 });
-      }
-    });
-    const coins = [{ x: VW * 0.42, y: 100, got: false }, { x: VW * 0.58, y: 280, got: false }];
+    // 3 levels: easy / medium / hard. More lanes, more dots per lane, faster.
+    const LEVELS = [
+      { name: "Easy",   lanes: [130, 250], per: 1, base: 1.2 },
+      { name: "Medium", lanes: [80, 150, 220, 290], per: 2, base: 1.7 },
+      { name: "Hard",   lanes: [55, 105, 155, 210, 265, 315], per: 2, base: 2.5 },
+    ];
+    function buildEnemies(lv) {
+      const L = LEVELS[lv], arr = [], span = endX1 - startX2;
+      L.lanes.forEach((y, li) => {
+        const sign = li % 2 === 0 ? 1 : -1;
+        for (let k = 0; k < L.per; k++) {
+          const x = startX2 + span * ((k + (li % 2 ? 0.5 : 0)) / L.per) + 30;
+          arr.push({ x, y, r: 15, vx: sign * (L.base + li * 0.1), xMin: startX2 + 4, xMax: endX1 - 4 });
+        }
+      });
+      return arr;
+    }
 
     const field = $("#whg-field", body), layer = $("#whg-layer", body), player = $("#whg-player", body);
-    const ov = $("#whg-ov", body), reveal = $(".whg-reveal", body), deathsEl = $(".whg-deaths", body), coinsEl = $(".whg-coins", body);
+    const ov = $("#whg-ov", body), reveal = $(".whg-reveal", body);
+    const levelEl = $("#whg-level", body), levelNumEl = $("#whg-levelnum", body), livesEl = $("#whg-lives", body);
     let W = 0, H = 0, sx = 1, sy = 1;
     function measure() { const r = field.getBoundingClientRect(); W = r.width; H = r.height; sx = W / VW; sy = H / VH; }
     let px = 46, py = VH / 2;
     const dir = { up: false, down: false, left: false, right: false };
-    let running = false, loop = null, last = 0, deaths = 0, answered = false, progressed = 46;
-    let enemyEls = [], coinEls = [];
+    let level = 0, lives = 3, levelsDone = 0, enemies = [], enemyEls = [];
+    let running = false, loop = null, last = 0, answered = false, phase = "ready";
 
+    function updateHud() {
+      levelEl.textContent = LEVELS[level].name;
+      levelNumEl.textContent = `Level ${level + 1} / 3`;
+      livesEl.textContent = lives > 0 ? "❤️".repeat(lives) : "💀";
+    }
     function buildSprites() {
       layer.innerHTML = "";
       enemyEls = enemies.map(() => { const d = document.createElement("div"); d.className = "whg-enemy"; layer.appendChild(d); return d; });
-      coinEls = coins.map(() => { const d = document.createElement("div"); d.className = "whg-coin"; layer.appendChild(d); return d; });
     }
     function paintSprites() {
       measure();
-      enemies.forEach((e, i) => { const el = enemyEls[i]; const d = e.r * 2 * sx; el.style.width = el.style.height = d + "px"; el.style.left = (e.x * sx - d / 2) + "px"; el.style.top = (e.y * sy - d / 2) + "px"; });
-      coins.forEach((c, i) => { const el = coinEls[i]; el.style.display = c.got ? "none" : ""; const d = 15 * sx; el.style.width = el.style.height = d + "px"; el.style.left = (c.x * sx - d / 2) + "px"; el.style.top = (c.y * sy - d / 2) + "px"; });
+      enemies.forEach((e, i) => { const el = enemyEls[i]; if (!el) return; const d = e.r * 2 * sx; el.style.width = el.style.height = d + "px"; el.style.left = (e.x * sx - d / 2) + "px"; el.style.top = (e.y * sy - d / 2) + "px"; });
       const ps = PS * sx; player.style.width = player.style.height = ps + "px"; player.style.left = (px * sx - ps / 2) + "px"; player.style.top = (py * sy - ps / 2) + "px";
-      coinsEl.textContent = `Coins: ${coins.filter(c => c.got).length}/${coins.length}`;
     }
     function resetPlayer() { px = 46; py = VH / 2; }
-    function die() { deaths++; deathsEl.textContent = "Deaths: " + deaths; resetPlayer(); }
     function cleanup() { running = false; clearInterval(loop); removeEventListener("keydown", onKey); removeEventListener("keyup", onKey); }
-    function settle(won) {
+    function loadLevel(lv) {
+      level = lv; enemies = buildEnemies(lv); buildSprites(); resetPlayer(); updateHud();
+      ov.style.display = "none"; reveal.hidden = true;
+      running = true; last = 0; phase = "playing";
+      addEventListener("keydown", onKey); addEventListener("keyup", onKey);
+      clearInterval(loop); loop = setInterval(tick, 24);
+      paintSprites();
+    }
+    function flash() { field.classList.add("whg-hit"); setTimeout(() => field.classList.remove("whg-hit"), 160); }
+    function onDeath() {
+      lives = Math.max(0, lives - 1); updateHud(); flash();
+      if (lives <= 0) { endGame(false); return; }
+      resetPlayer(); paintSprites();
+    }
+    function onLevelClear() {
+      levelsDone = level + 1;
+      if (level >= LEVELS.length - 1) { endGame(true); return; }
+      cleanup(); phase = "between";
+      ov.style.display = "";
+      ov.innerHTML = `<div class="whg-msg">✅ ${LEVELS[level].name} cleared!<small>${lives} ${lives === 1 ? "life" : "lives"} left — up next: ${LEVELS[level + 1].name}.</small></div><button class="btn btn-primary whg-go" type="button">Next level →</button>`;
+      ov.querySelector(".whg-go").addEventListener("click", () => loadLevel(level + 1));
+    }
+    function endGame(won) {
       if (answered) return;
-      answered = true; cleanup();
-      let pts;
-      if (won) pts = deaths === 0 ? 3 : deaths <= 3 ? 2 : 1;
-      else pts = progressed > endX1 * 0.5 ? 1 : 0;
-      const cleanMsgs = ["You finished, but left a trail of bodies. Still counts.", "Crossed it with a few scars. Respectable.", "Flawless. No deaths. We are genuinely unsettled by you."];
+      answered = true; phase = "over"; cleanup();
+      const deaths = 3 - lives, pts = Math.min(3, levelsDone);
+      setAnswer(pts, { whgDeaths: deaths, whgWon: won ? 1 : 0, whgLevels: levelsDone });
       ov.style.display = "";
       ov.innerHTML = won
-        ? `<div class="whg-msg">🏁 You made it! <b>${deaths}</b> death${deaths === 1 ? "" : "s"}</div><button class="btn btn-primary whg-go" type="button">↻ Run it again</button>`
-        : `<div class="whg-msg">😵 Tapped out at <b>${deaths}</b> death${deaths === 1 ? "" : "s"}.</div><button class="btn btn-primary whg-go" type="button">↻ Try again</button>`;
-      ov.querySelector(".whg-go").addEventListener("click", start);
+        ? `<div class="whg-msg">🏁 All 3 levels beaten!<small>${deaths} death${deaths === 1 ? "" : "s"} — hit Next →</small></div>`
+        : `<div class="whg-msg">💀 Out of lives<small>Cleared ${levelsDone}/3 levels — hit Next →</small></div>`;
       reveal.hidden = false;
       reveal.innerHTML = won
-        ? `🏁 Crossed in <b>${deaths}</b> death${deaths === 1 ? "" : "s"}. ${deaths === 0 ? cleanMsgs[2] : deaths <= 3 ? cleanMsgs[1] : cleanMsgs[0]}<br><span class="whg-twist">…the calmer you stayed under fire, the more autistic we're afraid you are.</span>`
-        : `Tapped out after <b>${deaths}</b> death${deaths === 1 ? "" : "s"}. The blue dots win this round.`;
-      setAnswer(pts, { whgDeaths: deaths, whgWon: won ? 1 : 0 });
+        ? `🏁 Cleared all 3 levels with <b>${deaths}</b> death${deaths === 1 ? "" : "s"}. <span class="whg-twist">The calmer you stayed under fire, the more autistic we're afraid you are.</span>`
+        : `Cleared <b>${levelsDone}/3</b> levels before the blue dots won. ${levelsDone >= 2 ? "Genuinely impressive." : levelsDone === 1 ? "Respectable start." : "Brutal — the dots showed no mercy."}`;
     }
     function tick() {
       if (!document.body.contains(field)) { cleanup(); return; }
       if (!running) return;
       const t = Date.now(); let dt = last ? t - last : 16; last = t; if (dt > 60) dt = 60; const f = dt / 16;
-      const sp = 3.1 * f;
+      const sp = 3.0 * f;
       if (dir.left) px -= sp; if (dir.right) px += sp; if (dir.up) py -= sp; if (dir.down) py += sp;
       px = Math.max(PS / 2, Math.min(VW - PS / 2, px)); py = Math.max(PS / 2, Math.min(VH - PS / 2, py));
-      progressed = Math.max(progressed, px);
       for (const e of enemies) { e.x += e.vx * f; if (e.x <= e.xMin) { e.x = e.xMin; e.vx = Math.abs(e.vx); } else if (e.x >= e.xMax) { e.x = e.xMax; e.vx = -Math.abs(e.vx); } }
-      for (const c of coins) { if (!c.got && Math.abs(c.x - px) < 15 && Math.abs(c.y - py) < 15) c.got = true; }
       const half = PS / 2;
       for (const e of enemies) {
         const nx = Math.max(px - half, Math.min(e.x, px + half));
         const ny = Math.max(py - half, Math.min(e.y, py + half));
         const dx = e.x - nx, dy = e.y - ny;
-        if (dx * dx + dy * dy < e.r * e.r) { die(); break; }
+        if (dx * dx + dy * dy < e.r * e.r) { onDeath(); return; }
       }
-      if (px >= endX1 + 4) { paintSprites(); settle(true); return; }
-      paintSprites();
-    }
-    function start() {
-      if (running) return;
-      buildSprites(); resetPlayer(); deaths = 0; deathsEl.textContent = "Deaths: 0"; coins.forEach(c => c.got = false);
-      answered = false; progressed = 46;
-      ov.style.display = "none"; reveal.hidden = true;
-      running = true; last = 0;
-      addEventListener("keydown", onKey); addEventListener("keyup", onKey);
-      loop = setInterval(tick, 24);
+      if (px >= endX1 + 4) { paintSprites(); onLevelClear(); return; }
       paintSprites();
     }
     function onKey(e) {
@@ -1424,16 +1454,17 @@
       e.preventDefault();
       dir[k] = e.type === "keydown";
     }
+    function start() { if (phase !== "ready") return; loadLevel(0); }
     body.querySelectorAll(".whg-dbtn").forEach(b => {
       const d = b.getAttribute("data-dir");
-      const on = (e) => { e.preventDefault(); if (!running && !answered) start(); dir[d] = true; b.classList.add("active"); };
+      const on = (e) => { e.preventDefault(); if (phase === "ready") start(); dir[d] = true; b.classList.add("active"); };
       const off = (e) => { e.preventDefault(); dir[d] = false; b.classList.remove("active"); };
       b.addEventListener("pointerdown", on);
       b.addEventListener("pointerup", off);
       b.addEventListener("pointerleave", off);
       b.addEventListener("pointercancel", off);
     });
-    $(".whg-skip", body).addEventListener("click", () => settle(false));
+    $("#whg-giveup", body).addEventListener("click", () => endGame(false));
     ov.querySelector(".whg-go").addEventListener("click", start);
     buildSprites(); paintSprites();
   }
@@ -1784,8 +1815,7 @@
           <div class="q-count">Question ${i + 1} of ${QUESTIONS.length}</div>
           <h2 class="q-text">${Q.q}</h2>
           <div class="q-body"></div>
-          <div class="quiz-nav">
-            <button class="btn btn-ghost btn-sm" id="back-btn">← Back</button>
+          <div class="quiz-nav quiz-nav-next">
             <button class="btn btn-primary btn-sm" id="next-btn" disabled>Next →</button>
           </div>
         </div>`);
@@ -1841,11 +1871,6 @@
           submitToQueue(state);
           state.done = true; paint();
         } else { state.step++; paint(); }
-      });
-      $("#back-btn", node).addEventListener("click", () => {
-        if (state.step === 0) { state.step = -1; }
-        else state.step--;
-        paint();
       });
       shellEl.appendChild(node);
     }

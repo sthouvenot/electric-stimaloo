@@ -438,16 +438,16 @@
     seedIfEmpty() {
       if (this.all().length) return;
       const seed = [
-        ["Maya", "R", 8, { face: "femme", skin: SKINS[1], hairStyle: "long", hairColor: "#1c1c1c", shirt: "#ff3d7f", blush: true }],
-        ["Devon", "K", 19, { skin: SKINS[4], hairStyle: "short", hairColor: "#1c1c1c", shirt: "#2f9bff", eyewear: "glasses" }],
-        ["Priya", "S", 27, { face: "femme", skin: SKINS[3], hairStyle: "bun", hairColor: "#3b2417", shirt: "#ffd23f", earrings: true }],
-        ["Marcus", "T", 34, { skin: SKINS[5], hairStyle: "buzz", hairColor: "#1c1c1c", shirt: "#2ec27e", facialHair: "beard" }],
-        ["Sofia", "L", 44, { face: "femme", skin: SKINS[2], hairStyle: "curly", hairColor: "#6b4423", shirt: "#8b5cf6", freckles: true }],
-        ["Liam", "B", 52, { skin: SKINS[1], hairStyle: "short", hairColor: "#e3b04b", shirt: "#ff8a3d", eyewear: "shades" }],
-        ["Tasha", "M", 63, { face: "femme", skin: SKINS[6], hairStyle: "afro", hairColor: "#1c1c1c", shirt: "#ffd23f", earrings: true }],
-        ["Wen", "C", 71, { skin: SKINS[2], hairStyle: "short", hairColor: "#1c1c1c", shirt: "#2f9bff", headphones: true }],
-        ["Eli", "G", 83, { skin: SKINS[0], hairStyle: "mohawk", hairColor: "#2f9bff", shirt: "#2a2a2a", facialHair: "mustache" }],
-        ["Robin", "P", 94, { face: "femme", skin: SKINS[3], hairStyle: "long", hairColor: "#8b5cf6", shirt: "#ededed", eyewear: "glasses" }],
+        ["Maya", "R", 8, { face: "femme", skin: SKINS[1], hairStyle: "long", hairColor: "#1c1c1c", shirt: "#ff3d7f", blush: true }, { trainWatch: 2.3, eyeContact: 12.4 }],
+        ["Devon", "K", 19, { skin: SKINS[4], hairStyle: "short", hairColor: "#1c1c1c", shirt: "#2f9bff", eyewear: "glasses" }, { trainWatch: 5.1, eyeContact: 0.9 }],
+        ["Priya", "S", 27, { face: "femme", skin: SKINS[3], hairStyle: "bun", hairColor: "#3b2417", shirt: "#ffd23f", earrings: true }, { trainWatch: 9.7, eyeContact: 3.4 }],
+        ["Marcus", "T", 34, { skin: SKINS[5], hairStyle: "buzz", hairColor: "#1c1c1c", shirt: "#2ec27e", facialHair: "beard" }, { trainWatch: 1.1, eyeContact: 6.2 }],
+        ["Sofia", "L", 44, { face: "femme", skin: SKINS[2], hairStyle: "curly", hairColor: "#6b4423", shirt: "#8b5cf6", freckles: true }, { trainWatch: 15.6, eyeContact: 19.8 }],
+        ["Liam", "B", 52, { skin: SKINS[1], hairStyle: "short", hairColor: "#e3b04b", shirt: "#ff8a3d", eyewear: "shades" }, { trainWatch: 7.2, eyeContact: 0.4 }],
+        ["Tasha", "M", 63, { face: "femme", skin: SKINS[6], hairStyle: "afro", hairColor: "#1c1c1c", shirt: "#ffd23f", earrings: true }, { trainWatch: 23.9, eyeContact: 5.0 }],
+        ["Wen", "C", 71, { skin: SKINS[2], hairStyle: "short", hairColor: "#1c1c1c", shirt: "#2f9bff", headphones: true }, { trainWatch: 3.0, eyeContact: 9.1 }],
+        ["Eli", "G", 83, { skin: SKINS[0], hairStyle: "mohawk", hairColor: "#2f9bff", shirt: "#2a2a2a", facialHair: "mustache" }, { trainWatch: 6.6, eyeContact: 1.6 }],
+        ["Robin", "P", 94, { face: "femme", skin: SKINS[3], hairStyle: "long", hairColor: "#8b5cf6", shirt: "#ededed", eyewear: "glasses" }, { trainWatch: 11.1, eyeContact: 7.7 }],
       ];
       const now = Date.now();
       seed.forEach((s, i) => {
@@ -459,6 +459,7 @@
           avatar: s[3],
           score: s[2],
           answers: QUESTIONS.map(() => null),
+          metrics: s[4] || {},
           status: i % 4 === 0 ? "pending" : "approved",
           createdAt: now - (seed.length - i) * 60000,
           seeded: true,
@@ -930,7 +931,7 @@
         if (hint) hint.style.display = "none";
         reveal.hidden = false;
         reveal.innerHTML = `🚂 You watched for <b>${secs.toFixed(1)} seconds</b> before picking ${car.label}.<br><span class="tw-twist">…we weren't really asking about the car.</span>`;
-        setAnswer(points);
+        setAnswer(points, { trainWatch: +secs.toFixed(1) });
       });
     });
   }
@@ -995,7 +996,7 @@
       timerEl.textContent = s.toFixed(1) + "s";
       reveal.hidden = false;
       reveal.innerHTML = `You held eye contact for <b>${s.toFixed(1)} seconds</b>.<br><span class="ec-verdict">${VERDICTS[points]}</span>`;
-      setAnswer(points);
+      setAnswer(points, { eyeContact: +s.toFixed(1) });
     }
     btn.addEventListener("pointerdown", down);
     btn.addEventListener("pointercancel", up);
@@ -1005,7 +1006,7 @@
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
-    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "" };
+    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "" };
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
     const container = el(`<section class="section"><div class="quiz-shell"></div></section>`);
     const shellEl = $(".quiz-shell", container);
@@ -1302,7 +1303,7 @@
         setTimeout(() => { $(".meter-pin", node).style.left = state.score + "%"; }, 150);
         confetti.burst(150);
         $("#retake", node).addEventListener("click", () => {
-          state.step = -1; state.done = false; state.welcome = false; state.dateStep = ""; state.returningFull = ""; state.returningSentence = ""; state.answers = QUESTIONS.map(() => null); paint();
+          state.step = -1; state.done = false; state.welcome = false; state.dateStep = ""; state.returningFull = ""; state.returningSentence = ""; state.answers = QUESTIONS.map(() => null); state.metrics = {}; paint();
         });
         return;
       }
@@ -1323,8 +1324,9 @@
           </div>
         </div>`);
       const qbody = $(".q-body", node);
-      const setAnswer = (points) => {
+      const setAnswer = (points, meta) => {
         state.answers[i] = points;
+        if (meta) Object.assign(state.metrics, meta);
         const nb = $("#next-btn", node);
         if (nb) nb.disabled = false;
       };
@@ -1386,6 +1388,7 @@
       avatar: Object.assign({}, state.avatar),
       score: state.score,
       answers: state.answers.slice(),
+      metrics: Object.assign({}, state.metrics),
       agreed: !!state.agreed,
       returning: state.returningFull || "",
       status: "pending",
@@ -1522,6 +1525,7 @@
       </div>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+        <button class="btn btn-primary btn-sm" data-nav="/intro">🎉 Awards Intro</button>
         <button class="btn btn-ghost btn-sm" data-nav="/present">▶ Open Presentation</button>
         <button class="btn btn-ghost btn-sm" data-nav="/results">📊 View Results page</button>
         <button class="btn btn-ghost btn-sm" id="logout">Log out</button>
@@ -1605,6 +1609,98 @@
   /* ----------------------------------------------------------
      ROUTE: PRESENTATION
      ---------------------------------------------------------- */
+  /* ----------------------------------------------------------
+     AWARDS INTRO - a "Mario Party" superlatives show. Lines every
+     guest up along the bottom, then spotlights + roasts one winner
+     per fun-fact award (derived from quiz metrics) before the reveal.
+     ---------------------------------------------------------- */
+  function buildAwards(guests) {
+    const list = [];
+    const hasT = g => g.metrics && typeof g.metrics.trainWatch === "number";
+    const hasE = g => g.metrics && typeof g.metrics.eyeContact === "number";
+    const withT = guests.filter(hasT), withE = guests.filter(hasE);
+    const top = (arr, f) => arr.slice().sort((a, b) => f(b) - f(a))[0];
+    const bot = (arr, f) => arr.slice().sort((a, b) => f(a) - f(b))[0];
+    if (withT.length) { const g = top(withT, x => x.metrics.trainWatch); list.push({ emoji: "🚂", title: "Longest Train Stare", g, stat: `watched a looping cartoon train for <b>${g.metrics.trainWatch}s</b>`, roast: "We were genuinely worried you'd missed your stop." }); }
+    if (withT.length > 1) { const g = bot(withT, x => x.metrics.trainWatch); list.push({ emoji: "⚡", title: "Quickest Draw", g, stat: `picked a train car in <b>${g.metrics.trainWatch}s</b> flat`, roast: "Didn't even watch the train go by. Are you sure you're at the right party?" }); }
+    if (withE.length) { const g = top(withE, x => x.metrics.eyeContact); list.push({ emoji: "👁️", title: "The Iron Gaze", g, stat: `held eye contact for <b>${g.metrics.eyeContact}s</b> without flinching`, roast: "Nobody asked you to win this one. Please, blink." }); }
+    if (withE.length > 1) { const g = bot(withE, x => x.metrics.eyeContact); list.push({ emoji: "🫣", title: "First to Crack", g, stat: `lasted <b>${g.metrics.eyeContact}s</b> of eye contact before bailing`, roast: "Honestly? The most relatable person in the room." }); }
+    if (guests.length) { const g = guests.slice().sort((a, b) => Math.abs(a.score - 50) - Math.abs(b.score - 50))[0]; list.push({ emoji: "🎯", title: "Dead Center", g, stat: `landed at exactly <b>${g.score}/100</b>`, roast: "The living embodiment of 'well… it's a spectrum.'" }); }
+    return list;
+  }
+
+  let awardsKeyHandler = null;
+  route("/intro", function () {
+    if (load(LS.auth, false) !== true) return adminGate();
+    const guests = store.approved();
+    const awards = buildAwards(guests);
+    let awardIdx = 0;
+    const root = wrapDiv(`<section class="section fade-in"><div class="wrap">
+      <h2 class="section-title">🎉 The Awards Show</h2>
+      <p class="section-sub">A few superlatives before we crown the most autistic among us. Brace yourselves. 🏆</p>
+      <div class="award-stage" id="award-stage"></div>
+      <div class="award-roster" id="award-roster"></div>
+      <div class="present-controls">
+        <button class="btn btn-ghost btn-sm" id="aw-back">← Back</button>
+        <span class="present-count" id="aw-count"></span>
+        <button class="btn btn-primary" id="aw-next">Next award →</button>
+      </div>
+    </div></section>`);
+    const stageEl = $("#award-stage", root), rosterEl = $("#award-roster", root);
+    const countEl = $("#aw-count", root), nextBtn = $("#aw-next", root), backBtn = $("#aw-back", root);
+
+    if (!guests.length || !awards.length) {
+      stageEl.innerHTML = `<div class="placeholder">No approved guests yet.<br>Approve some in the <b>Admin</b> queue first.</div>`;
+      nextBtn.disabled = true;
+      backBtn.addEventListener("click", () => navigate("/admin"));
+      return root;
+    }
+
+    // line everyone up along the bottom
+    rosterEl.innerHTML = guests.map((g, i) =>
+      `<div class="roster-toon" data-i="${i}"><span class="avchip" style="width:54px;height:54px">${avatarSVG(g.avatar)}</span><div class="roster-name">${esc(g.firstName || g.name)}</div></div>`
+    ).join("");
+    const toons = Array.from(rosterEl.querySelectorAll(".roster-toon"));
+
+    function showAward(n) {
+      const a = awards[n], wi = guests.indexOf(a.g);
+      stageEl.innerHTML = `<div class="award-card fade-in">
+        <div class="award-kicker">${a.emoji} Award ${n + 1} of ${awards.length}</div>
+        <div class="award-title">${esc(a.title)}</div>
+        <div class="award-winner">
+          <span class="avchip" style="width:118px;height:118px">${avatarSVG(a.g.avatar)}</span>
+          <div class="award-name">${esc(a.g.name)}</div>
+        </div>
+        <div class="award-stat">${a.stat}</div>
+        <div class="award-roast">“${esc(a.roast)}”</div>
+      </div>`;
+      toons.forEach((t, i) => { t.classList.toggle("spotlight", i === wi); t.classList.toggle("dim", i !== wi); });
+      if (toons[wi]) toons[wi].scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+      countEl.textContent = `${n + 1} / ${awards.length}`;
+      nextBtn.textContent = n >= awards.length - 1 ? "Start the Reveal →" : "Next award →";
+      confetti.burst(70);
+    }
+    function go(delta) {
+      if (awardIdx >= awards.length - 1 && delta > 0) { navigate("/present"); return; }
+      if (awardIdx <= 0 && delta < 0) { navigate("/admin"); return; }
+      awardIdx = Math.max(0, Math.min(awards.length - 1, awardIdx + delta));
+      showAward(awardIdx);
+    }
+    nextBtn.addEventListener("click", () => go(1));
+    backBtn.addEventListener("click", () => go(-1));
+
+    if (awardsKeyHandler) removeEventListener("keydown", awardsKeyHandler);
+    awardsKeyHandler = (e) => {
+      if (location.hash !== "#/intro") return;
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") { e.preventDefault(); go(1); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
+    };
+    addEventListener("keydown", awardsKeyHandler);
+
+    setTimeout(() => showAward(0), 30);
+    return root;
+  });
+
   let presentRevealed = 0; // how many revealed so far this session
   route("/present", function () {
     if (load(LS.auth, false) !== true) return adminGate();

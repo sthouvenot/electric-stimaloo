@@ -176,7 +176,7 @@
     const h = HAIR[cfg.hairStyle] || HAIR.short;
     const bg = cfg.bg || "#ffffff";
     // a hat replaces the crown, so hide crown hair; keep only hair that drapes below it
-    const hatOn = ["beanie", "cap", "propeller", "party"].includes(cfg.headwear);
+    const hatOn = ["beanie", "cap", "propeller"].includes(cfg.headwear);
     const backHair = h.back && (!hatOn || h.drape) ? h.back(c) : "";
     const topHair = h.top && !hatOn ? h.top(c) : "";
 
@@ -222,7 +222,6 @@
     if (cfg.headwear === "beanie") headwear = `<g><path d="M24,38 C22,2 78,2 76,38 Z" fill="${shirt}"/><rect x="23" y="31" width="54" height="8" rx="4" fill="${shirt}"/><rect x="23" y="31" width="54" height="8" rx="4" fill="rgba(255,255,255,0.14)"/></g>`;
     else if (cfg.headwear === "cap") headwear = `<g fill="${shirt}"><path d="M25,40 C23,4 77,4 75,40 Z"/><path d="M73,40 C85,40 91,42 93,46 L74,46 C74,43 74,41 73,40 Z"/></g>`;
     else if (cfg.headwear === "propeller") headwear = `<g><path d="M27,40 C25,6 75,6 73,40 Z" fill="${shirt}" stroke="#1a1a1a" stroke-width="1.3"/><rect x="48.8" y="9" width="2.4" height="6" fill="#5a3a1a"/><g class="av-prop"><rect x="43" y="10.7" width="14" height="2.6" rx="1.3" fill="#ff3d7f"/><rect x="43" y="10.7" width="14" height="2.6" rx="1.3" fill="#2f9bff" transform="rotate(90 50 12)"/></g><circle cx="50" cy="12" r="1.8" fill="#1a1a1a"/></g>`;
-    else if (cfg.headwear === "party") headwear = `<g><path d="M50,3 L41,35 L59,35 Z" fill="${shirt}" stroke="#1a1a1a" stroke-width="1.6"/><path d="M45.5,23 h9" stroke="#fff" stroke-width="2.4" opacity=".85"/><path d="M47.5,14 h5" stroke="#fff" stroke-width="2.2" opacity=".85"/><circle cx="50" cy="3.5" r="3.3" fill="#ffd23f" stroke="#1a1a1a" stroke-width="1"/></g>`;
 
     const headphones = cfg.headphones ? `<g><path d="M22,42 C21,4 79,4 78,42" stroke="#2a2a2a" stroke-width="4" fill="none"/><rect x="19" y="41" width="9" height="14" rx="3.5" fill="#e23d6d"/><rect x="72" y="41" width="9" height="14" rx="3.5" fill="#e23d6d"/></g>` : "";
     const drink = drinkSVG(cfg.drink, skin);
@@ -872,7 +871,7 @@
             <div class="step-tag"><span class="step-num">1</span> Create your character <span class="step-arrow">→</span> <span class="step-faded">2 · take the test</span></div>
             <h2 class="section-title">First, build your autist</h2>
             <p class="section-sub">Make your little character below - <b>this isn't the test yet</b>. When you're happy with them, hit start and the 12 questions begin.</p>
-            <div class="char-note"><span class="char-note-icon">✋</span> <span><b>Use your real name.</b> The host approves every contestant by hand and will only wave through names he actually recognizes. Fake names, bits, and aliases get rejected at the door.</span></div>
+            <div class="char-note"><span><b>Use your real name 🪪.</b> The host approves every contestant by hand and will only wave through names he actually recognizes. Fake names, bits, and aliases get rejected at the door 🚪.</span></div>
             <div class="char-layout">
               <div class="char-form">
                 <div class="char-row">
@@ -942,7 +941,6 @@
                       <button type="button" class="opt-btn" data-v="beanie">🧢 Beanie</button>
                       <button type="button" class="opt-btn" data-v="cap">Cap</button>
                       <button type="button" class="opt-btn" data-v="propeller">🚁 Propeller</button>
-                      <button type="button" class="opt-btn" data-v="party">🎉 Party hat</button>
                     </div>
                   </div>
                   <div class="builder-group">
@@ -1033,7 +1031,7 @@
             mood: pick(MOODS).id, bg: pick(BGS),
             eyewear: pick(["none", "none", "glasses", "square", "shades"]),
             facialHair: f === "femme" ? "none" : pick(["none", "none", "stubble", "beard", "mustache"]),
-            headwear: pick(["none", "none", "none", "beanie", "cap", "propeller", "party"]), drink: pick(["none", "none", "none", "beer", "seltzer", "shirley", "lolly"]),
+            headwear: pick(["none", "none", "none", "beanie", "cap", "propeller"]), drink: pick(["none", "none", "none", "beer", "seltzer", "shirley", "lolly"]),
             earrings: Math.random() > 0.6, freckles: Math.random() > 0.6, blush: Math.random() > 0.7, headphones: Math.random() > 0.82,
           };
           paintAvatar();
@@ -1055,7 +1053,8 @@
         avName.style.cursor = "pointer";
         avName.title = "Edit your name";
         avName.addEventListener("click", () => {
-          const y = first.getBoundingClientRect().top + window.scrollY - 92;
+          const anchor = node.querySelector(".char-row") || first;
+          const y = anchor.getBoundingClientRect().top + window.scrollY - 124; // land a bit above the name fields
           window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
           setTimeout(() => first.focus({ preventScroll: true }), 320);
         });

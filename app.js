@@ -118,8 +118,8 @@
       top: c => `<g fill="${c}">${cap(c)}<circle cx="31" cy="22" r="7"/><circle cx="42" cy="16" r="7.5"/><circle cx="50" cy="13.5" r="7.5"/><circle cx="58" cy="16" r="7.5"/><circle cx="69" cy="22" r="7"/><circle cx="24" cy="33" r="5.5"/><circle cx="76" cy="33" r="5.5"/><circle cx="37" cy="30" r="3.4"/><circle cx="50" cy="28.5" r="3.4"/><circle cx="63" cy="30" r="3.4"/></g>`,
     },
     afro: { back: c => `<circle cx="50" cy="30" r="28" fill="${c}"/>`, top: c => cap(c) },
-    // spiky: cap base + a row of uniform, sharp upward spikes
-    spiky: { top: c => `<g fill="${c}">${cap(c)}<path d="M23,40 L28,9 L34,38 L39,8 L45,38 L50,7 L56,38 L61,8 L67,38 L72,9 L77,40 Z"/></g>` },
+    // spiky: cap base + a row of more, finer spikes (spikier but not as tall/aggressive)
+    spiky: { top: c => `<g fill="${c}">${cap(c)}<path d="M23,35 L27,12 L31,33 L36,11 L40,33 L44,10 L49,33 L53,10 L57,33 L62,11 L66,33 L71,12 L77,35 Z"/></g>` },
     // `drape: true` = the back piece hangs below a hat, so it survives when headwear is on
     long: { drape: true, back: c => `<path d="M22,42 C22,14 78,14 78,42 L78,84 L65,84 L65,44 C65,30 59,25 50,25 C41,25 35,30 35,44 L35,84 L22,84 Z" fill="${c}"/>`, top: c => cap(c) },
     // wavy: long base with a scalloped, wavy hem
@@ -164,7 +164,7 @@
     const hand = `<ellipse cx="67.5" cy="78" rx="2.3" ry="3" fill="${skin}" stroke="rgba(0,0,0,.35)" stroke-width=".7"/><ellipse cx="73" cy="80.5" rx="6.6" ry="4.6" fill="${skin}" stroke="rgba(0,0,0,.4)" stroke-width="1"/>`;
     if (drink === "beer") return `<g><rect x="68" y="60" width="10" height="20" rx="2" fill="#f6b93b" stroke="#1a1a1a" stroke-width="1.4"/><rect x="70" y="63" width="1.6" height="12" rx=".8" fill="#fff" opacity=".5"/><ellipse cx="73" cy="60" rx="5.6" ry="2.7" fill="#fff7e6" stroke="#1a1a1a" stroke-width="1"/>${hand}</g>`;
     if (drink === "seltzer") return `<g><rect x="69" y="58" width="8.5" height="22" rx="2.5" fill="#eef4fb" stroke="#1a1a1a" stroke-width="1.4"/><rect x="69.5" y="56.6" width="7.5" height="2.6" rx="1" fill="#b9c0c6" stroke="#1a1a1a" stroke-width=".8"/><rect x="69" y="66" width="8.5" height="7" fill="#2f9bff"/><circle cx="73.2" cy="69.5" r="1.9" fill="#ff3d7f"/>${hand}</g>`;
-    if (drink === "lolly") return `<g><rect x="72.2" y="56" width="1.8" height="26" rx=".9" fill="#fafafa" stroke="#1a1a1a" stroke-width=".7"/><circle cx="73" cy="56" r="7.5" fill="#ff5da2" stroke="#1a1a1a" stroke-width="1.4"/><path d="M73,51 A5,5 0 1 1 68.4,57.6" fill="none" stroke="#fff" stroke-width="1.4" opacity=".75"/><circle cx="73" cy="56" r="1.6" fill="none" stroke="#fff" stroke-width="1.1" opacity=".75"/>${hand}</g>`;
+    if (drink === "lolly") return `<g><rect x="70.3" y="59" width="1.7" height="22" rx=".85" fill="#fafafa" stroke="#1a1a1a" stroke-width=".7"/><circle cx="71" cy="59" r="6.6" fill="#ff5da2" stroke="#1a1a1a" stroke-width="1.3"/><path d="M71,54.6 A4.4,4.4 0 1 1 67,60.4" fill="none" stroke="#fff" stroke-width="1.3" opacity=".75"/><circle cx="71" cy="59" r="1.4" fill="none" stroke="#fff" stroke-width="1" opacity=".75"/>${hand}</g>`;
     return `<g><rect x="71" y="51" width="1.8" height="17" rx=".9" fill="#ff7aa0" transform="rotate(10 72 59)"/><rect x="68" y="64" width="10" height="16" rx="2" fill="#ff3158"/><rect x="68" y="59" width="10" height="21" rx="2" fill="rgba(255,255,255,.22)" stroke="#1a1a1a" stroke-width="1.4"/><path d="M76,55 Q78,51 80.5,52.5" stroke="#6b4a1f" stroke-width="1" fill="none"/><circle cx="76" cy="57" r="2.6" fill="#c0162f" stroke="#1a1a1a" stroke-width=".8"/>${hand}</g>`;
   }
   function avatarSVG(cfg) {
@@ -215,13 +215,13 @@
     else if (cfg.eyewear === "shades") eyewear = `<g fill="#1b1b1b"><rect x="33" y="40" width="14" height="8" rx="3.5"/><rect x="53" y="40" width="14" height="8" rx="3.5"/><rect x="46" y="42.5" width="8" height="2.2"/><path d="M33,42 l-4.5,-1.5" stroke="#1b1b1b" stroke-width="2"/><path d="M67,42 l4.5,-1.5" stroke="#1b1b1b" stroke-width="2"/></g>`;
 
     const earrings = cfg.earrings ? `<circle cx="27" cy="50.5" r="2.2" fill="#ffd23f" stroke="#b8860b" stroke-width="0.5"/><circle cx="73" cy="50.5" r="2.2" fill="#ffd23f" stroke="#b8860b" stroke-width="0.5"/>` : "";
-    const freckles = cfg.freckles ? `<g fill="#8a5a3a" opacity="0.5"><circle cx="38" cy="49" r="1"/><circle cx="42" cy="51" r="1"/><circle cx="40" cy="47" r="0.9"/><circle cx="62" cy="49" r="1"/><circle cx="58" cy="51" r="1"/><circle cx="60" cy="47" r="0.9"/></g>` : "";
+    const freckles = cfg.freckles ? `<g fill="#7a4326" opacity="0.72"><circle cx="38" cy="49" r="1.2"/><circle cx="42" cy="51" r="1.2"/><circle cx="40" cy="47" r="1.05"/><circle cx="36" cy="50.5" r="1"/><circle cx="62" cy="49" r="1.2"/><circle cx="58" cy="51" r="1.2"/><circle cx="60" cy="47" r="1.05"/><circle cx="64" cy="50.5" r="1"/></g>` : "";
     const blush = cfg.blush ? `<g fill="#ff7d96" opacity="0.45"><ellipse cx="37" cy="50" rx="4.5" ry="2.6"/><ellipse cx="63" cy="50" rx="4.5" ry="2.6"/></g>` : "";
 
     let headwear = "";
     if (cfg.headwear === "beanie") headwear = `<g><path d="M24,38 C22,2 78,2 76,38 Z" fill="${shirt}"/><rect x="23" y="31" width="54" height="8" rx="4" fill="${shirt}"/><rect x="23" y="31" width="54" height="8" rx="4" fill="rgba(255,255,255,0.14)"/></g>`;
     else if (cfg.headwear === "cap") headwear = `<g fill="${shirt}"><path d="M25,40 C23,4 77,4 75,40 Z"/><path d="M73,40 C85,40 91,42 93,46 L74,46 C74,43 74,41 73,40 Z"/></g>`;
-    else if (cfg.headwear === "propeller") headwear = `<g><path d="M27,40 C25,16 75,16 73,40 Z" fill="${shirt}" stroke="#1a1a1a" stroke-width="1.4"/><path d="M27,40 C25,16 75,16 73,40" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="1"/><rect x="48.7" y="12" width="2.6" height="9" rx="1" fill="#5a3a1a"/><g class="av-prop"><rect x="38" y="11.4" width="24" height="3" rx="1.5" fill="#ff3d7f"/><rect x="38" y="11.4" width="24" height="3" rx="1.5" fill="#2f9bff" transform="rotate(90 50 12.9)"/></g><circle cx="50" cy="12.9" r="2.1" fill="#1a1a1a"/></g>`;
+    else if (cfg.headwear === "propeller") headwear = `<g><path d="M27,40 C25,6 75,6 73,40 Z" fill="${shirt}" stroke="#1a1a1a" stroke-width="1.3"/><rect x="48.8" y="9" width="2.4" height="6" fill="#5a3a1a"/><g class="av-prop"><rect x="43" y="10.7" width="14" height="2.6" rx="1.3" fill="#ff3d7f"/><rect x="43" y="10.7" width="14" height="2.6" rx="1.3" fill="#2f9bff" transform="rotate(90 50 12)"/></g><circle cx="50" cy="12" r="1.8" fill="#1a1a1a"/></g>`;
     else if (cfg.headwear === "party") headwear = `<g><path d="M50,3 L41,35 L59,35 Z" fill="${shirt}" stroke="#1a1a1a" stroke-width="1.6"/><path d="M45.5,23 h9" stroke="#fff" stroke-width="2.4" opacity=".85"/><path d="M47.5,14 h5" stroke="#fff" stroke-width="2.2" opacity=".85"/><circle cx="50" cy="3.5" r="3.3" fill="#ffd23f" stroke="#1a1a1a" stroke-width="1"/></g>`;
 
     const headphones = cfg.headphones ? `<g><path d="M22,42 C21,4 79,4 78,42" stroke="#2a2a2a" stroke-width="4" fill="none"/><rect x="19" y="41" width="9" height="14" rx="3.5" fill="#e23d6d"/><rect x="72" y="41" width="9" height="14" rx="3.5" fill="#e23d6d"/></g>` : "";
@@ -567,7 +567,7 @@
               <div class="footer-tag">The 2nd Annual ${CONFIG.partyName} · ${CONFIG.date}, ${CONFIG.year}</div>
             </div>
           </div>
-          <p class="cause">💛 Want to help a cause? <a href="https://autisticadvocacy.org/donate/" target="_blank" rel="noopener">Support autistic-led advocacy →</a></p>
+          <p class="cause">💛 <span class="cause-pre">Want to help a cause? </span><a href="https://autisticadvocacy.org/donate/" target="_blank" rel="noopener">Support autistic-led advocacy →</a></p>
         </div>
       </footer>`);
     frag.appendChild(footer);
@@ -690,6 +690,28 @@
       </section>`);
     root.appendChild(hero);
 
+    // mobile photo strip: highlight whichever photo is centred (swipe brings the next one to the front)
+    const collageEl = $(".collage", hero);
+    if (collageEl) {
+      const updateFront = () => {
+        if (getComputedStyle(collageEl).overflowX !== "auto") { // desktop scatter: no "front"
+          collageEl.querySelectorAll(".polaroid").forEach(p => p.classList.remove("front"));
+          return;
+        }
+        const mid = collageEl.scrollLeft + collageEl.clientWidth / 2;
+        let best = null, bestD = Infinity;
+        collageEl.querySelectorAll(".polaroid").forEach(p => {
+          const d = Math.abs((p.offsetLeft + p.offsetWidth / 2) - mid);
+          if (d < bestD) { bestD = d; best = p; }
+        });
+        collageEl.querySelectorAll(".polaroid").forEach(p => p.classList.toggle("front", p === best));
+      };
+      let raf;
+      collageEl.addEventListener("scroll", () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(updateFront); }, { passive: true });
+      addEventListener("resize", updateFront, { passive: true });
+      setTimeout(updateFront, 60);
+    }
+
     bindNav(hero);
     return root;
   });
@@ -810,18 +832,6 @@
             <p class="route-body">${m.body}</p>
             <div class="route-links">${m.links.join("")}</div>
           </div>`).join("")}
-      </div>
-
-      <h3 class="block-head">🎧 The Soundtrack</h3>
-      <div class="soundtrack card">
-        <a class="fs-head" href="https://open.spotify.com/playlist/1nIuCQUJ9KvYf3iUD2ifti?si=3e3cce49b5434445" target="_blank" rel="noopener">
-          <svg class="fs-logo" viewBox="0 0 168 168" aria-hidden="true"><path fill="#1ED760" d="M83.996.277C37.747.277.253 37.77.253 84.019c0 46.251 37.494 83.741 83.743 83.741 46.254 0 83.744-37.49 83.744-83.741 0-46.246-37.49-83.738-83.745-83.738zm38.404 120.78a5.217 5.217 0 01-7.18 1.73c-19.662-12.012-44.414-14.73-73.564-8.07a5.222 5.222 0 01-6.249-3.93 5.213 5.213 0 013.926-6.25c31.9-7.291 59.263-4.155 81.337 9.33 2.46 1.51 3.24 4.72 1.73 7.19zm10.25-22.805c-1.89 3.075-5.91 4.045-8.98 2.155-22.51-13.839-56.823-17.846-83.448-9.764-3.453 1.043-7.1-.903-8.148-4.35a6.538 6.538 0 014.354-8.143c30.413-9.228 68.222-4.758 94.072 11.127 3.07 1.89 4.04 5.91 2.15 8.976zm.88-23.744c-26.99-16.031-71.52-17.505-97.289-9.684-4.138 1.255-8.514-1.081-9.768-5.219a7.835 7.835 0 015.221-9.771c29.581-8.98 78.756-7.245 109.83 11.202a7.823 7.823 0 012.74 10.733c-2.2 3.722-7.02 4.949-10.73 2.739z"/></svg>
-          <span>Official Party Playlist on Spotify →</span>
-        </a>
-        <iframe class="fs-embed" title="Electric Stimaloo playlist on Spotify" loading="lazy"
-          src="https://open.spotify.com/embed/playlist/1nIuCQUJ9KvYf3iUD2ifti?utm_source=generator"
-          width="100%" height="352" frameborder="0"
-          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
       </div>
 
       <h3 class="block-head">❓ Frequently Asked (Loudly)</h3>

@@ -53,6 +53,17 @@
     if (!f || !i) return null;
     return RETURNING_GUESTS.find(g => g.first.toLowerCase() === f && g.initial === i) || null;
   }
+  // girls the host has been on a date with -> they get a tongue-in-cheek "survey" instead of the quiz
+  const DATE_GUESTS = [
+    { first: "Mollie", initial: "W" },
+    { first: "Rachel", initial: "W" },
+  ];
+  function findDateGuest(firstName, lastInitial) {
+    const f = (firstName || "").trim().toLowerCase();
+    const i = (lastInitial || "").trim().toUpperCase().slice(0, 1);
+    if (!f || !i) return null;
+    return DATE_GUESTS.find(g => g.first.toLowerCase() === f && g.initial === i) || null;
+  }
 
   /* ----------------------------------------------------------
      PHOTOS - last year's pics (shown as a collage on the home page)
@@ -850,7 +861,7 @@
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
-    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), done: false, score: 0, bonus: 0, welcome: false, returningFull: "" };
+    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), done: false, score: 0, bonus: 0, welcome: false, returningFull: "", dateStep: "" };
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
     const container = el(`<section class="section"><div class="quiz-shell"></div></section>`);
     const shellEl = $(".quiz-shell", container);
@@ -1043,6 +1054,8 @@
           if (!state.lastInitial.trim()) { lasti.focus(); toast("Add your last initial!"); return; }
           if (!agree.checked) { toast("Check the honesty box to start 🤝"); return; }
           state.name = displayName();
+          const date = findDateGuest(state.firstName, state.lastInitial);
+          if (date) { state.dateStep = "survey"; state.welcome = false; state.bonus = 0; state.step = 0; paint(); window.scrollTo({ top: 0, behavior: "auto" }); return; }
           const ret = findReturningGuest(state.firstName, state.lastInitial);
           if (ret) { state.bonus = RETURN_BONUS; state.returningFull = ret.full; state.welcome = true; state.step = 0; paint(); }
           else { state.bonus = 0; state.returningFull = ""; state.welcome = false; state.step = 0; paint(); }
@@ -1062,6 +1075,45 @@
         markSel();
         refresh();
         setTimeout(() => first.focus(), 60);
+        return;
+      }
+
+      // date-guest bit: a fake "rate dating me" survey instead of the quiz
+      if (state.dateStep === "survey") {
+        const node = el(`
+          <div class="card date-survey fade-in">
+            <span class="wb-tag date-tag">💘 Special guest detected</span>
+            <h2 class="section-title">Hold on, <span class="grad-text">${esc(state.firstName.trim())}</span>…</h2>
+            <p class="wb-text">Instead of filling out this autism quiz, why don't you fill out <b>this</b> survey instead?</p>
+            <div class="date-q">
+              <label class="field-label">Rate dating me on a scale of 1–10</label>
+              <input class="name-input date-rating" id="date-rating" type="number" min="1" max="10" inputmode="numeric" placeholder="10, obviously" />
+            </div>
+            <div class="date-q">
+              <label class="field-label">Any feedback? (be honest, be generous)</label>
+              <textarea class="date-feedback" id="date-feedback" rows="4" placeholder="e.g. elite texter, slightly too into trains, would date again…"></textarea>
+            </div>
+            <div class="quiz-nav" style="justify-content:center;margin-top:6px">
+              <button class="btn btn-primary btn-lg" id="date-submit">Submit survey →</button>
+            </div>
+          </div>`);
+        shellEl.appendChild(node);
+        $("#date-submit", node).addEventListener("click", () => { state.dateStep = "kidding"; paint(); window.scrollTo({ top: 0 }); });
+        return;
+      }
+      if (state.dateStep === "kidding") {
+        const node = el(`
+          <div class="card date-kidding fade-in" style="text-align:center">
+            <div class="finale-medal">😏</div>
+            <h2 class="section-title">Just kidding…</h2>
+            <p class="wb-text">…but remember, there might be <b>a lot of you</b> at this party — so please don't fight over me. 😘</p>
+            <div class="quiz-nav" style="justify-content:center;margin-top:6px">
+              <button class="btn btn-primary btn-lg" id="date-continue">Okay fine, the actual test →</button>
+            </div>
+          </div>`);
+        shellEl.appendChild(node);
+        confetti.burst(80);
+        $("#date-continue", node).addEventListener("click", () => { state.dateStep = ""; state.step = 0; paint(); window.scrollTo({ top: 0 }); });
         return;
       }
 
@@ -1110,7 +1162,7 @@
         setTimeout(() => { $(".meter-pin", node).style.left = state.score + "%"; }, 150);
         confetti.burst(150);
         $("#retake", node).addEventListener("click", () => {
-          state.step = -1; state.done = false; state.welcome = false; state.bonus = 0; state.returningFull = ""; state.answers = QUESTIONS.map(() => null); paint();
+          state.step = -1; state.done = false; state.welcome = false; state.dateStep = ""; state.bonus = 0; state.returningFull = ""; state.answers = QUESTIONS.map(() => null); paint();
         });
         return;
       }

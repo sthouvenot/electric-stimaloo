@@ -356,6 +356,16 @@
       ],
     },
     {
+      kind: "dodge",
+      q: "Keep your avatar alive as long as you can.",
+      opts: [
+        ["Splatted almost immediately", 0],
+        ["Survived a little", 1],
+        ["Lasted a good while", 2],
+        ["Frighteningly good at this", 3],
+      ],
+    },
+    {
       q: "Group chats make you feel:",
       opts: [
         ["Energized, love them", 0],
@@ -438,16 +448,16 @@
     seedIfEmpty() {
       if (this.all().length) return;
       const seed = [
-        ["Maya", "R", 8, { face: "femme", skin: SKINS[1], hairStyle: "long", hairColor: "#1c1c1c", shirt: "#ff3d7f", blush: true }, { trainWatch: 2.3, eyeContact: 12.4 }],
-        ["Devon", "K", 19, { skin: SKINS[4], hairStyle: "short", hairColor: "#1c1c1c", shirt: "#2f9bff", eyewear: "glasses" }, { trainWatch: 5.1, eyeContact: 0.9 }],
-        ["Priya", "S", 27, { face: "femme", skin: SKINS[3], hairStyle: "bun", hairColor: "#3b2417", shirt: "#ffd23f", earrings: true }, { trainWatch: 9.7, eyeContact: 3.4 }],
-        ["Marcus", "T", 34, { skin: SKINS[5], hairStyle: "buzz", hairColor: "#1c1c1c", shirt: "#2ec27e", facialHair: "beard" }, { trainWatch: 1.1, eyeContact: 6.2 }],
-        ["Sofia", "L", 44, { face: "femme", skin: SKINS[2], hairStyle: "curly", hairColor: "#6b4423", shirt: "#8b5cf6", freckles: true }, { trainWatch: 15.6, eyeContact: 19.8 }],
-        ["Liam", "B", 52, { skin: SKINS[1], hairStyle: "short", hairColor: "#e3b04b", shirt: "#ff8a3d", eyewear: "shades" }, { trainWatch: 7.2, eyeContact: 0.4 }],
-        ["Tasha", "M", 63, { face: "femme", skin: SKINS[6], hairStyle: "afro", hairColor: "#1c1c1c", shirt: "#ffd23f", earrings: true }, { trainWatch: 23.9, eyeContact: 5.0 }],
-        ["Wen", "C", 71, { skin: SKINS[2], hairStyle: "short", hairColor: "#1c1c1c", shirt: "#2f9bff", headphones: true }, { trainWatch: 3.0, eyeContact: 9.1 }],
-        ["Eli", "G", 83, { skin: SKINS[0], hairStyle: "mohawk", hairColor: "#2f9bff", shirt: "#2a2a2a", facialHair: "mustache" }, { trainWatch: 6.6, eyeContact: 1.6 }],
-        ["Robin", "P", 94, { face: "femme", skin: SKINS[3], hairStyle: "long", hairColor: "#8b5cf6", shirt: "#ededed", eyewear: "glasses" }, { trainWatch: 11.1, eyeContact: 7.7 }],
+        ["Maya", "R", 8, { face: "femme", skin: SKINS[1], hairStyle: "long", hairColor: "#1c1c1c", shirt: "#ff3d7f", blush: true }, { trainWatch: 2.3, eyeContact: 12.4, dodge: 5.5 }],
+        ["Devon", "K", 19, { skin: SKINS[4], hairStyle: "short", hairColor: "#1c1c1c", shirt: "#2f9bff", eyewear: "glasses" }, { trainWatch: 5.1, eyeContact: 0.9, dodge: 9.2 }],
+        ["Priya", "S", 27, { face: "femme", skin: SKINS[3], hairStyle: "bun", hairColor: "#3b2417", shirt: "#ffd23f", earrings: true }, { trainWatch: 9.7, eyeContact: 3.4, dodge: 2.1 }],
+        ["Marcus", "T", 34, { skin: SKINS[5], hairStyle: "buzz", hairColor: "#1c1c1c", shirt: "#2ec27e", facialHair: "beard" }, { trainWatch: 1.1, eyeContact: 6.2, dodge: 18.7 }],
+        ["Sofia", "L", 44, { face: "femme", skin: SKINS[2], hairStyle: "curly", hairColor: "#6b4423", shirt: "#8b5cf6", freckles: true }, { trainWatch: 15.6, eyeContact: 19.8, dodge: 7.0 }],
+        ["Liam", "B", 52, { skin: SKINS[1], hairStyle: "short", hairColor: "#e3b04b", shirt: "#ff8a3d", eyewear: "shades" }, { trainWatch: 7.2, eyeContact: 0.4, dodge: 12.3 }],
+        ["Tasha", "M", 63, { face: "femme", skin: SKINS[6], hairStyle: "afro", hairColor: "#1c1c1c", shirt: "#ffd23f", earrings: true }, { trainWatch: 23.9, eyeContact: 5.0, dodge: 3.8 }],
+        ["Wen", "C", 71, { skin: SKINS[2], hairStyle: "short", hairColor: "#1c1c1c", shirt: "#2f9bff", headphones: true }, { trainWatch: 3.0, eyeContact: 9.1, dodge: 22.0 }],
+        ["Eli", "G", 83, { skin: SKINS[0], hairStyle: "mohawk", hairColor: "#2f9bff", shirt: "#2a2a2a", facialHair: "mustache" }, { trainWatch: 6.6, eyeContact: 1.6, dodge: 14.4 }],
+        ["Robin", "P", 94, { face: "femme", skin: SKINS[3], hairStyle: "long", hairColor: "#8b5cf6", shirt: "#ededed", eyewear: "glasses" }, { trainWatch: 11.1, eyeContact: 7.7, dodge: 6.1 }],
       ];
       const now = Date.now();
       seed.forEach((s, i) => {
@@ -1002,6 +1012,79 @@
     btn.addEventListener("pointercancel", up);
   }
 
+  // Dodge game: the player's own avatar follows the pointer; survive the falling
+  // junk. Longer survival = better reflexes/hyperfocus = higher score. Uses a
+  // setInterval loop (rAF throttles in background tabs) and self-cleans if the
+  // quiz navigates away mid-game.
+  function renderDodgeGame(body, Q, setAnswer, avatar) {
+    body.innerHTML = `
+      <div class="dodge-stage" id="dodge-stage">
+        <div class="dodge-hud"><span class="dodge-time">0.0s</span></div>
+        <div class="dodge-player" id="dodge-player"><span class="avchip" style="width:100%;height:100%">${avatarSVG(avatar)}</span></div>
+        <div class="dodge-overlay" id="dodge-ov">
+          <div class="dodge-msg">Keep your avatar alive.<small>Move with your mouse / finger — dodge the falling junk.</small></div>
+          <button class="btn btn-primary dodge-go" type="button">▶ Start</button>
+        </div>
+      </div>
+      <div class="dodge-reveal" hidden></div>`;
+    const stage = $("#dodge-stage", body), player = $("#dodge-player", body), timeEl = $(".dodge-time", body), ov = $("#dodge-ov", body), reveal = $(".dodge-reveal", body);
+    const PLAYER = 52, PAD = 4, EMOJI = ["🧱","🔨","📦","🪨","🧊","⚙️","🔧","💣"];
+    let running = false, loop = null, startT = 0, best = 0, elapsed = 0, last = 0, spawnAcc = 0, px = 0, W = 0, H = 0, rocks = [];
+    function measure() { const r = stage.getBoundingClientRect(); W = r.width; H = r.height; return r; }
+    function setPlayer(clientX) { const r = stage.getBoundingClientRect(); px = Math.max(PAD, Math.min(W - PLAYER - PAD, clientX - r.left - PLAYER / 2)); player.style.left = px + "px"; }
+    function onMove(e) { setPlayer(e.clientX); }
+    function spawnRock() {
+      const sz = 24 + Math.random() * 20, x = PAD + Math.random() * (W - sz - PAD * 2);
+      const d = document.createElement("div");
+      d.className = "dodge-rock"; d.textContent = EMOJI[Math.floor(Math.random() * EMOJI.length)];
+      d.style.width = d.style.height = sz + "px"; d.style.left = x + "px"; d.style.top = (-sz) + "px";
+      stage.appendChild(d);
+      rocks.push({ el: d, x, y: -sz, size: sz, vy: 2 + Math.random() * 1.6 });
+    }
+    function cleanup() { running = false; clearInterval(loop); window.removeEventListener("pointermove", onMove); }
+    function tick() {
+      if (!document.body.contains(stage)) { cleanup(); return; }
+      if (!running) return;
+      const t = Date.now();
+      let dt = last ? t - last : 16; last = t; if (dt > 60) dt = 60;
+      elapsed = (t - startT) / 1000;
+      timeEl.textContent = elapsed.toFixed(1) + "s";
+      const speed = 1 + elapsed * 0.07;
+      spawnAcc += dt;
+      const every = Math.max(260, 680 - elapsed * 24);
+      if (spawnAcc >= every) { spawnAcc = 0; spawnRock(); }
+      const playerTop = H - PLAYER - 10;
+      for (let i = rocks.length - 1; i >= 0; i--) {
+        const rk = rocks[i];
+        rk.y += rk.vy * speed * (dt / 16);
+        rk.el.style.top = rk.y + "px";
+        if (rk.y + rk.size > playerTop + 6 && rk.y < playerTop + PLAYER - 6 && rk.x + rk.size > px + 6 && rk.x < px + PLAYER - 6) { gameOver(); return; }
+        if (rk.y > H) { rk.el.remove(); rocks.splice(i, 1); }
+      }
+    }
+    function start() {
+      if (running) return;
+      rocks.forEach(r => r.el.remove()); rocks = [];
+      measure(); setPlayer(stage.getBoundingClientRect().left + W / 2);
+      running = true; startT = Date.now(); last = 0; spawnAcc = 0; elapsed = 0;
+      ov.style.display = "none"; reveal.hidden = true; stage.classList.add("dodge-playing");
+      window.addEventListener("pointermove", onMove, { passive: true });
+      loop = setInterval(tick, 24);
+    }
+    function gameOver() {
+      cleanup(); stage.classList.remove("dodge-playing");
+      if (elapsed > best) best = elapsed;
+      const points = best < 3 ? 0 : best < 7 ? 1 : best < 13 ? 2 : 3;
+      const verdicts = ["Reflexes of a sleepy cat. We love that for you.", "Decent. You panicked, but on a delay.", "Sharp. Suspiciously locked in.", "Frightening hand-eye control. Textbook hyperfocus."];
+      ov.style.display = ""; ov.innerHTML = `<div class="dodge-msg">💥 You survived <b>${elapsed.toFixed(1)}s</b></div><button class="btn btn-primary dodge-go" type="button">↻ Try again</button>`;
+      ov.querySelector(".dodge-go").addEventListener("click", start);
+      reveal.hidden = false;
+      reveal.innerHTML = `Best run: <b>${best.toFixed(1)}s</b> — ${verdicts[points]}<br><span class="dodge-twist">…the better you are at this, the more autistic we're afraid you are.</span>`;
+      setAnswer(points, { dodge: +best.toFixed(1) });
+    }
+    ov.querySelector(".dodge-go").addEventListener("click", start);
+  }
+
   /* ----------------------------------------------------------
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
@@ -1353,6 +1436,8 @@
         renderEyeContactGame(qbody, Q, setAnswer);
       } else if (kind === "eyes") {
         renderEyesGame(qbody, Q, setAnswer);
+      } else if (kind === "dodge") {
+        renderDodgeGame(qbody, Q, setAnswer, state.avatar);
       }
       const isLast = i === QUESTIONS.length - 1;
       const nextBtn = $("#next-btn", node);
@@ -1618,13 +1703,15 @@
     const list = [];
     const hasT = g => g.metrics && typeof g.metrics.trainWatch === "number";
     const hasE = g => g.metrics && typeof g.metrics.eyeContact === "number";
-    const withT = guests.filter(hasT), withE = guests.filter(hasE);
+    const hasD = g => g.metrics && typeof g.metrics.dodge === "number";
+    const withT = guests.filter(hasT), withE = guests.filter(hasE), withD = guests.filter(hasD);
     const top = (arr, f) => arr.slice().sort((a, b) => f(b) - f(a))[0];
     const bot = (arr, f) => arr.slice().sort((a, b) => f(a) - f(b))[0];
     if (withT.length) { const g = top(withT, x => x.metrics.trainWatch); list.push({ emoji: "🚂", title: "Longest Train Stare", g, stat: `watched a looping cartoon train for <b>${g.metrics.trainWatch}s</b>`, roast: "We were genuinely worried you'd missed your stop." }); }
     if (withT.length > 1) { const g = bot(withT, x => x.metrics.trainWatch); list.push({ emoji: "⚡", title: "Quickest Draw", g, stat: `picked a train car in <b>${g.metrics.trainWatch}s</b> flat`, roast: "Didn't even watch the train go by. Are you sure you're at the right party?" }); }
     if (withE.length) { const g = top(withE, x => x.metrics.eyeContact); list.push({ emoji: "👁️", title: "The Iron Gaze", g, stat: `held eye contact for <b>${g.metrics.eyeContact}s</b> without flinching`, roast: "Nobody asked you to win this one. Please, blink." }); }
     if (withE.length > 1) { const g = bot(withE, x => x.metrics.eyeContact); list.push({ emoji: "🫣", title: "First to Crack", g, stat: `lasted <b>${g.metrics.eyeContact}s</b> of eye contact before bailing`, roast: "Honestly? The most relatable person in the room." }); }
+    if (withD.length) { const g = top(withD, x => x.metrics.dodge); list.push({ emoji: "🎮", title: "Reflex Champion", g, stat: `kept their avatar alive for <b>${g.metrics.dodge}s</b>`, roast: "Unsettling hand-eye control. We see those gamer hours." }); }
     if (guests.length) { const g = guests.slice().sort((a, b) => Math.abs(a.score - 50) - Math.abs(b.score - 50))[0]; list.push({ emoji: "🎯", title: "Dead Center", g, stat: `landed at exactly <b>${g.score}/100</b>`, roast: "The living embodiment of 'well… it's a spectrum.'" }); }
     return list;
   }

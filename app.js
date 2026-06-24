@@ -194,6 +194,7 @@
     const skin = cfg.skin || SKINS[2];
     const c = cfg.hairColor || HAIRCOLORS[1];
     const shirt = cfg.shirt || SHIRTS[0];
+    const hw = cfg.headwearColor || shirt; // headwear has its own color now
     const fem = (cfg.face || "masc") === "femme";
     const h = HAIR[cfg.hairStyle] || HAIR.short;
     const bg = cfg.bg || "#ffffff";
@@ -241,9 +242,12 @@
     const blush = cfg.blush ? `<g fill="#ff7d96" opacity="0.45"><ellipse cx="37" cy="50" rx="4.5" ry="2.6"/><ellipse cx="63" cy="50" rx="4.5" ry="2.6"/></g>` : "";
 
     let headwear = "";
-    if (cfg.headwear === "beanie") headwear = `<g><path d="M24,38 C22,2 78,2 76,38 Z" fill="${shirt}"/><rect x="23" y="31" width="54" height="8" rx="4" fill="${shirt}"/><rect x="23" y="31" width="54" height="8" rx="4" fill="rgba(255,255,255,0.14)"/></g>`;
-    else if (cfg.headwear === "cap") headwear = `<g fill="${shirt}"><path d="M25,40 C23,4 77,4 75,40 Z"/><path d="M73,40 C85,40 91,42 93,46 L74,46 C74,43 74,41 73,40 Z"/></g>`;
-    else if (cfg.headwear === "propeller") headwear = `<g><path d="M27,40 C25,6 75,6 73,40 Z" fill="${shirt}" stroke="#1a1a1a" stroke-width="1.3"/><rect x="48.8" y="9" width="2.4" height="6" fill="#5a3a1a"/><g class="av-prop"><rect x="43" y="10.7" width="14" height="2.6" rx="1.3" fill="#ff3d7f"/><rect x="43" y="10.7" width="14" height="2.6" rx="1.3" fill="#2f9bff" transform="rotate(90 50 12)"/></g><circle cx="50" cy="12" r="1.8" fill="#1a1a1a"/></g>`;
+    if (cfg.headwear === "beanie") headwear = `<g><path d="M24,38 C22,2 78,2 76,38 Z" fill="${hw}"/><rect x="23" y="31" width="54" height="8" rx="4" fill="${hw}"/><rect x="23" y="31" width="54" height="8" rx="4" fill="rgba(255,255,255,0.14)"/></g>`;
+    else if (cfg.headwear === "cap") headwear = `<g fill="${hw}"><path d="M25,40 C23,4 77,4 75,40 Z"/><path d="M73,40 C85,40 91,42 93,46 L74,46 C74,43 74,41 73,40 Z"/></g>`;
+    // propeller: cap raised to fully cover the crown (was exposing a sliver of
+    // backdrop up top), and the blade spins via SMIL animateTransform around an
+    // explicit SVG centre — the old CSS transform-box spin mis-rendered on mobile.
+    else if (cfg.headwear === "propeller") headwear = `<g><path d="M26,40 C24,1 76,1 74,40 Z" fill="${hw}" stroke="#1a1a1a" stroke-width="1.3"/><rect x="48.8" y="8" width="2.4" height="7" fill="#5a3a1a"/><g><rect x="43" y="10.7" width="14" height="2.6" rx="1.3" fill="#ff3d7f"/><rect x="43" y="10.7" width="14" height="2.6" rx="1.3" fill="#2f9bff" transform="rotate(90 50 12)"/><animateTransform attributeName="transform" attributeType="XML" type="rotate" from="0 50 12" to="360 50 12" dur="0.5s" repeatCount="indefinite"/></g><circle cx="50" cy="12" r="1.9" fill="#1a1a1a"/></g>`;
 
     const headphones = cfg.headphones ? `<g><path d="M22,42 C21,4 79,4 78,42" stroke="#2a2a2a" stroke-width="4" fill="none"/><rect x="19" y="41" width="9" height="14" rx="3.5" fill="#e23d6d"/><rect x="72" y="41" width="9" height="14" rx="3.5" fill="#e23d6d"/></g>` : "";
     const drink = drinkSVG(cfg.drink, skin);
@@ -266,7 +270,7 @@
   function avatarChip(cfg, px) {
     return `<span class="avchip" style="width:${px}px;height:${px}px">${avatarSVG(cfg)}</span>`;
   }
-  const DEFAULT_AVATAR = { face: "masc", skin: SKINS[2], hairStyle: "short", hairColor: HAIRCOLORS[1], shirt: SHIRTS[0], mood: "smile", bg: "#fff0c8", eyewear: "none", facialHair: "none", headwear: "none", drink: "none", earrings: false, freckles: false, blush: false, headphones: false };
+  const DEFAULT_AVATAR = { face: "masc", skin: SKINS[2], hairStyle: "short", hairColor: HAIRCOLORS[1], shirt: SHIRTS[0], mood: "smile", bg: "#fff0c8", eyewear: "none", facialHair: "none", headwear: "none", headwearColor: SHIRTS[0], drink: "none", earrings: false, freckles: false, blush: false, headphones: false };
   const AV_PRESETS = { masc: { face: "masc", hairStyle: "short" }, femme: { face: "femme", hairStyle: "long" } };
 
   /* ----------------------------------------------------------
@@ -356,7 +360,7 @@
       kind: "polo",
       bare: true, // renders its own meme-style card; hide the default chrome
       q: "How many holes in a Polo?",
-      opts: [["One", 3], ["Two", 1], ["Three", 0], ["Four", 2]],
+      opts: [["One", 1], ["Two", 1], ["Three", 1], ["Four", 3]], // four is correct (scored silently)
     },
     {
       kind: "reenterpin",
@@ -1190,9 +1194,14 @@
         let diff = Math.abs(hue - g);
         if (diff > 180) diff = 360 - diff;
         const pts = diff < 15 ? 3 : diff < 35 ? 2 : diff < 70 ? 1 : 0;
-        const msgs = ["Way off — but maybe you're colorblind and we respect that.", "Getting warm.", "Pretty close!", "Perfect match. Suspicious."];
-        submitBtn.disabled = true;
-        submitBtn.textContent = `Off by ${diff}° — ${msgs[pts]}`;
+        const msgs = ["Not even close — were you even looking? 👀", "Same rough ballpark.", "Ooh, pretty close!", "Basically a perfect match. Spooky color memory."];
+        // show the real color next to their guess (no confusing "degrees")
+        guess.innerHTML = `
+          <p class="colq-verdict">${msgs[pts]}</p>
+          <div class="colq-compare">
+            <div class="colq-cmp"><div class="colq-cmp-sw" style="background:hsl(${hue},72%,56%)"></div><span>the color</span></div>
+            <div class="colq-cmp"><div class="colq-cmp-sw" style="background:hsl(${g},72%,56%)"></div><span>your match</span></div>
+          </div>`;
         setAnswer(pts);
       });
     }
@@ -1202,29 +1211,27 @@
     body.innerHTML = `
       <div class="typeq">
         <div class="typeq-target" id="tq-target">${esc(TYPING_SENTENCE)}</div>
-        <textarea class="typeq-input" id="tq-in" rows="3" placeholder='Click "Start" then type…' disabled></textarea>
+        <textarea class="typeq-input" id="tq-in" rows="3" placeholder="Just start typing — the timer begins the moment you do…"></textarea>
         <div class="typeq-timer" id="tq-timer">0.00s</div>
-        <button class="btn btn-primary" id="tq-start">▶ Start</button>
         <div class="typeq-result" id="tq-result" hidden></div>
       </div>`;
     const target = TYPING_SENTENCE;
-    const inp = $("#tq-in", body), timerEl = $("#tq-timer", body), startBtn = $("#tq-start", body), result = $("#tq-result", body);
-    let startT = 0, tick = null;
-    startBtn.addEventListener("click", () => {
-      inp.disabled = false;
-      inp.value = "";
-      inp.focus();
-      startBtn.disabled = true;
-      startT = Date.now();
-      tick = setInterval(() => { timerEl.textContent = ((Date.now() - startT) / 1000).toFixed(2) + "s"; }, 50);
-    });
+    const inp = $("#tq-in", body), timerEl = $("#tq-timer", body), result = $("#tq-result", body);
+    let startT = 0, tick = null, started = false, finished = false;
     inp.addEventListener("input", () => {
-      if (inp.disabled) return;
+      if (finished) return;
+      // the clock starts on the very first keystroke — no start button
+      if (!started) {
+        started = true;
+        startT = Date.now();
+        tick = setInterval(() => { timerEl.textContent = ((Date.now() - startT) / 1000).toFixed(2) + "s"; }, 50);
+      }
       const v = inp.value;
       const correct = target.startsWith(v);
       inp.classList.toggle("typeq-ok", v === target);
       inp.classList.toggle("typeq-wrong", !correct && v.length > 0);
       if (v === target) {
+        finished = true;
         clearInterval(tick);
         const secs = (Date.now() - startT) / 1000;
         inp.disabled = true;
@@ -1236,6 +1243,7 @@
         setAnswer(pts);
       }
     });
+    setTimeout(() => inp.focus(), 60);
   }
 
   function renderReenterPinGame(body, Q, setAnswer, state) {
@@ -1274,7 +1282,24 @@
   // day = peak autism energy. Guess month/day/year; scored on how close.
   const QE_BIRTH = { y: 1926, m: 4, d: 21 };
   const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const BIRTHSTONES = ["Garnet","Amethyst","Aquamarine","Diamond","Emerald","Pearl","Ruby","Peridot","Sapphire","Opal","Topaz","Turquoise"];
+  const BIRTHFLOWERS = ["Carnation","Violet","Daffodil","Daisy","Lily of the Valley","Rose","Larkspur","Gladiolus","Aster","Marigold","Chrysanthemum","Holly"];
   function dayOfYear(m, d) { const cum = [0,31,59,90,120,151,181,212,243,273,304,334]; return cum[m-1] + d; }
+  function daysInMonth(m, y) { const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; return [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1]; }
+  function zodiacSign(m, d) {
+    const last = [19,18,20,19,20,20,22,22,21,22,21,19];
+    const signs = ["Capricorn","Aquarius","Pisces","Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn"];
+    return d > last[m-1] ? signs[m] : signs[m-1];
+  }
+  function ordinal(n) { const s = ["th","st","nd","rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+  // a fun fact derivable for ANY day of the year
+  function dayFunFact(m, d) {
+    const doy = dayOfYear(m, d), remaining = 365 - doy, xmas = dayOfYear(12, 25);
+    const tillXmas = doy <= xmas ? xmas - doy : 365 - doy + xmas;
+    const sign = zodiacSign(m, d);
+    const xmasBit = tillXmas === 0 ? ", and it's Christmas Day itself 🎄" : `, and it's <b>${tillXmas}</b> day${tillXmas === 1 ? "" : "s"} until Christmas 🎄`;
+    return `📅 <b>${MONTHS[m-1]} ${d}</b> is the <b>${ordinal(doy)}</b> day of the year (${remaining} to go). Anyone born then is a <b>${sign}</b>, with birthstone <b>${BIRTHSTONES[m-1]}</b> and birth-flower the <b>${BIRTHFLOWERS[m-1]}</b>${xmasBit}.`;
+  }
   function renderQueenBdayGame(body, Q, setAnswer) {
     body.innerHTML = `
       <div class="qbq">
@@ -1289,14 +1314,25 @@
             <input class="qbq-in" id="qb-y" type="number" min="1000" max="2026" inputmode="numeric" />
           </label>
         </div>
+        <div class="qbq-err" id="qb-err" hidden></div>
         <button class="btn btn-primary" id="qb-submit" disabled>Lock in guess →</button>
         <div class="qbq-reveal" id="qb-reveal" hidden></div>
       </div>`;
-    const mSel = $("#qb-m", body), dIn = $("#qb-d", body), yIn = $("#qb-y", body), btn = $("#qb-submit", body), reveal = $("#qb-reveal", body);
+    const mSel = $("#qb-m", body), dIn = $("#qb-d", body), yIn = $("#qb-y", body), btn = $("#qb-submit", body), reveal = $("#qb-reveal", body), err = $("#qb-err", body);
     const check = () => { btn.disabled = !(mSel.value && dIn.value && yIn.value); };
-    mSel.addEventListener("change", check); dIn.addEventListener("input", check); yIn.addEventListener("input", check);
+    // keep the day between 1 and 31 as they type
+    dIn.addEventListener("input", () => { let v = dIn.value.replace(/[^\d]/g, ""); if (v !== "") v = String(Math.max(1, Math.min(31, +v))); dIn.value = v; err.hidden = true; check(); });
+    mSel.addEventListener("change", () => { err.hidden = true; check(); });
+    yIn.addEventListener("input", () => { err.hidden = true; check(); });
     btn.addEventListener("click", () => {
-      const m = +mSel.value, d = Math.max(1, Math.min(31, +dIn.value || 1)), y = +yIn.value || 0;
+      const m = +mSel.value, d = +dIn.value, y = +yIn.value || 0;
+      // reject impossible dates (April 31, Feb 30, Feb 29 in a non-leap year…)
+      const dim = daysInMonth(m, y || 2024);
+      if (d < 1 || d > dim) {
+        err.hidden = false;
+        err.innerHTML = `🚫 <b>${MONTHS[m-1]} ${d}</b> isn't a real date — ${MONTHS[m-1]}${m === 2 ? ` ${y}` : ""} only has <b>${dim}</b> days. Try again.`;
+        return;
+      }
       let dist = Math.abs(dayOfYear(m, d) - dayOfYear(QE_BIRTH.m, QE_BIRTH.d));
       if (dist > 182) dist = 365 - dist; // wrap around the calendar
       const yearOff = Math.abs(y - QE_BIRTH.y);
@@ -1313,7 +1349,7 @@
         "You KNEW that. Why do you know that? (You're among friends.)",
       ];
       reveal.hidden = false;
-      reveal.innerHTML = `The answer: <b>21 April 1926</b>.<br>${exact ? "🎯 Exact match. " : ""}${roasts[pts]}`;
+      reveal.innerHTML = `${dayFunFact(m, d)}<br><br>The answer was <b>21 April 1926</b>. ${exact ? "🎯 Exact match! " : ""}${roasts[pts]}`;
       btn.disabled = true; btn.textContent = "Locked in";
       mSel.disabled = dIn.disabled = yIn.disabled = true;
       setAnswer(pts);
@@ -1331,6 +1367,7 @@
         <div class="whg-hud">
           <span class="whg-level" id="whg-level">Easy</span>
           <span class="whg-levelnum" id="whg-levelnum">Level 1 / 3</span>
+          <span class="whg-coins" id="whg-coins">🪙 0/1</span>
           <span class="whg-lives" id="whg-lives">❤️❤️❤️</span>
         </div>
         <div class="whg-field" id="whg-field">
@@ -1339,7 +1376,7 @@
           <div class="whg-layer" id="whg-layer"></div>
           <div class="whg-player" id="whg-player"></div>
           <div class="whg-overlay" id="whg-ov">
-            <div class="whg-msg">Cross all 3 levels.<small>Arrow keys / WASD — or the buttons below. Touch a blue dot and you lose a life. You get 3 total.</small></div>
+            <div class="whg-msg">Cross all 3 levels.<small>Grab every 🪙, then reach the far side. Arrow keys / WASD or the buttons below. A blue dot costs a life — you get 3.</small></div>
             <button class="btn btn-primary whg-go" type="button">▶ Start</button>
           </div>
         </div>
@@ -1356,10 +1393,11 @@
     const VW = 640, VH = 380, PS = 26;
     const startX2 = 92, endX1 = VW - 92; // inner edges of the two pink zones
     // 3 levels: easy / medium / hard. More lanes, more dots per lane, faster.
+    const midX = (startX2 + endX1) / 2;
     const LEVELS = [
-      { name: "Easy",   lanes: [130, 250], per: 1, base: 1.2 },
-      { name: "Medium", lanes: [80, 150, 220, 290], per: 2, base: 1.7 },
-      { name: "Hard",   lanes: [55, 105, 155, 210, 265, 315], per: 2, base: 2.5 },
+      { name: "Easy",   lanes: [130, 250], per: 1, base: 1.3, coins: [[midX, 190]] },
+      { name: "Medium", lanes: [70, 130, 190, 250, 310], per: 2, base: 2.1, coins: [[startX2 + 70, 110], [endX1 - 70, 270]] },
+      { name: "Hard",   lanes: [55, 100, 145, 195, 245, 295, 335], per: 2, base: 2.9, coins: [[startX2 + 60, 90], [midX, 195], [endX1 - 60, 300]] },
     ];
     function buildEnemies(lv) {
       const L = LEVELS[lv], arr = [], span = endX1 - startX2;
@@ -1367,40 +1405,47 @@
         const sign = li % 2 === 0 ? 1 : -1;
         for (let k = 0; k < L.per; k++) {
           const x = startX2 + span * ((k + (li % 2 ? 0.5 : 0)) / L.per) + 30;
-          arr.push({ x, y, r: 15, vx: sign * (L.base + li * 0.1), xMin: startX2 + 4, xMax: endX1 - 4 });
+          arr.push({ x, y, r: 15, vx: sign * (L.base + li * 0.12), xMin: startX2 + 4, xMax: endX1 - 4 });
         }
       });
       return arr;
     }
+    function buildCoins(lv) { return LEVELS[lv].coins.map(([x, y]) => ({ x, y, got: false })); }
 
     const field = $("#whg-field", body), layer = $("#whg-layer", body), player = $("#whg-player", body);
     const ov = $("#whg-ov", body), reveal = $(".whg-reveal", body);
-    const levelEl = $("#whg-level", body), levelNumEl = $("#whg-levelnum", body), livesEl = $("#whg-lives", body);
+    const levelEl = $("#whg-level", body), levelNumEl = $("#whg-levelnum", body), livesEl = $("#whg-lives", body), coinsEl = $("#whg-coins", body);
     let W = 0, H = 0, sx = 1, sy = 1;
     function measure() { const r = field.getBoundingClientRect(); W = r.width; H = r.height; sx = W / VW; sy = H / VH; }
     let px = 46, py = VH / 2;
     const dir = { up: false, down: false, left: false, right: false };
-    let level = 0, lives = 3, levelsDone = 0, enemies = [], enemyEls = [];
+    let level = 0, lives = 3, levelsDone = 0, enemies = [], enemyEls = [], coins = [], coinEls = [], coinsLeft = 0;
     let running = false, loop = null, last = 0, answered = false, phase = "ready";
 
     function updateHud() {
       levelEl.textContent = LEVELS[level].name;
       levelNumEl.textContent = `Level ${level + 1} / 3`;
+      const total = LEVELS[level].coins.length;
+      coinsEl.textContent = `🪙 ${total - coinsLeft}/${total}`;
       livesEl.textContent = lives > 0 ? "❤️".repeat(lives) : "💀";
     }
     function buildSprites() {
       layer.innerHTML = "";
       enemyEls = enemies.map(() => { const d = document.createElement("div"); d.className = "whg-enemy"; layer.appendChild(d); return d; });
+      coinEls = coins.map(() => { const d = document.createElement("div"); d.className = "whg-coin"; layer.appendChild(d); return d; });
     }
     function paintSprites() {
       measure();
       enemies.forEach((e, i) => { const el = enemyEls[i]; if (!el) return; const d = e.r * 2 * sx; el.style.width = el.style.height = d + "px"; el.style.left = (e.x * sx - d / 2) + "px"; el.style.top = (e.y * sy - d / 2) + "px"; });
+      coins.forEach((c, i) => { const el = coinEls[i]; if (!el) return; el.style.display = c.got ? "none" : ""; const d = 18 * sx; el.style.width = el.style.height = d + "px"; el.style.left = (c.x * sx - d / 2) + "px"; el.style.top = (c.y * sy - d / 2) + "px"; });
       const ps = PS * sx; player.style.width = player.style.height = ps + "px"; player.style.left = (px * sx - ps / 2) + "px"; player.style.top = (py * sy - ps / 2) + "px";
     }
     function resetPlayer() { px = 46; py = VH / 2; }
     function cleanup() { running = false; clearInterval(loop); removeEventListener("keydown", onKey); removeEventListener("keyup", onKey); }
     function loadLevel(lv) {
-      level = lv; enemies = buildEnemies(lv); buildSprites(); resetPlayer(); updateHud();
+      level = lv; enemies = buildEnemies(lv); coins = buildCoins(lv); coinsLeft = coins.length;
+      buildSprites(); resetPlayer(); updateHud();
+      field.classList.toggle("whg-locked", coinsLeft > 0);
       ov.style.display = "none"; reveal.hidden = true;
       running = true; last = 0; phase = "playing";
       addEventListener("keydown", onKey); addEventListener("keyup", onKey);
@@ -1444,13 +1489,23 @@
       px = Math.max(PS / 2, Math.min(VW - PS / 2, px)); py = Math.max(PS / 2, Math.min(VH - PS / 2, py));
       for (const e of enemies) { e.x += e.vx * f; if (e.x <= e.xMin) { e.x = e.xMin; e.vx = Math.abs(e.vx); } else if (e.x >= e.xMax) { e.x = e.xMax; e.vx = -Math.abs(e.vx); } }
       const half = PS / 2;
+      // collect coins on contact
+      for (const c of coins) {
+        if (c.got) continue;
+        const cdx = c.x - px, cdy = c.y - py;
+        if (cdx * cdx + cdy * cdy < (half + 11) * (half + 11)) {
+          c.got = true; coinsLeft--; updateHud();
+          if (coinsLeft === 0) field.classList.remove("whg-locked");
+        }
+      }
       for (const e of enemies) {
         const nx = Math.max(px - half, Math.min(e.x, px + half));
         const ny = Math.max(py - half, Math.min(e.y, py + half));
         const dx = e.x - nx, dy = e.y - ny;
         if (dx * dx + dy * dy < e.r * e.r) { onDeath(); return; }
       }
-      if (px >= endX1 + 4) { paintSprites(); onLevelClear(); return; }
+      // the exit only opens once every coin on the level is collected
+      if (px >= endX1 + 4 && coinsLeft === 0) { paintSprites(); onLevelClear(); return; }
       paintSprites();
     }
     function onKey(e) {
@@ -1477,8 +1532,8 @@
 
   // "How many holes in a Polo?" — recreated to look like the hand-drawn trivia
   // meme: white card, red scribbled number, blue marker question, 2×2 pink
-  // buttons with thick blue borders and side cables. The correct (precise)
-  // answer is ONE; nailing it instantly is peak autism, so it scores highest.
+  // buttons with thick blue borders and side cables. We score it silently
+  // (four is "correct") and never reveal right/wrong — you just move on.
   const POLO_CIRCLE = `<svg class="polo-ring" viewBox="0 0 110 110" aria-hidden="true"><path d="M59,9 C86,8 104,31 100,57 C96,85 71,103 45,99 C21,95 6,72 11,46 C15,23 34,11 57,11" fill="none" stroke="#ec1c24" stroke-width="6.5" stroke-linecap="round"/></svg>`;
   function renderPoloGame(body, Q, setAnswer, num) {
     const cells = Q.opts.map((o, idx) =>
@@ -1489,34 +1544,20 @@
     body.innerHTML = `
       <div class="polo">
         <div class="polo-top">
-          <span class="polo-note">♫</span>
           <span class="polo-num">${POLO_CIRCLE}<b>${num}.</b></span>
           <div class="polo-q">${esc(Q.q)}</div>
         </div>
         <div class="polo-grid">${cells}</div>
-        <div class="polo-reveal" hidden></div>
       </div>`;
-    const reveal = $(".polo-reveal", body);
-    const REVEALS = [
-      "✅ One hole. You answered instantly and precisely — the most autistic possible response, and we mean that with love.",
-      "❌ It's one. 'Two' is what you say when you're hedging your bets.",
-      "❌ It's one. 'Three' is just pure chaos, honestly.",
-      "❌ It's one — unless you were counting the holes in a Polo *shirt*, in which case: respect, you topology gremlin.",
-    ];
     let picked = false;
     body.querySelectorAll(".polo-opt").forEach(btn => {
       btn.addEventListener("click", () => {
         if (picked) return;
         picked = true;
         const idx = +btn.dataset.i;
-        body.querySelectorAll(".polo-opt").forEach((b, j) => {
-          b.disabled = true;
-          if (j === 0) b.classList.add("correct"); // ONE is the right answer
-        });
-        if (idx !== 0) btn.classList.add("wrong");
+        // just register the pick and let them hit Next — no right/wrong reveal
+        body.querySelectorAll(".polo-opt").forEach(b => b.disabled = true);
         btn.classList.add("sel");
-        reveal.hidden = false;
-        reveal.textContent = REVEALS[idx];
         setAnswer(Q.opts[idx][1]);
       });
     });
@@ -1619,6 +1660,10 @@
                     </div>
                   </div>
                   <div class="builder-group">
+                    <span class="builder-label">Headwear color</span>
+                    <div class="swatches" data-opt="headwearColor">${SHIRTS.map(s => `<button type="button" class="swatch" data-v="${s}" style="background:${s}" title="headwear color"></button>`).join("")}</div>
+                  </div>
+                  <div class="builder-group">
                     <span class="builder-label">Drink in hand</span>
                     <div class="opts" data-opt="drink">${DRINKS.map(d => `<button type="button" class="opt-btn" data-v="${d.id}">${d.label}</button>`).join("")}</div>
                   </div>
@@ -1706,7 +1751,7 @@
             mood: pick(MOODS).id, bg: pick(BGS),
             eyewear: pick(["none", "none", "glasses", "square", "shades"]),
             facialHair: f === "femme" ? "none" : pick(["none", "none", "stubble", "beard", "mustache"]),
-            headwear: pick(["none", "none", "none", "beanie", "cap", "propeller"]), drink: pick(["none", "none", "none", "beer", "seltzer", "shirley", "lolly"]),
+            headwear: pick(["none", "none", "none", "beanie", "cap", "propeller"]), headwearColor: pick(SHIRTS), drink: pick(["none", "none", "none", "beer", "seltzer", "shirley", "lolly"]),
             earrings: Math.random() > 0.6, freckles: Math.random() > 0.6, blush: Math.random() > 0.7, headphones: Math.random() > 0.82,
           };
           paintAvatar();
@@ -1731,7 +1776,15 @@
         avName.title = "Edit your name";
         avName.addEventListener("click", () => {
           const anchor = node.querySelector(".char-row") || first;
-          const y = anchor.getBoundingClientRect().top + window.scrollY - 124; // land a bit above the name fields
+          // land ON the name field, just clear of the sticky header (and, on
+          // mobile, the sticky avatar preview that sits under it) + a little pad
+          const isMobile = window.matchMedia("(max-width: 680px)").matches;
+          const header = document.querySelector(".site-header");
+          const preview = node.querySelector(".char-preview");
+          const headerH = header ? header.getBoundingClientRect().height : 0;
+          const previewH = (isMobile && preview) ? preview.getBoundingClientRect().height : 0;
+          const pad = isMobile ? 18 : 12;
+          const y = anchor.getBoundingClientRect().top + window.scrollY - headerH - previewH - pad;
           window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
           setTimeout(() => first.focus({ preventScroll: true }), 320);
         });

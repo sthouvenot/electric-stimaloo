@@ -223,21 +223,18 @@ a { color: inherit; }
 /* a row of bolts that fire in a left-to-right electric wave (no chaotic jiggle).
    left-aligned to sit under the left-aligned title; centered on mobile (see media query) */
 .bolt-row { display: flex; gap: clamp(10px, 2.4vw, 24px); justify-content: flex-start; margin: 12px 0 8px; }
-.bolt-row .bolt { font-size: clamp(26px, 4.4vw, 46px); animation-duration: 2.6s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
-/* the pulse sweeps left -> right then right -> left (a bouncing wave); each bolt peaks at its slot */
-.bolt-row .bolt:nth-child(1) { animation-name: bwave1; }
-.bolt-row .bolt:nth-child(2) { animation-name: bwave2; }
-.bolt-row .bolt:nth-child(3) { animation-name: bwave3; }
-.bolt-row .bolt:nth-child(4) { animation-name: bwave4; }
-.bolt-row .bolt:nth-child(5) { animation-name: bwave5; }
-.bolt-row .bolt:nth-child(6) { animation-name: bwave6; }
-/* wide, smooth, overlapping pulses so the lift flows as one wave (not flickery) */
-@keyframes bwave1 { 0%,100% { transform: translateY(-9px) scale(1.26); filter: drop-shadow(2px 3px 0 var(--ink)) drop-shadow(0 0 8px #ffd23f); } 16%,84% { transform: translateY(0) scale(1); filter: drop-shadow(2px 3px 0 var(--ink)); } }
-@keyframes bwave2 { 0%,24%,76%,100% { transform: translateY(0) scale(1); filter: drop-shadow(2px 3px 0 var(--ink)); } 10%,90% { transform: translateY(-9px) scale(1.26); filter: drop-shadow(2px 3px 0 var(--ink)) drop-shadow(0 0 8px #ffd23f); } }
-@keyframes bwave3 { 0%,7%,33%,67%,93%,100% { transform: translateY(0) scale(1); filter: drop-shadow(2px 3px 0 var(--ink)); } 20%,80% { transform: translateY(-9px) scale(1.26); filter: drop-shadow(2px 3px 0 var(--ink)) drop-shadow(0 0 8px #ffd23f); } }
-@keyframes bwave4 { 0%,17%,43%,57%,83%,100% { transform: translateY(0) scale(1); filter: drop-shadow(2px 3px 0 var(--ink)); } 30%,70% { transform: translateY(-9px) scale(1.26); filter: drop-shadow(2px 3px 0 var(--ink)) drop-shadow(0 0 8px #ffd23f); } }
-@keyframes bwave5 { 0%,27%,50%,73%,100% { transform: translateY(0) scale(1); filter: drop-shadow(2px 3px 0 var(--ink)); } 40%,60% { transform: translateY(-9px) scale(1.26); filter: drop-shadow(2px 3px 0 var(--ink)) drop-shadow(0 0 8px #ffd23f); } }
-@keyframes bwave6 { 0%,37%,63%,100% { transform: translateY(0) scale(1); filter: drop-shadow(2px 3px 0 var(--ink)); } 50% { transform: translateY(-9px) scale(1.26); filter: drop-shadow(2px 3px 0 var(--ink)) drop-shadow(0 0 8px #ffd23f); } }
+.bolt-row .bolt { font-size: clamp(26px, 4.4vw, 46px); animation: boltwave 1.8s ease-in-out infinite; }
+/* a clean stadium wave: each bolt lifts in turn, left -> right, then a beat of rest before it repeats */
+.bolt-row .bolt:nth-child(1) { animation-delay: 0s; }
+.bolt-row .bolt:nth-child(2) { animation-delay: .11s; }
+.bolt-row .bolt:nth-child(3) { animation-delay: .22s; }
+.bolt-row .bolt:nth-child(4) { animation-delay: .33s; }
+.bolt-row .bolt:nth-child(5) { animation-delay: .44s; }
+.bolt-row .bolt:nth-child(6) { animation-delay: .55s; }
+@keyframes boltwave {
+  0%, 38%, 100% { transform: translateY(0) scale(1) rotate(0); filter: drop-shadow(2px 3px 0 var(--ink)); }
+  19% { transform: translateY(-16px) scale(1.25) rotate(-7deg); filter: drop-shadow(2px 3px 0 var(--ink)) drop-shadow(0 0 9px #ffd23f); }
+}
 @media (prefers-reduced-motion: reduce) { .bolt-row .bolt { animation: none; } }
 .hero-cta { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; align-items: center; }
 .badge {
@@ -286,7 +283,7 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) { .hero-fx .fx-rays, .hero-fx .fx-ring, .hero-fx .spark { animation: none; } .hero-fx .fx-ring { opacity: .25; } }
 .home-copy { text-align: left; }
 .home-copy .eyebrow {
-  margin-bottom: 18px; transform: rotate(-2deg);
+  margin: 12px 0 4px; transform: rotate(-2deg);
   /* bright fill + black outline (no shadow - it muddied legibility), big and bold */
   font-style: normal; font-size: clamp(16px, 3vw, 26px); letter-spacing: .01em;
   color: var(--ink);
@@ -450,17 +447,21 @@ a { color: inherit; }
 
 /* Dodge game: your avatar is the player */
 .dodge-stage { position: relative; height: 340px; overflow: hidden; border: var(--border); border-radius: 16px;
-  background: radial-gradient(circle at 50% -10%, #fffdf8, #f1e8d6); box-shadow: var(--shadow-sm);
+  background: linear-gradient(180deg, #7ec8ff 0%, #a8ddff 45%, #d8f1ff 80%, #eaf9e8 100%); box-shadow: var(--shadow-sm);
   touch-action: none; -webkit-user-select: none; user-select: none; }
+/* sun (top-right) + a grassy ground strip so the avatar stands on something */
+.dodge-stage::before { content: ""; position: absolute; top: 16px; right: 22px; width: 42px; height: 42px; border-radius: 50%; background: #ffe27a; box-shadow: 0 0 0 9px rgba(255,226,122,.3); z-index: 0; }
+.dodge-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: #b6e69a; border-top: 3px solid #8aca6e; z-index: 0; }
 .dodge-stage.dodge-playing { cursor: none; }
 .dodge-hud { position: absolute; top: 8px; left: 12px; right: 12px; z-index: 4; pointer-events: none;
   display: flex; align-items: center; justify-content: space-between;
-  font-family: var(--font-display); font-weight: 400; font-size: 24px; color: var(--c5);
+  font-family: var(--font-display); font-weight: 400; font-size: 24px; color: #fff;
   -webkit-text-stroke: 1.6px var(--ink); paint-order: stroke fill; }
 .dodge-lives { font-size: 17px; -webkit-text-stroke: 0; letter-spacing: 1px; }
 .dodge-player { position: absolute; bottom: 10px; left: 0; width: 52px; height: 52px; z-index: 3; pointer-events: none; transition: left .03s linear; }
-.dodge-player .avchip { border: 3px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); background: var(--paper-2); }
-.dodge-rock { position: absolute; top: 0; left: 0; display: flex; align-items: center; justify-content: center; line-height: 1;
+/* no circle — the avatar sits as a rounded square token at the bottom of the sky */
+.dodge-player .avchip { border-radius: 14px; border: 3px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); background: var(--paper-2); }
+.dodge-rock { position: absolute; top: 0; left: 0; z-index: 2; display: flex; align-items: center; justify-content: center; line-height: 1;
   font-size: 24px; pointer-events: none; will-change: top; }
 .dodge-overlay { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 16px; text-align: center; padding: 18px; background: rgba(253,243,227,.84); cursor: auto; }
@@ -845,11 +846,16 @@ a { color: inherit; }
 
 /* ---- Color memory game ---- */
 .colq { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.colq-memorize { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .colq-swatch { width: min(220px, 70vw); height: min(220px, 70vw); border: var(--border); border-radius: 22px; box-shadow: var(--shadow); transition: background .4s; }
 .colq-msg { font-family: var(--font-head); font-weight: 700; font-size: 17px; }
 .colq-guess { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
 .colq-hint { font-family: var(--font-head); font-weight: 600; font-size: 14px; color: var(--ink-soft); margin: 0; }
 .colq-preview { width: min(140px, 50vw); height: min(140px, 50vw); border: var(--border); border-radius: 16px; box-shadow: var(--shadow-sm); }
+.colq-verdict { font-family: var(--font-head); font-weight: 800; font-size: 17px; margin: 0; }
+.colq-compare { display: flex; gap: 24px; justify-content: center; }
+.colq-cmp { display: flex; flex-direction: column; align-items: center; gap: 8px; font-family: var(--font-head); font-weight: 700; font-size: 13px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
+.colq-cmp-sw { width: min(128px, 38vw); height: min(128px, 38vw); border: var(--border); border-radius: 16px; box-shadow: var(--shadow-sm); }
 .hue-slider { -webkit-appearance: none; appearance: none; width: min(330px, 88%); height: 22px; border-radius: 999px; border: var(--border); box-shadow: var(--shadow-sm); cursor: pointer;
   background: linear-gradient(90deg, hsl(0,72%,56%), hsl(30,72%,56%), hsl(60,72%,56%), hsl(90,72%,56%), hsl(120,72%,56%), hsl(150,72%,56%), hsl(180,72%,56%), hsl(210,72%,56%), hsl(240,72%,56%), hsl(270,72%,56%), hsl(300,72%,56%), hsl(330,72%,56%), hsl(360,72%,56%)); }
 .hue-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; border-radius: 50%; background: var(--white); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); cursor: grab; }
@@ -881,6 +887,7 @@ a { color: inherit; }
 .qbq-field { display: flex; flex-direction: column; gap: 5px; font-family: var(--font-head); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: .03em; color: var(--ink-soft); text-align: left; }
 .qbq-sel, .qbq-in { font-family: var(--font-head); font-weight: 700; font-size: 16px; border: var(--border); border-radius: 12px; padding: 10px 12px; background: var(--paper-2); box-shadow: var(--shadow-sm); }
 .qbq-in { width: 92px; text-align: center; }
+.qbq-err { font-family: var(--font-head); font-weight: 700; font-size: 14px; color: #8b1a1a; background: #fdecec; border: 2px solid #e2a3a3; border-radius: 10px; padding: 9px 12px; margin-bottom: 14px; }
 .qbq-reveal { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--ink-soft); margin-top: 16px; line-height: 1.5; }
 
 /* ---- "How many holes in a Polo?" — hand-drawn trivia card ---- */
@@ -922,7 +929,8 @@ a { color: inherit; }
 .whg-hud { display: flex; align-items: center; gap: 14px; width: min(640px, 96vw); font-family: var(--font-head); font-weight: 800; font-size: 15px; }
 .whg-level { background: var(--c5); color: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 3px 12px; }
 .whg-levelnum { color: var(--ink-soft); }
-.whg-lives { margin-left: auto; font-size: 17px; letter-spacing: 1px; }
+.whg-coins { margin-left: auto; }
+.whg-lives { font-size: 17px; letter-spacing: 1px; }
 .whg-field { position: relative; width: min(640px, 96vw); aspect-ratio: 640 / 380; border: 7px solid #5b6ee1; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); touch-action: none; user-select: none;
   background-color: #d3d6ff;
   background-image:
@@ -931,10 +939,12 @@ a { color: inherit; }
   background-size: 42px 42px; background-position: 0 0, 21px 21px; }
 .whg-zone { position: absolute; top: 0; bottom: 0; width: 14.4%; background: #f3a9a9; }
 .whg-start { left: 0; border-right: 3px solid #d77b7b; }
-.whg-end { right: 0; border-left: 3px solid #d77b7b; }
+.whg-end { right: 0; border-left: 3px solid #d77b7b; transition: opacity .2s; }
+/* exit stays dim until every coin on the level is collected */
+.whg-field.whg-locked .whg-end { opacity: .35; }
 .whg-layer { position: absolute; inset: 0; }
 .whg-enemy { position: absolute; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #6f7bff, #1f2bd6 70%); border: 2px solid #11166b; box-shadow: inset -2px -2px 3px rgba(0,0,0,.25); }
-.whg-coin { position: absolute; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3a8, #f6c518 70%); border: 2px solid #a87a06; }
+.whg-coin { position: absolute; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3a8, #f6c518 70%); border: 2px solid #a87a06; z-index: 2; box-shadow: 0 0 6px rgba(246,197,24,.7); }
 .whg-player { position: absolute; background: #e02b2b; border: 3px solid #16130c; border-radius: 4px; box-shadow: inset -2px -2px 0 rgba(0,0,0,.18); z-index: 3; }
 .whg-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: rgba(22,19,12,.66); color: #fff; text-align: center; padding: 18px; z-index: 5; }
 .whg-msg { font-family: var(--font-head); font-weight: 800; font-size: 19px; line-height: 1.3; }

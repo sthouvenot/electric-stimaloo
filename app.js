@@ -2205,9 +2205,14 @@
     const toggle = row.querySelector("[data-act='toggle']");
     if (toggle) {
       const detail = $(".answers-detail", row);
-      detail.innerHTML = s.answers.map((a, i) =>
-        a == null ? "" : `<div class="qa"><b>${esc(QUESTIONS[i].q)}</b>${esc((QUESTIONS[i].opts.find(o => o[1] === a) || ["-"])[0])} <span style="color:var(--ink-faint)">(+${a})</span></div>`
-      ).join("") || `<div class="qa">No detailed answers (demo entry).</div>`;
+      // guard against submissions saved under an older/longer QUESTIONS set:
+      // a missing QUESTIONS[i] used to throw and blank the whole admin page.
+      detail.innerHTML = s.answers.map((a, i) => {
+        const Q = QUESTIONS[i];
+        if (a == null || !Q) return "";
+        const opt = (Q.opts || []).find(o => o[1] === a) || ["-"];
+        return `<div class="qa"><b>${esc(Q.q)}</b>${esc(opt[0])} <span style="color:var(--ink-faint)">(+${a})</span></div>`;
+      }).join("") || `<div class="qa">No detailed answers (demo entry).</div>`;
       toggle.addEventListener("click", () => {
         detail.classList.toggle("open");
         toggle.textContent = detail.classList.contains("open") ? "Hide answers" : "View answers";

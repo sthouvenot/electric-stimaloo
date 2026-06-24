@@ -283,7 +283,7 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) { .hero-fx .fx-rays, .hero-fx .fx-ring, .hero-fx .spark { animation: none; } .hero-fx .fx-ring { opacity: .25; } }
 .home-copy { text-align: left; }
 .home-copy .eyebrow {
-  margin: 12px 0 4px; transform: rotate(-2deg);
+  margin: 0 0 18px; transform: rotate(-2deg);
   /* bright fill + black outline (no shadow - it muddied legibility), big and bold */
   font-style: normal; font-size: clamp(16px, 3vw, 26px); letter-spacing: .01em;
   color: var(--ink);
@@ -327,6 +327,8 @@ a { color: inherit; }
   .home { grid-template-columns: 1fr; gap: 22px; }
   .home-copy { text-align: center; }
   .home-copy .eyebrow, .home-copy .hero-cta, .home-copy .bolt-row { transform: none; justify-content: center; }
+  /* keep the eyebrow lowered + tight to "presents" on mobile (desktop stays original) */
+  .home-copy .eyebrow { margin: 12px 0 4px; }
   .home-copy .sub { margin-left: auto; margin-right: auto; }
   .collage {
     /* full-bleed to the viewport + viewport-sized items, so the next photo peeks ~half (clear "swipe me" cue)

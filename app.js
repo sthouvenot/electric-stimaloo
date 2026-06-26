@@ -1148,7 +1148,9 @@
   }
 
   // Rigged rock-paper-scissors, best 3 of 5. The computer ALWAYS wins the match
-  // (it reacts to your pick; it plays whatever beats you). The human can win a
+  // (it reacts to your pick). Each round has a 33% chance of a TIE (computer
+  // mirrors your move → replay, no score change); ties don't consume a decisive
+  // outcome, so the rig still guarantees the computer wins. The human can win a
   // round or two but never the match. We DON'T reveal the gag during play — after
   // each loss it just says "so close, play again?". The gag is only revealed when
   // they hit GIVE UP ("you played N games that were impossible to win"). Score is
@@ -1198,8 +1200,11 @@
     function play(human) {
       if (busy || done) return;
       busy = true;
-      const want = outcomes[round]; // 'C' = computer wins this round, 'H' = human wins
-      const cpuMove = want === "C" ? RPS_BEATEN_BY[human] : RPS_LOSES_TO[human];
+      // 33% chance of a tie on ANY round — the computer mirrors your move and the
+      // round just replays (no score change, no decisive outcome consumed).
+      const tie = Math.random() < 1 / 3;
+      const want = tie ? null : outcomes[round]; // 'C' = computer wins, 'H' = human wins
+      const cpuMove = tie ? human : (want === "C" ? RPS_BEATEN_BY[human] : RPS_LOSES_TO[human]);
       youPick.textContent = RPS[human];
       setMovesEnabled(false);
       // tiny suspense beat before the computer "decides"
@@ -1208,13 +1213,16 @@
       setTimeout(() => {
         clearInterval(shuffle);
         cpuPick.textContent = RPS[cpuMove];
-        if (want === "C") { cpu++; resultEl.textContent = "💻 Computer takes the round."; }
-        else { you++; resultEl.textContent = "🎉 You win that one!"; }
-        scoreEl.textContent = `You ${you} — ${cpu} CPU`;
-        round++;
-        if (cpu === 3) { matchOver(); return; }
+        if (tie) {
+          resultEl.textContent = "🤝 Tie — replay that round.";
+        } else {
+          if (want === "C") { cpu++; } else { you++; }
+          round++;
+          scoreEl.textContent = `You ${you} — ${cpu} CPU`;
+          if (cpu === 3) { matchOver(); return; }
+          resultEl.textContent = (want === "C" ? "💻 Computer takes the round." : "🎉 You win that one!") + " Keep going →";
+        }
         busy = false; setMovesEnabled(true);
-        resultEl.textContent += " Keep going →";
       }, 700);
     }
     function matchOver() {
@@ -1235,8 +1243,8 @@
       reveal.hidden = false;
       const g = games;
       const gag = g === 0
-        ? `Confession: that game was <b>impossible to win</b>. The computer just plays whatever beats you — every time.`
-        : `You just played <b>${g}</b> game${g === 1 ? "" : "s"} that ${g === 1 ? "was" : "were"} <b>impossible to win</b>. The computer plays whatever beats your move — it literally cannot lose. 🤖`;
+        ? `Confession: that game was <b>impossible to win</b>. The whole thing was rigged — the computer cannot lose.`
+        : `You just played <b>${g}</b> game${g === 1 ? "" : "s"} that ${g === 1 ? "was" : "were"} <b>impossible to win</b>. The whole thing was rigged — the computer literally cannot lose. 🤖`;
       reveal.innerHTML = `${gag}<br><span class="rps-hint">…hit <b>Next →</b> to move on.</span>`;
     }
     movesEl.querySelectorAll(".rps-move").forEach(b => b.addEventListener("click", () => play(b.getAttribute("data-m"))));

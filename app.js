@@ -1584,10 +1584,11 @@
       const ps = PS * sx; player.style.width = player.style.height = ps + "px"; player.style.left = (px * sx - ps / 2) + "px"; player.style.top = (py * sy - ps / 2) + "px";
     }
     function resetPlayer() { px = 46; py = VH / 2; }
-    function cleanup() { running = false; clearInterval(loop); removeEventListener("keydown", onKey); removeEventListener("keyup", onKey); }
+    function clearInput() { dir.up = dir.down = dir.left = dir.right = false; body.querySelectorAll(".whg-dbtn.active").forEach(b => b.classList.remove("active")); }
+    function cleanup() { running = false; clearInterval(loop); removeEventListener("keydown", onKey); removeEventListener("keyup", onKey); clearInput(); }
     function loadLevel(lv) {
       level = lv; enemies = buildEnemies(lv); coins = buildCoins(lv); coinsLeft = coins.length;
-      buildSprites(); resetPlayer(); updateHud();
+      clearInput(); buildSprites(); resetPlayer(); updateHud();
       field.classList.toggle("whg-locked", coinsLeft > 0);
       ov.style.display = "none"; reveal.hidden = true;
       running = true; last = 0; phase = "playing";

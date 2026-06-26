@@ -348,8 +348,8 @@
     },
     {
       kind: "rps",
-      q: "Rock, paper, scissors — best 2 of 3 against the computer.",
-      opts: [["Rage-quit",0],["Bailed early",1],["Bailed near the end",2],["Saw it through",3]],
+      q: "Beat the computer in rock paper scissors — best 3 of 5.",
+      opts: [["Gave up fast",0],["A couple tries",1],["Kept grinding",2],["Would not quit",3]],
     },
     {
       kind: "typing",
@@ -1147,53 +1147,56 @@
     ov.querySelector(".dodge-go").addEventListener("click", start);
   }
 
-  // Rigged rock-paper-scissors, best 2 of 3. The computer ALWAYS wins the match
-  // (it reacts to your pick). Round 1 is a coin flip; if the computer takes it,
-  // round 2 is another coin flip; if YOU take round 1, the computer is guaranteed
-  // the next two. So the human wins 0 or 1 rounds, never the match. After each
-  // loss there's a Retry button; we score on how many matches you replay — the
-  // more you refuse to accept the loss, the higher the score.
+  // Rigged rock-paper-scissors, best 3 of 5. The computer ALWAYS wins the match
+  // (it reacts to your pick; it plays whatever beats you). The human can win a
+  // round or two but never the match. We DON'T reveal the gag during play — after
+  // each loss it just says "so close, play again?". The gag is only revealed when
+  // they hit GIVE UP ("you played N games that were impossible to win"). Score is
+  // persistence: the more matches you grind through before giving up, the higher.
   const RPS = { rock: "🪨", paper: "📄", scissors: "✂️" };
   const RPS_BEATEN_BY = { rock: "paper", paper: "scissors", scissors: "rock" }; // move that BEATS the key
   const RPS_LOSES_TO = { rock: "scissors", paper: "rock", scissors: "paper" };  // move the key BEATS
   function renderRpsGame(body, Q, setAnswer, avatar) {
     body.innerHTML = `
       <div class="rps-wrap">
-        <div class="rps-hud"><span class="rps-games" id="rps-games">Games played: 0</span><span class="rps-score" id="rps-score">You 0 — 0 CPU</span></div>
+        <div class="rps-hud"><span class="rps-score" id="rps-score">You 0 — 0 CPU</span></div>
         <div class="rps-arena">
           <div class="rps-side"><div class="rps-av">${avatarSVG(avatar, { noBg: true })}</div><div class="rps-pick" id="rps-you">❔</div><div class="rps-label">You</div></div>
           <div class="rps-vs">VS</div>
           <div class="rps-side"><div class="rps-av rps-cpu">🤖</div><div class="rps-pick" id="rps-cpu">❔</div><div class="rps-label">Computer</div></div>
         </div>
-        <div class="rps-result" id="rps-result">Best 2 of 3. Make your move.</div>
+        <div class="rps-result" id="rps-result">Best 3 of 5. Make your move.</div>
         <div class="rps-moves" id="rps-moves">
           <button class="rps-move" data-m="rock" type="button">🪨<span>Rock</span></button>
           <button class="rps-move" data-m="paper" type="button">📄<span>Paper</span></button>
           <button class="rps-move" data-m="scissors" type="button">✂️<span>Scissors</span></button>
         </div>
+        <button class="rps-giveup" id="rps-giveup" type="button">I give up →</button>
         <div class="rps-reveal" hidden></div>
       </div>`;
     const youPick = $("#rps-you", body), cpuPick = $("#rps-cpu", body), scoreEl = $("#rps-score", body), resultEl = $("#rps-result", body);
-    const movesEl = $("#rps-moves", body), reveal = $(".rps-reveal", body), gamesEl = $("#rps-games", body);
-    let outcomes = [], round = 0, you = 0, cpu = 0, busy = false, games = 0;
-    // pre-decide each round's winner so the match is always lost
+    const movesEl = $("#rps-moves", body), reveal = $(".rps-reveal", body), giveBtn = $("#rps-giveup", body);
+    let outcomes = [], round = 0, you = 0, cpu = 0, busy = false, games = 0, done = false;
+    // best 3 of 5: computer always reaches 3 first; human gets 0-2 (weighted to feel close)
     function rig() {
-      const r1 = Math.random() < 0.5 ? "H" : "C";
-      if (r1 === "H") return ["H", "C", "C"];          // you win 1, then forced losses → CPU 2-1
-      const r2 = Math.random() < 0.5 ? "H" : "C";
-      return r2 === "C" ? ["C", "C"] : ["C", "H", "C"]; // CPU 2-0, or CPU 2-1
+      const humanWins = [2, 2, 2, 1, 2, 0][Math.floor(Math.random() * 6)];
+      const pool = [];
+      for (let i = 0; i < humanWins; i++) pool.push("H");
+      for (let i = 0; i < 2; i++) pool.push("C"); // 2 cpu wins now, 3rd clinches at the end
+      for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+      return pool.concat("C");
     }
     function setMovesEnabled(on) { movesEl.querySelectorAll(".rps-move").forEach(b => b.disabled = !on); }
     function newMatch() {
       outcomes = rig(); round = 0; you = 0; cpu = 0; busy = false;
       youPick.textContent = "❔"; cpuPick.textContent = "❔";
       scoreEl.textContent = "You 0 — 0 CPU";
-      resultEl.textContent = "Best 2 of 3. Make your move.";
+      resultEl.textContent = "Best 3 of 5. Make your move.";
       reveal.hidden = true; reveal.innerHTML = "";
       setMovesEnabled(true);
     }
     function play(human) {
-      if (busy) return;
+      if (busy || done) return;
       busy = true;
       const want = outcomes[round]; // 'C' = computer wins this round, 'H' = human wins
       const cpuMove = want === "C" ? RPS_BEATEN_BY[human] : RPS_LOSES_TO[human];
@@ -1209,27 +1212,35 @@
         else { you++; resultEl.textContent = "🎉 You win that one!"; }
         scoreEl.textContent = `You ${you} — ${cpu} CPU`;
         round++;
-        if (you === 2 || cpu === 2) { matchOver(); return; }
+        if (cpu === 3) { matchOver(); return; }
         busy = false; setMovesEnabled(true);
-        resultEl.textContent += " Go again →";
+        resultEl.textContent += " Keep going →";
       }, 700);
     }
     function matchOver() {
       games++;
-      gamesEl.textContent = `Games played: ${games}`;
-      setAnswer(Math.min(3, games - 1), { rpsGames: games, rpsWins: you });
-      resultEl.textContent = "💻 The computer wins. It always wins.";
-      const twist = games <= 1 ? "Smart money walks away here. But will you?"
-        : games === 2 ? "Back for more. The machine respects the grind."
-          : games === 3 ? "Three losses deep and still swinging. You will not let this go."
-            : "You physically cannot accept defeat. Deeply, beautifully autistic.";
+      setMovesEnabled(false);
+      resultEl.textContent = `💻 Computer wins it, ${cpu}–${you}.`;
+      // NO gag here — just nudge them to try again
       reveal.hidden = false;
-      reveal.innerHTML = `You lost <b>${you}–${cpu}</b> — that's <b>${games}</b> game${games === 1 ? "" : "s"} played.
-        <div class="rps-again"><button class="btn btn-primary rps-retry" type="button">🔁 Play again</button></div>
-        <span class="rps-twist">${twist}</span><br><span class="rps-hint">…or hit <b>Next →</b> to move on.</span>`;
+      reveal.innerHTML = `${you === 2 ? "Agonizingly close." : "Tough one."}
+        <div class="rps-again"><button class="btn btn-primary rps-retry" type="button">🔁 Play again</button></div>`;
       reveal.querySelector(".rps-retry").addEventListener("click", newMatch);
     }
+    function giveUp() {
+      if (done) return;
+      done = true; setMovesEnabled(false); giveBtn.style.display = "none";
+      setAnswer(Math.min(3, games), { rpsGames: games, rpsWins: you });
+      resultEl.textContent = "🤖 The computer cannot lose.";
+      reveal.hidden = false;
+      const g = games;
+      const gag = g === 0
+        ? `Confession: that game was <b>impossible to win</b>. The computer just plays whatever beats you — every time.`
+        : `You just played <b>${g}</b> game${g === 1 ? "" : "s"} that ${g === 1 ? "was" : "were"} <b>impossible to win</b>. The computer plays whatever beats your move — it literally cannot lose. 🤖`;
+      reveal.innerHTML = `${gag}<br><span class="rps-hint">…hit <b>Next →</b> to move on.</span>`;
+    }
     movesEl.querySelectorAll(".rps-move").forEach(b => b.addEventListener("click", () => play(b.getAttribute("data-m"))));
+    giveBtn.addEventListener("click", giveUp);
     newMatch();
   }
 

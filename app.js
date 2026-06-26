@@ -328,12 +328,22 @@
     },
     {
       kind: "dodge",
-      q: "Keep your avatar alive as long as you can.",
+      q: "Sensory overload incoming — dodge it as long as you can.",
       opts: [
-        ["Splatted almost immediately", 0],
-        ["Survived a little", 1],
-        ["Lasted a good while", 2],
-        ["Frighteningly good at this", 3],
+        ["Overwhelmed instantly", 0],
+        ["Coped a little", 1],
+        ["Held it together a while", 2],
+        ["Unbothered. Master of the chaos.", 3],
+      ],
+    },
+    {
+      kind: "flappy",
+      q: "Keep the routine going — flap through the gaps.",
+      opts: [
+        ["Crashed at the gate", 0],
+        ["A few pipes", 1],
+        ["A solid run", 2],
+        ["Locked in, unstoppable", 3],
       ],
     },
     {
@@ -1039,17 +1049,17 @@
     btn.addEventListener("pointercancel", up);
   }
 
-  // Dodge game: the player's own avatar follows the pointer; survive the falling
-  // junk. Longer survival = better reflexes/hyperfocus = higher score. Uses a
-  // setInterval loop (rAF throttles in background tabs) and self-cleans if the
-  // quiz navigates away mid-game.
+  // Sensory-dodge game: the player's avatar slides left/right to dodge falling
+  // sensory hazards (loud noise, bright light, small talk, eye contact, surprise
+  // plans…). Longer survival = better at weathering overstimulation = higher
+  // score. setInterval loop (rAF throttles in background tabs); self-cleans on nav.
   function renderDodgeGame(body, Q, setAnswer, avatar) {
     body.innerHTML = `
       <div class="dodge-stage" id="dodge-stage">
         <div class="dodge-hud"><span class="dodge-time">0.0s</span><span class="dodge-lives" id="dodge-lives">❤️❤️❤️</span></div>
         <div class="dodge-player" id="dodge-player">${avatarSVG(avatar, { noBg: true })}</div>
         <div class="dodge-overlay" id="dodge-ov">
-          <div class="dodge-msg">Keep your avatar alive.<small>Move with ← → (arrow keys or the buttons below) — dodge the falling junk. You get 3 lives.</small></div>
+          <div class="dodge-msg">Dodge the overload.<small>Loud noises, small talk, eye contact, surprise plans — duck it all. Move with ← → (arrow keys or the buttons). 3 lives.</small></div>
           <button class="btn btn-primary dodge-go" type="button">▶ Start</button>
         </div>
       </div>
@@ -1059,7 +1069,9 @@
       </div>
       <div class="dodge-reveal" hidden></div>`;
     const stage = $("#dodge-stage", body), player = $("#dodge-player", body), timeEl = $(".dodge-time", body), ov = $("#dodge-ov", body), reveal = $(".dodge-reveal", body), livesEl = $("#dodge-lives", body);
-    const PLAYER = 52, PAD = 4, EMOJI = ["🧱","🔨","📦","🪨","🧊","⚙️","🔧","💣"];
+    // falling sensory hazards: loud noise, bright light, phone call, small talk,
+    // eye contact, scratchy wool, surprise party, handshake, plan change, alarm, karaoke, hug
+    const PLAYER = 52, PAD = 4, EMOJI = ["🔊","💡","📞","💬","👁️","🧶","🎉","🤝","📅","🔔","🎤","🫂"];
     let running = false, loop = null, startT = 0, best = 0, elapsed = 0, last = 0, spawnAcc = 0, px = 0, W = 0, H = 0, rocks = [], lives = 3;
     let mvL = false, mvR = false;
     function measure() { const r = stage.getBoundingClientRect(); W = r.width; H = r.height; return r; }
@@ -1122,11 +1134,11 @@
       lives = Math.max(0, lives - 1);
       if (livesEl) livesEl.textContent = lives > 0 ? "❤️".repeat(lives) : "💀";
       const points = best < 3 ? 0 : best < 7 ? 1 : best < 13 ? 2 : 3;
-      const verdicts = ["Reflexes of a sleepy cat. We love that for you.", "Decent. You panicked, but on a delay.", "Sharp. Suspiciously locked in.", "Frightening hand-eye control. Textbook hyperfocus."];
+      const verdicts = ["Overwhelmed on contact. Honestly relatable.", "You held on a bit before the meltdown.", "Impressively unbothered. Noise-cancelling soul.", "Total sensory zen. Nothing rattles you."];
       // best run so far is always the answer; once lives run out, Next is forced
       setAnswer(points, { dodge: +best.toFixed(1) });
       reveal.hidden = false;
-      reveal.innerHTML = `Best run: <b>${best.toFixed(1)}s</b> — ${verdicts[points]}<br><span class="dodge-twist">…the better you are at this, the more autistic we're afraid you are.</span>`;
+      reveal.innerHTML = `Survived <b>${best.toFixed(1)}s</b> of overload — ${verdicts[points]}<br><span class="dodge-twist">…the longer you can tune out the chaos, the more we suspect you've had practice. 😅</span>`;
       ov.style.display = "";
       if (lives > 0) {
         ov.innerHTML = `<div class="dodge-msg">💥 You survived <b>${elapsed.toFixed(1)}s</b><small>${lives} ${lives === 1 ? "life" : "lives"} left</small></div><button class="btn btn-primary dodge-go" type="button">↻ Use a life</button>`;
@@ -1145,6 +1157,100 @@
       b.addEventListener("pointercancel", off);
     });
     ov.querySelector(".dodge-go").addEventListener("click", start);
+  }
+
+  // Flappy-bird-style game using the player's own avatar as the bird. Flap (click /
+  // tap / Space / ↑ / button) to rise; gravity pulls you down; thread the gaps in
+  // the pipes. Score = pipes passed; 3 lives, best run counts. setInterval loop.
+  function renderFlappyGame(body, Q, setAnswer, avatar) {
+    body.innerHTML = `
+      <div class="flap-stage" id="flap-stage">
+        <div class="flap-hud"><span class="flap-score" id="flap-score">0</span><span class="flap-lives" id="flap-lives">❤️❤️❤️</span></div>
+        <div class="flap-layer" id="flap-layer"></div>
+        <div class="flap-ground"></div>
+        <div class="flap-bird" id="flap-bird">${avatarSVG(avatar, { noBg: true })}</div>
+        <div class="flap-overlay" id="flap-ov">
+          <div class="flap-msg">Flap to fly.<small>Click / tap, Space, ↑, or the FLAP button to flap. Thread the gaps. 3 lives.</small></div>
+          <button class="btn btn-primary flap-go" type="button">▶ Start</button>
+        </div>
+      </div>
+      <div class="flap-dpad"><button class="flap-btn" id="flap-flap" type="button">⬆ FLAP</button></div>
+      <div class="flap-reveal" hidden></div>`;
+    const stage = $("#flap-stage", body), layer = $("#flap-layer", body), bird = $("#flap-bird", body);
+    const ov = $("#flap-ov", body), reveal = $(".flap-reveal", body), scoreEl = $("#flap-score", body), livesEl = $("#flap-lives", body);
+    const BIRD = 40, GROUND = 26, PW = 60, GAP = 145;
+    let running = false, loop = null, last = 0, W = 0, H = 0, by = 0, vy = 0, pipes = [], spawnAcc = 0, score = 0, best = 0, lives = 3;
+    function birdX() { return W * 0.26; }
+    function measure() { const r = stage.getBoundingClientRect(); W = r.width; H = r.height; }
+    function paintBird() { bird.style.left = birdX() + "px"; bird.style.top = by + "px"; bird.style.transform = `rotate(${Math.max(-28, Math.min(70, vy * 5))}deg)`; }
+    function spawnPipe() {
+      const gapTop = 28 + Math.random() * Math.max(20, H - GROUND - GAP - 56);
+      const top = document.createElement("div"); top.className = "flap-pipe flap-pipe-top";
+      top.style.left = W + "px"; top.style.height = gapTop + "px"; top.style.width = PW + "px";
+      const bot = document.createElement("div"); bot.className = "flap-pipe flap-pipe-bot";
+      bot.style.left = W + "px"; bot.style.top = (gapTop + GAP) + "px"; bot.style.height = (H - GROUND - gapTop - GAP) + "px"; bot.style.width = PW + "px";
+      layer.append(top, bot);
+      pipes.push({ top, bot, x: W, gapTop, scored: false });
+    }
+    function onKey(e) {
+      if (e.key !== " " && e.key !== "ArrowUp" && e.key !== "Spacebar") return;
+      if (location.hash !== "#/test" && location.hash !== "#/debug") { cleanup(); return; }
+      e.preventDefault();
+      if (e.type === "keydown") flap();
+    }
+    function cleanup() { running = false; clearInterval(loop); removeEventListener("keydown", onKey); }
+    function flap() { if (!running) { start(); return; } vy = -6.7; }
+    function tick() {
+      if (!document.body.contains(stage)) { cleanup(); return; }
+      if (!running) return;
+      const t = Date.now(); let dt = last ? t - last : 16; last = t; if (dt > 60) dt = 60; const f = dt / 16;
+      vy += 0.42 * f; by += vy * f;
+      if (by < 0) { by = 0; vy = 0; }
+      const floor = H - GROUND - BIRD;
+      if (by >= floor) { by = floor; paintBird(); gameOver(); return; }
+      spawnAcc += dt;
+      if (spawnAcc >= 1500) { spawnAcc = 0; spawnPipe(); }
+      const bx = birdX(), m = 6;
+      for (let i = pipes.length - 1; i >= 0; i--) {
+        const p = pipes[i];
+        p.x -= 2.6 * f; p.top.style.left = p.x + "px"; p.bot.style.left = p.x + "px";
+        if (bx + BIRD - m > p.x && bx + m < p.x + PW && (by + m < p.gapTop || by + BIRD - m > p.gapTop + GAP)) { gameOver(); return; }
+        if (!p.scored && p.x + PW < bx) { p.scored = true; score++; scoreEl.textContent = score; }
+        if (p.x < -PW) { p.top.remove(); p.bot.remove(); pipes.splice(i, 1); }
+      }
+      paintBird();
+    }
+    function start() {
+      if (running) return;
+      pipes.forEach(p => { p.top.remove(); p.bot.remove(); }); pipes = [];
+      measure(); by = H * 0.4; vy = 0; score = 0; scoreEl.textContent = "0"; spawnAcc = 700;
+      running = true; last = 0;
+      ov.style.display = "none"; reveal.hidden = true;
+      addEventListener("keydown", onKey);
+      paintBird();
+      loop = setInterval(tick, 24);
+    }
+    function gameOver() {
+      cleanup();
+      if (score > best) best = score;
+      lives = Math.max(0, lives - 1);
+      livesEl.textContent = lives > 0 ? "❤️".repeat(lives) : "💀";
+      const points = best < 1 ? 0 : best < 3 ? 1 : best < 6 ? 2 : 3;
+      const verdicts = ["Gravity won instantly. We respect the commitment.", "A few gaps cleared — not bad.", "Genuinely solid flapping.", "Inhuman focus. The pattern is yours."];
+      setAnswer(points, { flappyBest: best });
+      reveal.hidden = false;
+      reveal.innerHTML = `Best run: <b>${best}</b> pipe${best === 1 ? "" : "s"} — ${verdicts[points]}<br><span class="dodge-twist">…the deeper the focus, the more autistic we're afraid you are.</span>`;
+      ov.style.display = "";
+      if (lives > 0) {
+        ov.innerHTML = `<div class="flap-msg">💥 Down you go<small>Score ${score} · ${lives} ${lives === 1 ? "life" : "lives"} left</small></div><button class="btn btn-primary flap-go" type="button">↻ Use a life</button>`;
+        ov.querySelector(".flap-go").addEventListener("click", start);
+      } else {
+        ov.innerHTML = `<div class="flap-msg">💀 Out of lives<small>Best: ${best} pipes — hit Next →</small></div>`;
+      }
+    }
+    stage.addEventListener("pointerdown", (e) => { if (!running && ov.style.display !== "none") return; e.preventDefault(); flap(); });
+    $("#flap-flap", body).addEventListener("pointerdown", (e) => { e.preventDefault(); flap(); });
+    ov.querySelector(".flap-go").addEventListener("click", start);
   }
 
   // Rigged rock-paper-scissors, best 3 of 5. The computer ALWAYS wins the match
@@ -1557,9 +1663,13 @@
     // 3 levels: easy / medium / hard. More lanes, more dots per lane, faster.
     const midX = (startX2 + endX1) / 2;
     const LEVELS = [
-      { name: "Easy",   lanes: [130, 250], per: 1, base: 1.3, coins: [[midX, 190]] },
-      { name: "Medium", lanes: [70, 130, 190, 250, 310], per: 2, base: 2.1, coins: [[startX2 + 70, 110], [endX1 - 70, 270]] },
-      { name: "Hard",   lanes: [55, 100, 145, 195, 245, 295, 335], per: 2, base: 2.9, coins: [[startX2 + 60, 90], [midX, 195], [endX1 - 60, 300]] },
+      // Easy: two gentle lanes, one coin dead-center so you must step into traffic.
+      { name: "Easy",   lanes: [150, 240],                    per: 2, base: 1.5, coins: [[midX, 195]] },
+      // Medium: four evenly-spaced lanes, alternating directions, two coins that
+      // force a diagonal weave (top-left → bottom-right).
+      { name: "Medium", lanes: [100, 165, 230, 295],          per: 2, base: 2.1, coins: [[startX2 + 80, 122], [endX1 - 80, 272]] },
+      // Hard: six dense lanes, three coins on a zig-zag spanning the full height.
+      { name: "Hard",   lanes: [65, 115, 165, 215, 265, 315], per: 3, base: 2.7, coins: [[startX2 + 70, 92], [midX, 200], [endX1 - 70, 308]] },
     ];
     function buildEnemies(lv) {
       const L = LEVELS[lv], arr = [], span = endX1 - startX2;
@@ -1619,7 +1729,10 @@
     function onDeath() {
       lives = Math.max(0, lives - 1); updateHud(); flash();
       if (lives <= 0) { endGame(false); return; }
-      resetPlayer(); paintSprites();
+      // dying resets the level's coins — you have to collect them all again
+      coins.forEach(c => c.got = false); coinsLeft = coins.length;
+      field.classList.add("whg-locked");
+      resetPlayer(); updateHud(); paintSprites();
     }
     function onLevelClear() {
       levelsDone = level + 1;
@@ -2141,10 +2254,11 @@
     else if (kind === "polo") { renderPoloGame(qbody, Q, setAnswer, i + 1); }
     else if (kind === "reenterpin") { renderReenterPinGame(qbody, Q, setAnswer, state); }
     else if (kind === "dodge") { renderDodgeGame(qbody, Q, setAnswer, state.avatar); }
+    else if (kind === "flappy") { renderFlappyGame(qbody, Q, setAnswer, state.avatar); }
     else if (kind === "whg") { renderWhgGame(qbody, Q, setAnswer); }
     else if (kind === "rps") { renderRpsGame(qbody, Q, setAnswer, state.avatar); }
   }
-  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", dodge: "Dodge", whg: "World's Hardest", rps: "Rock Paper Scissors", typing: "Typing race", qebday: "Queen's birthday", polo: "Polo holes", reenterpin: "Re-enter PIN" };
+  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", typing: "Typing race", qebday: "Queen's birthday", polo: "Polo holes", reenterpin: "Re-enter PIN" };
 
   function submitToQueue(state) {
     bumpCtr();

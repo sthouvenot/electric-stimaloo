@@ -189,7 +189,7 @@
     if (drink === "lolly") return `<g><rect x="70.3" y="59" width="1.7" height="22" rx=".85" fill="#fafafa" stroke="#1a1a1a" stroke-width=".7"/><circle cx="71" cy="59" r="6.6" fill="#ff5da2" stroke="#1a1a1a" stroke-width="1.3"/><path d="M71,54.6 A4.4,4.4 0 1 1 67,60.4" fill="none" stroke="#fff" stroke-width="1.3" opacity=".75"/><circle cx="71" cy="59" r="1.4" fill="none" stroke="#fff" stroke-width="1" opacity=".75"/>${hand}</g>`;
     return `<g><rect x="71" y="51" width="1.8" height="17" rx=".9" fill="#ff7aa0" transform="rotate(10 72 59)"/><rect x="68" y="64" width="10" height="16" rx="2" fill="#ff3158"/><rect x="68" y="59" width="10" height="21" rx="2" fill="rgba(255,255,255,.22)" stroke="#1a1a1a" stroke-width="1.4"/><path d="M76,55 Q78,51 80.5,52.5" stroke="#6b4a1f" stroke-width="1" fill="none"/><circle cx="76" cy="57" r="2.6" fill="#c0162f" stroke="#1a1a1a" stroke-width=".8"/>${hand}</g>`;
   }
-  function avatarSVG(cfg) {
+  function avatarSVG(cfg, opts) {
     cfg = cfg || {};
     const skin = cfg.skin || SKINS[2];
     const c = cfg.hairColor || HAIRCOLORS[1];
@@ -253,7 +253,7 @@
     const drink = drinkSVG(cfg.drink, skin);
 
     return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-      <rect x="0" y="0" width="100" height="100" fill="${bg}"/>
+      ${opts && opts.noBg ? "" : `<rect x="0" y="0" width="100" height="100" fill="${bg}"/>`}
       ${backHair}
       <path d="M14,100 C14,75 30,67 50,67 C70,67 86,75 86,100 Z" fill="${shirt}"/>
       <rect x="43" y="55" width="14" height="16" rx="6" fill="${skin}"/>
@@ -345,6 +345,11 @@
         ["Crossed it, a few deaths", 2],
         ["Flawless run, no deaths", 3],
       ],
+    },
+    {
+      kind: "rps",
+      q: "Rock, paper, scissors — best 2 of 3 against the computer.",
+      opts: [["Rage-quit",0],["Bailed early",1],["Bailed near the end",2],["Saw it through",3]],
     },
     {
       kind: "typing",
@@ -1042,19 +1047,32 @@
     body.innerHTML = `
       <div class="dodge-stage" id="dodge-stage">
         <div class="dodge-hud"><span class="dodge-time">0.0s</span><span class="dodge-lives" id="dodge-lives">❤️❤️❤️</span></div>
-        <div class="dodge-player" id="dodge-player"><span class="avchip" style="width:100%;height:100%">${avatarSVG(avatar)}</span></div>
+        <div class="dodge-player" id="dodge-player">${avatarSVG(avatar, { noBg: true })}</div>
         <div class="dodge-overlay" id="dodge-ov">
-          <div class="dodge-msg">Keep your avatar alive.<small>Move with your mouse / finger — dodge the falling junk. You get 3 lives.</small></div>
+          <div class="dodge-msg">Keep your avatar alive.<small>Move with ← → (arrow keys or the buttons below) — dodge the falling junk. You get 3 lives.</small></div>
           <button class="btn btn-primary dodge-go" type="button">▶ Start</button>
         </div>
+      </div>
+      <div class="dodge-dpad">
+        <button class="dodge-dbtn" data-dir="left" type="button" aria-label="move left">◀</button>
+        <button class="dodge-dbtn" data-dir="right" type="button" aria-label="move right">▶</button>
       </div>
       <div class="dodge-reveal" hidden></div>`;
     const stage = $("#dodge-stage", body), player = $("#dodge-player", body), timeEl = $(".dodge-time", body), ov = $("#dodge-ov", body), reveal = $(".dodge-reveal", body), livesEl = $("#dodge-lives", body);
     const PLAYER = 52, PAD = 4, EMOJI = ["🧱","🔨","📦","🪨","🧊","⚙️","🔧","💣"];
     let running = false, loop = null, startT = 0, best = 0, elapsed = 0, last = 0, spawnAcc = 0, px = 0, W = 0, H = 0, rocks = [], lives = 3;
+    let mvL = false, mvR = false;
     function measure() { const r = stage.getBoundingClientRect(); W = r.width; H = r.height; return r; }
-    function setPlayer(clientX) { const r = stage.getBoundingClientRect(); px = Math.max(PAD, Math.min(W - PLAYER - PAD, clientX - r.left - PLAYER / 2)); player.style.left = px + "px"; }
-    function onMove(e) { setPlayer(e.clientX); }
+    function clampPlayer() { px = Math.max(PAD, Math.min(W - PLAYER - PAD, px)); player.style.left = px + "px"; }
+    function onKey(e) {
+      const k = e.key;
+      if (k !== "ArrowLeft" && k !== "ArrowRight" && k !== "a" && k !== "d" && k !== "A" && k !== "D") return;
+      if (location.hash !== "#/test" && location.hash !== "#/debug") { cleanup(); return; }
+      e.preventDefault();
+      const down = e.type === "keydown";
+      if (k === "ArrowLeft" || k === "a" || k === "A") mvL = down;
+      else mvR = down;
+    }
     function spawnRock() {
       const sz = 24 + Math.random() * 20, x = PAD + Math.random() * (W - sz - PAD * 2);
       const d = document.createElement("div");
@@ -1063,7 +1081,7 @@
       stage.appendChild(d);
       rocks.push({ el: d, x, y: -sz, size: sz, vy: 2 + Math.random() * 1.6 });
     }
-    function cleanup() { running = false; clearInterval(loop); window.removeEventListener("pointermove", onMove); }
+    function cleanup() { running = false; clearInterval(loop); removeEventListener("keydown", onKey); removeEventListener("keyup", onKey); }
     function tick() {
       if (!document.body.contains(stage)) { cleanup(); return; }
       if (!running) return;
@@ -1071,6 +1089,10 @@
       let dt = last ? t - last : 16; last = t; if (dt > 60) dt = 60;
       elapsed = (t - startT) / 1000;
       timeEl.textContent = elapsed.toFixed(1) + "s";
+      // move left/right while held
+      const move = 6.2 * (dt / 16);
+      if (mvL) px -= move; if (mvR) px += move;
+      clampPlayer();
       const speed = 1 + elapsed * 0.07;
       spawnAcc += dt;
       const every = Math.max(260, 680 - elapsed * 24);
@@ -1087,10 +1109,11 @@
     function start() {
       if (running) return;
       rocks.forEach(r => r.el.remove()); rocks = [];
-      measure(); setPlayer(stage.getBoundingClientRect().left + W / 2);
+      measure(); px = (W - PLAYER) / 2; clampPlayer();
+      mvL = mvR = false;
       running = true; startT = Date.now(); last = 0; spawnAcc = 0; elapsed = 0;
       ov.style.display = "none"; reveal.hidden = true; stage.classList.add("dodge-playing");
-      window.addEventListener("pointermove", onMove, { passive: true });
+      addEventListener("keydown", onKey); addEventListener("keyup", onKey);
       loop = setInterval(tick, 24);
     }
     function gameOver() {
@@ -1112,7 +1135,102 @@
         ov.innerHTML = `<div class="dodge-msg">💀 Out of lives<small>Best run: ${best.toFixed(1)}s — hit Next →</small></div>`;
       }
     }
+    body.querySelectorAll(".dodge-dbtn").forEach(b => {
+      const d = b.getAttribute("data-dir");
+      const on = (e) => { e.preventDefault(); if (!running) start(); if (d === "left") mvL = true; else mvR = true; b.classList.add("active"); };
+      const off = (e) => { e.preventDefault(); if (d === "left") mvL = false; else mvR = false; b.classList.remove("active"); };
+      b.addEventListener("pointerdown", on);
+      b.addEventListener("pointerup", off);
+      b.addEventListener("pointerleave", off);
+      b.addEventListener("pointercancel", off);
+    });
     ov.querySelector(".dodge-go").addEventListener("click", start);
+  }
+
+  // Rigged rock-paper-scissors, best 2 of 3. The computer ALWAYS wins the match
+  // (it reacts to your pick). Round 1 is a coin flip; if the computer takes it,
+  // round 2 is another coin flip; if YOU take round 1, the computer is guaranteed
+  // the next two. So the human wins 0 or 1 rounds, never the match. After each
+  // loss there's a Retry button; we score on how many matches you replay — the
+  // more you refuse to accept the loss, the higher the score.
+  const RPS = { rock: "🪨", paper: "📄", scissors: "✂️" };
+  const RPS_BEATEN_BY = { rock: "paper", paper: "scissors", scissors: "rock" }; // move that BEATS the key
+  const RPS_LOSES_TO = { rock: "scissors", paper: "rock", scissors: "paper" };  // move the key BEATS
+  function renderRpsGame(body, Q, setAnswer, avatar) {
+    body.innerHTML = `
+      <div class="rps-wrap">
+        <div class="rps-hud"><span class="rps-games" id="rps-games">Games played: 0</span><span class="rps-score" id="rps-score">You 0 — 0 CPU</span></div>
+        <div class="rps-arena">
+          <div class="rps-side"><div class="rps-av">${avatarSVG(avatar, { noBg: true })}</div><div class="rps-pick" id="rps-you">❔</div><div class="rps-label">You</div></div>
+          <div class="rps-vs">VS</div>
+          <div class="rps-side"><div class="rps-av rps-cpu">🤖</div><div class="rps-pick" id="rps-cpu">❔</div><div class="rps-label">Computer</div></div>
+        </div>
+        <div class="rps-result" id="rps-result">Best 2 of 3. Make your move.</div>
+        <div class="rps-moves" id="rps-moves">
+          <button class="rps-move" data-m="rock" type="button">🪨<span>Rock</span></button>
+          <button class="rps-move" data-m="paper" type="button">📄<span>Paper</span></button>
+          <button class="rps-move" data-m="scissors" type="button">✂️<span>Scissors</span></button>
+        </div>
+        <div class="rps-reveal" hidden></div>
+      </div>`;
+    const youPick = $("#rps-you", body), cpuPick = $("#rps-cpu", body), scoreEl = $("#rps-score", body), resultEl = $("#rps-result", body);
+    const movesEl = $("#rps-moves", body), reveal = $(".rps-reveal", body), gamesEl = $("#rps-games", body);
+    let outcomes = [], round = 0, you = 0, cpu = 0, busy = false, games = 0;
+    // pre-decide each round's winner so the match is always lost
+    function rig() {
+      const r1 = Math.random() < 0.5 ? "H" : "C";
+      if (r1 === "H") return ["H", "C", "C"];          // you win 1, then forced losses → CPU 2-1
+      const r2 = Math.random() < 0.5 ? "H" : "C";
+      return r2 === "C" ? ["C", "C"] : ["C", "H", "C"]; // CPU 2-0, or CPU 2-1
+    }
+    function setMovesEnabled(on) { movesEl.querySelectorAll(".rps-move").forEach(b => b.disabled = !on); }
+    function newMatch() {
+      outcomes = rig(); round = 0; you = 0; cpu = 0; busy = false;
+      youPick.textContent = "❔"; cpuPick.textContent = "❔";
+      scoreEl.textContent = "You 0 — 0 CPU";
+      resultEl.textContent = "Best 2 of 3. Make your move.";
+      reveal.hidden = true; reveal.innerHTML = "";
+      setMovesEnabled(true);
+    }
+    function play(human) {
+      if (busy) return;
+      busy = true;
+      const want = outcomes[round]; // 'C' = computer wins this round, 'H' = human wins
+      const cpuMove = want === "C" ? RPS_BEATEN_BY[human] : RPS_LOSES_TO[human];
+      youPick.textContent = RPS[human];
+      setMovesEnabled(false);
+      // tiny suspense beat before the computer "decides"
+      let n = 0;
+      const shuffle = setInterval(() => { cpuPick.textContent = ["🪨", "📄", "✂️"][n++ % 3]; }, 90);
+      setTimeout(() => {
+        clearInterval(shuffle);
+        cpuPick.textContent = RPS[cpuMove];
+        if (want === "C") { cpu++; resultEl.textContent = "💻 Computer takes the round."; }
+        else { you++; resultEl.textContent = "🎉 You win that one!"; }
+        scoreEl.textContent = `You ${you} — ${cpu} CPU`;
+        round++;
+        if (you === 2 || cpu === 2) { matchOver(); return; }
+        busy = false; setMovesEnabled(true);
+        resultEl.textContent += " Go again →";
+      }, 700);
+    }
+    function matchOver() {
+      games++;
+      gamesEl.textContent = `Games played: ${games}`;
+      setAnswer(Math.min(3, games - 1), { rpsGames: games, rpsWins: you });
+      resultEl.textContent = "💻 The computer wins. It always wins.";
+      const twist = games <= 1 ? "Smart money walks away here. But will you?"
+        : games === 2 ? "Back for more. The machine respects the grind."
+          : games === 3 ? "Three losses deep and still swinging. You will not let this go."
+            : "You physically cannot accept defeat. Deeply, beautifully autistic.";
+      reveal.hidden = false;
+      reveal.innerHTML = `You lost <b>${you}–${cpu}</b> — that's <b>${games}</b> game${games === 1 ? "" : "s"} played.
+        <div class="rps-again"><button class="btn btn-primary rps-retry" type="button">🔁 Play again</button></div>
+        <span class="rps-twist">${twist}</span><br><span class="rps-hint">…or hit <b>Next →</b> to move on.</span>`;
+      reveal.querySelector(".rps-retry").addEventListener("click", newMatch);
+    }
+    movesEl.querySelectorAll(".rps-move").forEach(b => b.addEventListener("click", () => play(b.getAttribute("data-m"))));
+    newMatch();
   }
 
   function renderBankPinGame(body, Q, setAnswer, state) {
@@ -1412,7 +1530,6 @@
           <button class="whg-dbtn whg-down"  data-dir="down"  type="button" aria-label="down">▼</button>
           <button class="whg-dbtn whg-right" data-dir="right" type="button" aria-label="right">▶</button>
         </div>
-        <button class="whg-giveup" id="whg-giveup" type="button">give up →</button>
         <div class="whg-reveal" hidden></div>
       </div>`;
     // virtual coordinate system; scaled to the measured field on every frame
@@ -1537,7 +1654,7 @@
     function onKey(e) {
       const map = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", w: "up", s: "down", a: "left", d: "right", W: "up", S: "down", A: "left", D: "right" };
       const k = map[e.key]; if (!k) return;
-      if (location.hash !== "#/test") { cleanup(); return; }
+      if (location.hash !== "#/test" && location.hash !== "#/debug") { cleanup(); return; }
       e.preventDefault();
       dir[k] = e.type === "keydown";
     }
@@ -1551,7 +1668,6 @@
       b.addEventListener("pointerleave", off);
       b.addEventListener("pointercancel", off);
     });
-    $("#whg-giveup", body).addEventListener("click", () => endGame(false));
     ov.querySelector(".whg-go").addEventListener("click", start);
     buildSprites(); paintSprites();
   }
@@ -1959,42 +2075,7 @@
         const nb = $("#next-btn", node);
         if (nb) nb.disabled = false;
       };
-      const kind = Q.kind || "choice";
-      if (kind === "choice") {
-        const optWrap = el(`<div class="options"></div>`);
-        qbody.appendChild(optWrap);
-        Q.opts.forEach((o, idx) => {
-          const b = el(`<button class="option" type="button"><span class="dot"></span><span>${o[0]}</span></button>`);
-          // track selection by index for visual correctness
-          if (state.__selByStep && state.__selByStep[i] === idx) b.classList.add("selected");
-          b.addEventListener("click", () => {
-            state.__selByStep = state.__selByStep || {};
-            state.__selByStep[i] = idx;
-            optWrap.querySelectorAll(".option").forEach(x => x.classList.remove("selected"));
-            b.classList.add("selected");
-            setAnswer(o[1]);
-          });
-          optWrap.appendChild(b);
-        });
-      } else if (kind === "train") {
-        renderTrainGame(qbody, Q, setAnswer);
-      } else if (kind === "bankpin") {
-        renderBankPinGame(qbody, Q, setAnswer, state);
-      } else if (kind === "color") {
-        renderColorGame(qbody, Q, setAnswer);
-      } else if (kind === "typing") {
-        renderTypingGame(qbody, Q, setAnswer);
-      } else if (kind === "qebday") {
-        renderQueenBdayGame(qbody, Q, setAnswer);
-      } else if (kind === "polo") {
-        renderPoloGame(qbody, Q, setAnswer, i + 1);
-      } else if (kind === "reenterpin") {
-        renderReenterPinGame(qbody, Q, setAnswer, state);
-      } else if (kind === "dodge") {
-        renderDodgeGame(qbody, Q, setAnswer, state.avatar);
-      } else if (kind === "whg") {
-        renderWhgGame(qbody, Q, setAnswer);
-      }
+      dispatchGame(qbody, Q, i, state, setAnswer);
       const isLast = i === QUESTIONS.length - 1;
       const nextBtn = $("#next-btn", node);
       nextBtn.textContent = isLast ? "See my result →" : "Next →";
@@ -2013,6 +2094,37 @@
     paint();
     return container;
   }
+
+  // shared question dispatcher — used by both the real test and the debug sandbox
+  function dispatchGame(qbody, Q, i, state, setAnswer) {
+    const kind = Q.kind || "choice";
+    if (kind === "choice") {
+      const optWrap = el(`<div class="options"></div>`);
+      qbody.appendChild(optWrap);
+      Q.opts.forEach((o, idx) => {
+        const b = el(`<button class="option" type="button"><span class="dot"></span><span>${o[0]}</span></button>`);
+        if (state.__selByStep && state.__selByStep[i] === idx) b.classList.add("selected");
+        b.addEventListener("click", () => {
+          state.__selByStep = state.__selByStep || {};
+          state.__selByStep[i] = idx;
+          optWrap.querySelectorAll(".option").forEach(x => x.classList.remove("selected"));
+          b.classList.add("selected");
+          setAnswer(o[1]);
+        });
+        optWrap.appendChild(b);
+      });
+    } else if (kind === "train") { renderTrainGame(qbody, Q, setAnswer); }
+    else if (kind === "bankpin") { renderBankPinGame(qbody, Q, setAnswer, state); }
+    else if (kind === "color") { renderColorGame(qbody, Q, setAnswer); }
+    else if (kind === "typing") { renderTypingGame(qbody, Q, setAnswer); }
+    else if (kind === "qebday") { renderQueenBdayGame(qbody, Q, setAnswer); }
+    else if (kind === "polo") { renderPoloGame(qbody, Q, setAnswer, i + 1); }
+    else if (kind === "reenterpin") { renderReenterPinGame(qbody, Q, setAnswer, state); }
+    else if (kind === "dodge") { renderDodgeGame(qbody, Q, setAnswer, state.avatar); }
+    else if (kind === "whg") { renderWhgGame(qbody, Q, setAnswer); }
+    else if (kind === "rps") { renderRpsGame(qbody, Q, setAnswer, state.avatar); }
+  }
+  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", dodge: "Dodge", whg: "World's Hardest", rps: "Rock Paper Scissors", typing: "Typing race", qebday: "Queen's birthday", polo: "Polo holes", reenterpin: "Re-enter PIN" };
 
   function submitToQueue(state) {
     bumpCtr();
@@ -2164,6 +2276,7 @@
         <button class="btn btn-primary btn-sm" data-nav="/intro">🎉 Awards Intro</button>
         <button class="btn btn-ghost btn-sm" data-nav="/present">▶ Open Presentation</button>
         <button class="btn btn-ghost btn-sm" data-nav="/results">📊 View Results page</button>
+        <button class="btn btn-ghost btn-sm" data-nav="/debug">🐞 Debug games</button>
         <button class="btn btn-ghost btn-sm" id="logout">Log out</button>
       </div>
 
@@ -2275,6 +2388,52 @@
   }
 
   let awardsKeyHandler = null;
+  /* ----------------------------------------------------------
+     ROUTE: DEBUG (host-only) — jump to any game in isolation + restart
+     ---------------------------------------------------------- */
+  let debugStep = 0;
+  route("/debug", function () {
+    if (load(LS.auth, false) !== true) return adminGate();
+    debugStep = Math.max(0, Math.min(debugStep, QUESTIONS.length - 1));
+    const root = wrapDiv(`<section class="section fade-in"><div class="wrap">
+      <div class="admin-bar">
+        <div>
+          <h2 class="section-title" style="text-align:left;margin-bottom:4px">🐞 Debug · Game Sandbox</h2>
+          <p style="color:var(--ink-soft);margin:0">Jump to any game and restart it on command. Nothing here is saved.</p>
+        </div>
+        <div><button class="btn btn-ghost btn-sm" data-nav="/admin">← Admin</button></div>
+      </div>
+      <div class="dbg-menu" id="dbg-menu"></div>
+      <div class="dbg-bar">
+        <button class="btn btn-primary btn-sm" id="dbg-restart">🔄 Restart this game</button>
+        <span class="dbg-score" id="dbg-score">score: —</span>
+      </div>
+      <div class="card dbg-stage"><div id="dbg-body"></div></div>
+    </div></section>`);
+
+    const menu = $("#dbg-menu", root), bodyHost = $("#dbg-body", root), scoreEl = $("#dbg-score", root);
+    QUESTIONS.forEach((Q, idx) => {
+      const b = el(`<button class="dbg-item" type="button">${idx + 1}. ${GAME_LABELS[Q.kind] || Q.kind}</button>`);
+      b.addEventListener("click", () => { debugStep = idx; mount(); });
+      menu.appendChild(b);
+    });
+
+    function mount() {
+      menu.querySelectorAll(".dbg-item").forEach((b, idx) => b.classList.toggle("active", idx === debugStep));
+      const Q = QUESTIONS[debugStep];
+      scoreEl.textContent = "score: —";
+      // throwaway state so games that read state work (avatar, bankPin, etc.)
+      const state = { step: debugStep, firstName: "Debug", lastInitial: "Q", name: "Debug Q.", avatar: Object.assign({}, DEFAULT_AVATAR), answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "1357", __selByStep: {} };
+      const setAnswer = (points, meta) => { scoreEl.textContent = `score: ${points}/3${meta ? " · " + JSON.stringify(meta) : ""}`; };
+      bodyHost.innerHTML = (Q.bare ? "" : `<h2 class="q-text" style="margin-bottom:18px">${Q.q}</h2>`) + `<div class="q-body" id="dbg-inner"></div>`;
+      dispatchGame($("#dbg-inner", bodyHost), Q, debugStep, state, setAnswer);
+    }
+    $("#dbg-restart", root).addEventListener("click", mount);
+    root.querySelectorAll("[data-nav]").forEach(b => b.addEventListener("click", () => navigate(b.getAttribute("data-nav"))));
+    setTimeout(mount, 20);
+    return root;
+  });
+
   route("/intro", function () {
     if (load(LS.auth, false) !== true) return adminGate();
     const guests = store.approved();

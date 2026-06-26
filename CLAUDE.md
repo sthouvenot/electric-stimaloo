@@ -26,7 +26,8 @@ Tone: playful, celebratory, neurodiversity-positive. The bit is affectionate, ne
   build toolchain unless asked.
 - **Hash router** (`route(path, fn)`, `render()` swaps the view into `#app`). Routes:
   `#/` home · `#/test` the gauntlet · `#/details` logistics · `#/admin` (gated) ·
-  `#/intro` (gated, awards show) · `#/present` (gated, live reveal) · `#/results` (locked until public).
+  `#/intro` (gated, awards show) · `#/present` (gated, live reveal) ·
+  `#/debug` (gated, game sandbox — jump to any game + restart) · `#/results` (locked until public).
 - **"Backend" is fake** — `localStorage` only. Keys (`LS` object): `ap_submissions_v1`,
   `ap_results_public_v1`, `ap_admin_auth_v1`, `ap_dev_unlocked_v1`. 10 demo guests auto-seed when
   submissions are empty. **PER-DEVICE** — phones don't sync to the host. Real shared backend is
@@ -53,15 +54,22 @@ Verify via `preview_eval` (DOM/JS inspection), not screenshots.
 
 ## The gauntlet (`#/test`) — the core product
 Replaces the old text quiz. Flow: **character creator → (optional welcome/date interstitial) →
-9 mini-games → score → submit to pending queue.** Score = sum of 9 per-game scores (0–3 each)
-/ `MAX_RAW` (27) × 100. Games live in the `QUESTIONS` array (`kind` per game) with `render*Game()`
-functions; `setAnswer(points, metrics)` records the score and stashes metrics used by the awards show.
+10 mini-games → score → submit to pending queue.** Score = sum of per-game scores (0–3 each)
+/ `MAX_RAW` (`QUESTIONS.length`×3) × 100. Games live in the `QUESTIONS` array (`kind` per game);
+a shared **`dispatchGame(qbody, Q, i, state, setAnswer)`** helper renders the right `render*Game()`
+(also reused by the debug sandbox). `setAnswer(points, metrics)` records the score + stashes metrics
+for the awards show. `GAME_LABELS` maps kind → human label.
 
-The 9 games (in order): **bank PIN** (entropy of a 4-digit PIN) · **train** (how long you watch
-before picking) · **color** memory (match a hue) · **dodge** (survive falling junk, 3 lives) ·
-**WHG** (World's Hardest Game, 3 levels) · **typing** race · **Queen Elizabeth birthday** guess
-(21 Apr 1926; `DAY_FACTS` powers an "on this day" reveal) · **"holes in a Polo?"** meme trivia
-(4 is the funny "right" answer, scored silently) · **re-enter PIN** (recall the one from game 1).
+The 10 games (in order): **bank PIN** (entropy of a 4-digit PIN) · **train** (how long you watch
+before picking) · **color** memory (match a hue) · **dodge** (survive falling junk; left/right
+buttons + arrow keys; avatar renders with `noBg`) · **WHG** (World's Hardest Game, 3 levels; cross
+d-pad, no give-up button) · **rock-paper-scissors** (rigged — computer ALWAYS wins the match;
+round 1 is 50/50, then forced; retry button after each loss; scored on **games played**, not time,
+via `rpsGames` metric) · **typing** race · **Queen Elizabeth birthday** guess (21 Apr 1926;
+`DAY_FACTS` powers an "on this day" reveal) · **"holes in a Polo?"** meme trivia (4 is the funny
+"right" answer, scored silently) · **re-enter PIN** (recall the one from game 1).
+
+`avatarSVG(cfg, opts)` takes an optional `{ noBg: true }` to drop the backdrop (used by dodge + RPS).
 
 - **Real name required** — host approves by recognition. There's a "use your real name" disclaimer.
 - **Dev gate:** a gag "under development" PIN screen; entering `devPin` (`4444`) unlocks and sets
@@ -131,6 +139,8 @@ Fonts: **Bagel Fat One** (fat display), **Bricolage Grotesque** (headings), **Sp
   for a "Most Neurotypical" booby prize (e.g. a "Live Laugh Love" sign).
 
 ## Working preferences observed
+- **COMMIT + PUSH after every change.** The user wants nothing left sitting uncommitted — after each
+  task/feature, bump `?v=`, then `git add -A && git commit && git push`. Don't wait to be asked.
 - The user vibe-codes: move fast, make opinionated choices, show results, offer to revert.
 - Verify changes with `preview_eval` (screenshots don't work here). Bump `?v=` after changes.
 - History matters: don't reintroduce removed things (emoji picker → avatars, "fun facts" off home,

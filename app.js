@@ -374,7 +374,7 @@
     {
       kind: "imgquiz",
       q: "What's happening in this picture? 🐧",
-      img: "photos/quiz/iceberg.jpg",
+      img: "photos/iceberg.webp",
       imgAlt: "A huge crowd of Club Penguin penguins all packed onto one side of the iceberg",
       explain: "It's the legendary <b>Iceberg Tipping</b> — Club Penguin players spent years convinced that if enough penguins crammed onto one side and danced, the whole iceberg would finally flip over. (It never did… officially.)",
       opts: [

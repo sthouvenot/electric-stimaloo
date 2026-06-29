@@ -372,6 +372,19 @@
       opts: [["No clue",0],["Right ballpark",1],["Very close",2],["Nailed the exact day",3]],
     },
     {
+      kind: "imgquiz",
+      q: "What's happening in this picture? 🐧",
+      img: "photos/quiz/iceberg.jpg",
+      imgAlt: "A huge crowd of Club Penguin penguins all packed onto one side of the iceberg",
+      explain: "It's the legendary <b>Iceberg Tipping</b> — Club Penguin players spent years convinced that if enough penguins crammed onto one side and danced, the whole iceberg would finally flip over. (It never did… officially.)",
+      opts: [
+        ["Penguins all trying to tip the iceberg over", 3],
+        ["Celebrating a puffle's birthday", 1],
+        ["Running away from a penguin who smells", 1],
+        ["Crowding the music so they can step between music and silence", 1],
+      ],
+    },
+    {
       kind: "polo",
       bare: true, // renders its own meme-style card; hide the default chrome
       q: "How many holes in a Polo?",
@@ -383,7 +396,7 @@
       opts: [["Wrong",0],["Correct",3]],
     },
   ];
-  const MAX_RAW = QUESTIONS.length * 3; // 27
+  const MAX_RAW = QUESTIONS.length * 3;
 
   /* ----------------------------------------------------------
      TIERS - score is 0..100
@@ -1839,6 +1852,44 @@
     });
   }
 
+  // "What's happening in this picture?" — shows a screenshot (Q.img) and four
+  // shuffled choices. The highest-scoring option is the right answer; picking
+  // reveals correct/wrong plus Q.explain. Missing image falls back to a note.
+  function renderImgQuizGame(body, Q, setAnswer) {
+    const order = Q.opts.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+    const optsHtml = order.map(oi =>
+      `<button class="option imgq-opt" type="button" data-oi="${oi}"><span class="dot"></span><span>${esc(Q.opts[oi][0])}</span></button>`).join("");
+    body.innerHTML = `
+      <div class="imgq">
+        <figure class="imgq-shot">
+          <img src="${Q.img}" alt="${esc(Q.imgAlt || "")}" onerror="this.closest('.imgq-shot').classList.add('imgq-missing')" />
+          <figcaption class="imgq-missing-note">🖼️ screenshot goes here</figcaption>
+        </figure>
+        <div class="options imgq-opts">${optsHtml}</div>
+        <div class="imgq-reveal" hidden></div>
+      </div>`;
+    const reveal = $(".imgq-reveal", body);
+    const correctIdx = Q.opts.reduce((best, o, idx) => o[1] > Q.opts[best][1] ? idx : best, 0);
+    let picked = false;
+    body.querySelectorAll(".imgq-opt").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (picked) return;
+        picked = true;
+        const oi = +btn.dataset.oi;
+        body.querySelectorAll(".imgq-opt").forEach(b => {
+          b.disabled = true;
+          const bi = +b.dataset.oi;
+          if (bi === correctIdx) b.classList.add("opt-correct");
+          else if (bi === oi) b.classList.add("opt-wrong");
+        });
+        reveal.hidden = false;
+        reveal.innerHTML = `${oi === correctIdx ? "✅ Correct!" : "❌ Not quite."} ${Q.explain || ""}`;
+        setAnswer(Q.opts[oi][1]);
+      });
+    });
+  }
+
   /* ----------------------------------------------------------
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
@@ -2258,8 +2309,9 @@
     else if (kind === "flappy") { renderFlappyGame(qbody, Q, setAnswer, state.avatar); }
     else if (kind === "whg") { renderWhgGame(qbody, Q, setAnswer); }
     else if (kind === "rps") { renderRpsGame(qbody, Q, setAnswer, state.avatar); }
+    else if (kind === "imgquiz") { renderImgQuizGame(qbody, Q, setAnswer); }
   }
-  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", typing: "Typing race", qebday: "Queen's birthday", polo: "Polo holes", reenterpin: "Re-enter PIN" };
+  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", polo: "Polo holes", reenterpin: "Re-enter PIN" };
 
   function submitToQueue(state) {
     bumpCtr();

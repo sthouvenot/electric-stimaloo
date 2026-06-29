@@ -948,6 +948,18 @@ a { color: inherit; }
 .qbq-err { font-family: var(--font-head); font-weight: 700; font-size: 14px; color: #8b1a1a; background: #fdecec; border: 2px solid #e2a3a3; border-radius: 10px; padding: 9px 12px; margin-bottom: 14px; }
 .qbq-reveal { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--ink-soft); margin-top: 16px; line-height: 1.5; }
 
+/* ---- "What's happening?" image question ---- */
+.imgq { display: flex; flex-direction: column; gap: 16px; max-width: 640px; margin: 0 auto; }
+.imgq-shot { margin: 0; border: var(--border); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-sm); background: #dff1ff; }
+.imgq-shot img { display: block; width: 100%; height: auto; }
+.imgq-missing-note { display: none; }
+.imgq-shot.imgq-missing { aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; }
+.imgq-shot.imgq-missing img { display: none; }
+.imgq-shot.imgq-missing .imgq-missing-note { display: block; font-family: var(--font-head); font-weight: 800; font-size: 15px; color: var(--ink-soft); }
+.imgq-opt.opt-correct { background: #c9f4d6; border-color: var(--c4); }
+.imgq-opt.opt-wrong { background: #f7c9c9; border-color: var(--c1); }
+.imgq-reveal { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--ink-soft); text-align: center; line-height: 1.5; }
+
 /* ---- "How many holes in a Polo?" — hand-drawn trivia card ---- */
 .polo { --polo-blue: #2733e6; --polo-red: #ec1c24; --polo-pink: #f0cdf7;
   background: #fff; border: 3px solid var(--ink); border-radius: 16px; box-shadow: var(--shadow);

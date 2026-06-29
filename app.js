@@ -1830,10 +1830,11 @@
         if (picked) return;
         picked = true;
         const idx = +btn.dataset.i;
-        // just register the pick and let them hit Next — no right/wrong reveal
+        // register the pick (no right/wrong reveal), then auto-advance to the next question
         body.querySelectorAll(".polo-opt").forEach(b => b.disabled = true);
         btn.classList.add("sel");
         setAnswer(Q.opts[idx][1]);
+        setTimeout(() => { const nb = document.getElementById("next-btn"); if (nb && !nb.disabled) nb.click(); }, 350);
       });
     });
   }

@@ -28,10 +28,14 @@ Tone: playful, celebratory, neurodiversity-positive. The bit is affectionate, ne
   `#/` home · `#/test` the gauntlet · `#/details` logistics · `#/admin` (gated) ·
   `#/intro` (gated, awards show) · `#/present` (gated, live reveal) ·
   `#/debug` (gated, game sandbox — jump to any game + restart) · `#/results` (locked until public).
-- **"Backend" is fake** — `localStorage` only. Keys (`LS` object): `ap_submissions_v1`,
-  `ap_results_public_v1`, `ap_admin_auth_v1`, `ap_dev_unlocked_v1`. 10 demo guests auto-seed when
-  submissions are empty. **PER-DEVICE** — phones don't sync to the host. Real shared backend is
-  still the big planned item (see below).
+- **Backend = Firebase Realtime Database** (live, cross-device). `CONFIG.firebaseUrl` points at a
+  public RTDB (rules open — data isn't sensitive). The `store` mirrors the DB in memory (`DB` object)
+  and stays live via **Server-Sent Events** (`startLive()`, polling fallback). Submissions live at
+  `/submissions/<id>`, the public flag at `/results_public`. Writes are plain `fetch` PUT/PATCH/DELETE.
+  When cloud data changes, `onDbChange()` fires the current view's `liveRefresh` hook (admin queue +
+  results repaint live; the quiz/present/intro do NOT auto-refresh so they aren't disrupted).
+  **Admin auth + dev-unlock stay per-device in `localStorage`** (`ap_admin_auth_v1`, `ap_dev_unlocked_v1`).
+  10 demo guests are seeded directly in the DB (ids `demo-1..10`, tagged `seeded:true`).
 
 ## Running / previewing
 Can double-click `index.html`, or use the static server in `.claude/launch.json`:
@@ -130,9 +134,10 @@ Fonts: **Bagel Fat One** (fat display), **Bricolage Grotesque** (headings), **Sp
 - `git add -A && git commit -m "..." && git push`. Custom domain `theautismparty.com` via `CNAME`.
 
 ## Planned / open work
-- **Real shared backend** so all phones submit to ONE queue the host sees (current localStorage is
-  per-device). Plan: Supabase free tier (submissions table w/ status, password-gated admin,
-  realtime graph). UI stays the same.
+- ✅ **Real shared backend — DONE.** Firebase Realtime Database (live, cross-device). To reseed/clear
+  demo data, PUT/PATCH/DELETE against `<firebaseUrl>/submissions.json` (REST). To wipe everything:
+  `curl -X DELETE "<firebaseUrl>/.json"`. DB rules are fully open (public read/write) — fine since
+  nothing is sensitive.
 - The host's *real* legacy quiz is the "Reading the Mind in the Eyes" test scored in a Google Sheet;
   the on-site mini-games are the fun replacement.
 - Possible **Prizes section**. Real prizes: 🥇 train set, 🥈 pinwheel hat, 🥉 lollipop; idea floated

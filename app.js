@@ -18,6 +18,7 @@
     time: "8 PM EST", // doors / start time
     adminPassword: "spectrum", // mock-only gate; not real security
     devPin: "4444", // gag "under development" gate shown before the test
+    firebaseUrl: "https://electric-d1aec-default-rtdb.firebaseio.com", // shared realtime DB (public, not sensitive)
   };
 
   /* ----------------------------------------------------------
@@ -415,68 +416,84 @@
   }
 
   /* ----------------------------------------------------------
-     STORE - localStorage backed
+     STORE - Firebase Realtime Database backed (live + cross-device).
+     Submissions and the results_public flag live in the shared cloud DB and
+     update in real time via Server-Sent Events (with a polling fallback).
+     Admin auth and the dev-gate unlock stay PER-DEVICE in localStorage.
      ---------------------------------------------------------- */
-  const LS = {
-    subs: "ap_submissions_v1",
-    flag: "ap_results_public_v1",
-    auth: "ap_admin_auth_v1",
-    pin: "ap_dev_unlocked_v1",
-  };
+  const LS = { auth: "ap_admin_auth_v1", pin: "ap_dev_unlocked_v1" };
   function load(key, fallback) {
     try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); }
     catch (e) { return fallback; }
   }
   function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
+  // in-memory mirror of the cloud DB, kept live by the subscription below
+  const DB = { submissions: {}, results_public: false };
+  let dbReady = false, liveRefresh = null;
+  const fbUrl = (path) => CONFIG.firebaseUrl + "/" + path + ".json";
+  function fbWrite(method, path, val) {
+    return fetch(fbUrl(path), { method, headers: { "Content-Type": "application/json" }, body: val === undefined ? undefined : JSON.stringify(val) }).catch(() => {});
+  }
+
   const store = {
-    all() { return load(LS.subs, []); },
+    all() { const s = DB.submissions || {}; return Object.keys(s).map(k => s[k]).filter(Boolean); },
     approved() { return this.all().filter(s => s.status === "approved").sort((a, b) => a.score - b.score); },
     pending() { return this.all().filter(s => s.status === "pending"); },
-    add(sub) { const a = this.all(); a.push(sub); save(LS.subs, a); },
-    update(id, patch) { const a = this.all().map(s => s.id === id ? Object.assign(s, patch) : s); save(LS.subs, a); },
-    remove(id) { save(LS.subs, this.all().filter(s => s.id !== id)); },
-    resultsPublic() { return load(LS.flag, false); },
-    setResultsPublic(v) { save(LS.flag, !!v); },
-    seedIfEmpty() {
-      if (this.all().length) return;
-      const seed = [
-        ["Maya", "R", 8, { face: "femme", skin: SKINS[1], hairStyle: "long", hairColor: "#1c1c1c", shirt: "#ff3d7f", blush: true }, { trainWatch: 2.3, eyeContact: 12.4, dodge: 5.5 }],
-        ["Devon", "K", 19, { skin: SKINS[4], hairStyle: "short", hairColor: "#1c1c1c", shirt: "#2f9bff", eyewear: "glasses" }, { trainWatch: 5.1, eyeContact: 0.9, dodge: 9.2 }],
-        ["Priya", "S", 27, { face: "femme", skin: SKINS[3], hairStyle: "bun", hairColor: "#3b2417", shirt: "#ffd23f", earrings: true }, { trainWatch: 9.7, eyeContact: 3.4, dodge: 2.1 }],
-        ["Marcus", "T", 34, { skin: SKINS[5], hairStyle: "buzz", hairColor: "#1c1c1c", shirt: "#2ec27e", facialHair: "beard" }, { trainWatch: 1.1, eyeContact: 6.2, dodge: 18.7 }],
-        ["Sofia", "L", 44, { face: "femme", skin: SKINS[2], hairStyle: "curly", hairColor: "#6b4423", shirt: "#8b5cf6", freckles: true }, { trainWatch: 15.6, eyeContact: 19.8, dodge: 7.0 }],
-        ["Liam", "B", 52, { skin: SKINS[1], hairStyle: "short", hairColor: "#e3b04b", shirt: "#ff8a3d", eyewear: "shades" }, { trainWatch: 7.2, eyeContact: 0.4, dodge: 12.3 }],
-        ["Tasha", "M", 63, { face: "femme", skin: SKINS[6], hairStyle: "afro", hairColor: "#1c1c1c", shirt: "#ffd23f", earrings: true }, { trainWatch: 23.9, eyeContact: 5.0, dodge: 3.8 }],
-        ["Wen", "C", 71, { skin: SKINS[2], hairStyle: "short", hairColor: "#1c1c1c", shirt: "#2f9bff", headphones: true }, { trainWatch: 3.0, eyeContact: 9.1, dodge: 22.0 }],
-        ["Eli", "G", 83, { skin: SKINS[0], hairStyle: "mohawk", hairColor: "#2f9bff", shirt: "#2a2a2a", facialHair: "mustache" }, { trainWatch: 6.6, eyeContact: 1.6, dodge: 14.4 }],
-        ["Robin", "P", 94, { face: "femme", skin: SKINS[3], hairStyle: "long", hairColor: "#8b5cf6", shirt: "#ededed", eyewear: "glasses" }, { trainWatch: 11.1, eyeContact: 7.7, dodge: 6.1 }],
-      ];
-      const now = Date.now();
-      seed.forEach((s, i) => {
-        store.add({
-          id: "seed-" + i,
-          name: s[0] + " " + s[1] + ".",
-          firstName: s[0],
-          lastInitial: s[1],
-          avatar: s[3],
-          score: s[2],
-          answers: QUESTIONS.map(() => null),
-          metrics: s[4] || {},
-          status: i % 4 === 0 ? "pending" : "approved",
-          createdAt: now - (seed.length - i) * 60000,
-          seeded: true,
-        });
-      });
-    },
+    add(sub) { DB.submissions[sub.id] = sub; fbWrite("PUT", "submissions/" + sub.id, sub); },
+    update(id, patch) { if (DB.submissions[id]) Object.assign(DB.submissions[id], patch); fbWrite("PATCH", "submissions/" + id, patch); },
+    remove(id) { delete DB.submissions[id]; fbWrite("DELETE", "submissions/" + id); },
+    resultsPublic() { return !!DB.results_public; },
+    setResultsPublic(v) { DB.results_public = !!v; fbWrite("PUT", "results_public", !!v); },
+    seedIfEmpty() { /* the shared DB is seeded once, server-side - no per-device seeding */ },
   };
+
+  // merge a Firebase SSE event (path + data) into the local mirror
+  function applyFb(path, data, isPatch) {
+    const parts = String(path == null ? "/" : path).split("/").filter(Boolean);
+    if (parts.length === 0) { DB.submissions = (data && data.submissions) || {}; DB.results_public = !!(data && data.results_public); return; }
+    if (parts[0] === "submissions") {
+      if (parts.length === 1) { if (isPatch) Object.assign(DB.submissions, data || {}); else DB.submissions = data || {}; }
+      else { const id = parts[1]; if (data === null) delete DB.submissions[id]; else if (isPatch && DB.submissions[id]) Object.assign(DB.submissions[id], data); else DB.submissions[id] = data; }
+    } else if (parts[0] === "results_public") { DB.results_public = !!data; }
+  }
+  // when cloud data changes, repaint just the live host/public views
+  function onDbChange() { if (liveRefresh) { try { liveRefresh(); } catch (e) {} } }
+
+  // live subscription: Server-Sent Events (true realtime), polling fallback
+  function startLive() {
+    try {
+      const es = new EventSource(CONFIG.firebaseUrl + "/.json");
+      let opened = false;
+      const onMsg = (isPatch) => (ev) => {
+        opened = true;
+        let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (!m || m.path === undefined) return;
+        applyFb(m.path, m.data, isPatch); dbReady = true; onDbChange();
+      };
+      es.addEventListener("put", onMsg(false));
+      es.addEventListener("patch", onMsg(true));
+      es.addEventListener("open", () => { opened = true; });
+      es.onerror = () => { if (!opened) startPolling(); };
+    } catch (e) { startPolling(); }
+  }
+  let pollTimer = null, lastSnap = "";
+  function startPolling() {
+    if (pollTimer) return;
+    const poll = () => fetch(fbUrl("")).then(r => r.json()).then(data => {
+      DB.submissions = (data && data.submissions) || {}; DB.results_public = !!(data && data.results_public); dbReady = true;
+      const snap = JSON.stringify(DB); if (snap !== lastSnap) { lastSnap = snap; onDbChange(); }
+    }).catch(() => {});
+    poll(); pollTimer = setInterval(poll, 3500);
+  }
 
   /* ----------------------------------------------------------
      UTIL
      ---------------------------------------------------------- */
   const $ = (sel, el) => (el || document).querySelector(sel);
-  const uid = () => "s-" + Math.floor(performance.now() * 1000).toString(36) + "-" + (load("ap_ctr", 0) + 1);
-  function bumpCtr() { save("ap_ctr", load("ap_ctr", 0) + 1); }
+  // globally-unique-ish id (cross-device safe; no '.' '$' '#' '[' ']' '/' for Firebase keys)
+  const uid = () => "s-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+  function bumpCtr() { /* no longer needed - uid is self-contained */ }
   function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
   function fmtTime(ts) {
     const d = new Date(ts);
@@ -598,7 +615,7 @@
   }
   function navigate(path) { location.hash = path; }
   function render() {
-    store.seedIfEmpty();
+    liveRefresh = null; // each view re-registers its own live-update hook
     const path = currentHash();
     const app = $("#app");
     const key = "/" + (path.split("/")[1] || "");
@@ -2496,6 +2513,8 @@
       list.forEach(s => queue.appendChild(subRow(s, paintQueue)));
     }
     paintQueue();
+    // live: repaint the queue (and stats) whenever a phone submits / data changes
+    liveRefresh = () => { if (currentHash().indexOf("/admin") === 0) paintQueue(); };
     return root;
   }
 
@@ -2911,6 +2930,8 @@
     const guests = store.approved();
 
     if (!isPublic && !isHost) {
+      // unlock live the moment the host flips results public
+      liveRefresh = () => { if (store.resultsPublic()) render(); };
       return bindNav(wrapDiv(`<section class="section fade-in"><div class="wrap">
         <div class="locked">
           <div class="glyph">🤫</div>
@@ -2933,33 +2954,35 @@
       <div class="rank-list" id="ranks"></div>
     </div></section>`);
 
-    const graph = $("#rgraph", root);
-    if (!guests.length) {
-      graph.innerHTML += `<div class="placeholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink-faint)">No approved guests yet.</div>`;
+    const graph = $("#rgraph", root), ranks = $("#ranks", root);
+    function paint() {
+      const gs = store.approved();
+      graph.querySelectorAll(".guest-dot, .placeholder").forEach(n => n.remove());
+      if (!gs.length) {
+        graph.innerHTML += `<div class="placeholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink-faint)">No approved guests yet.</div>`;
+      }
+      const byScore = gs.slice().sort((a, b) => b.score - a.score);
+      const medals = ["🥇", "🥈", "🥉"];
+      gs.forEach((g) => {
+        const rank = byScore.indexOf(g);
+        const medal = rank < 3 ? medals[rank] : "";
+        graph.appendChild(el(`<div class="guest-dot show${medal ? " ranked" : ""}" style="left:${g.score}%">
+          ${medal ? `<div class="rank-medal">${medal}</div>` : ""}
+          <div class="flag">${esc(g.name)}<span class="s">${g.score}</span></div>
+          <div class="pin">${avatarSVG(g.avatar)}</div></div>`));
+      });
+      ranks.innerHTML = byScore.map((g, i) => {
+        const t = tierFor(g.score);
+        return `<div class="rank-row">
+          <div class="rank-num">${i + 1}</div>
+          <div class="rank-info">${avatarChip(g.avatar, 34)}<div><div class="rank-name">${esc(g.name)}</div><div class="rank-tier">${t.emoji} ${t.name}</div></div></div>
+          <div class="rank-score">${g.score}</div>
+        </div>`;
+      }).join("");
     }
-    const byScore = guests.slice().sort((a, b) => b.score - a.score);
-    const medals = ["🥇", "🥈", "🥉"];
-    guests.forEach((g, idx) => {
-      const rank = byScore.indexOf(g);
-      const medal = rank < 3 ? medals[rank] : "";
-      const dot = el(`<div class="guest-dot show${medal ? " ranked" : ""}" style="left:${g.score}%">
-        ${medal ? `<div class="rank-medal">${medal}</div>` : ""}
-        <div class="flag">${esc(g.name)}<span class="s">${g.score}</span></div>
-        <div class="pin">${avatarSVG(g.avatar)}</div></div>`);
-      graph.appendChild(dot);
-    });
-
-    const ranks = $("#ranks", root);
-    const ranked = guests.slice().sort((a, b) => b.score - a.score);
-    ranks.innerHTML = ranked.map((g, i) => {
-      const t = tierFor(g.score);
-      return `<div class="rank-row">
-        <div class="rank-num">${i + 1}</div>
-        <div class="rank-info">${avatarChip(g.avatar, 34)}<div><div class="rank-name">${esc(g.name)}</div><div class="rank-tier">${t.emoji} ${t.name}</div></div></div>
-        <div class="rank-score">${g.score}</div>
-      </div>`;
-    }).join("");
-
+    paint();
+    // live: re-plot as guests are approved (and re-lock if the host hides results)
+    liveRefresh = () => { if (!store.resultsPublic() && load(LS.auth, false) !== true) render(); else paint(); };
     return root;
   });
 
@@ -2972,5 +2995,6 @@
      BOOT
      ---------------------------------------------------------- */
   document.title = CONFIG.edition + " · " + CONFIG.partyName + " " + CONFIG.year;
+  startLive();   // subscribe to the shared cloud DB (realtime)
   render();
 })();

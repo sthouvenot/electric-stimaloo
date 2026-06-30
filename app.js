@@ -382,7 +382,7 @@
         ["Penguins all trying to tip the iceberg over", 3],
         ["Celebrating a puffle's birthday", 1],
         ["Running away from a penguin who smells", 1],
-        ["Crowding the music so they can step between music and silence", 1],
+        ["Playing music only on the left so they hear it in one ear", 1],
       ],
     },
     {
@@ -984,13 +984,17 @@
 
   function renderTrainGame(body, Q, setAnswer) {
     const carRow = () => TRAIN_CARS.map((car, k) =>
-      `<button class="tw-car" data-i="${k}" style="--car:${car.c}" type="button" aria-label="train car ${k + 1}"><i></i><i></i></button>`).join("");
+      `<button class="tw-car" data-i="${k}" style="--car:${car.c}" type="button" aria-label="train car ${k + 1}">
+         <span class="tw-roof"></span>
+         <span class="tw-cab"><i class="tw-win"></i><i class="tw-win"></i></span>
+         <span class="tw-wheel tw-wl"></span><span class="tw-wheel tw-wr"></span>
+       </button>`).join("");
     body.innerHTML = `
       <div class="tw-stage">
         <div class="tw-train"><span class="tw-loco">🚂</span>${carRow()}<span class="tw-loco">🚂</span>${carRow()}</div>
         <div class="tw-track"></div>
       </div>
-      <p class="tw-hint">↑ tap the car you like best</p>
+      <p class="tw-hint">🚂 tap your favorite car as it rolls by</p>
       <div class="tw-reveal" hidden></div>`;
     const start = Date.now();
     let picked = false; // lock after the first pick so the timing can't change
@@ -1200,7 +1204,7 @@
         <div class="flap-ground"></div>
         <div class="flap-bird" id="flap-bird">${avatarSVG(avatar, { noBg: true })}</div>
         <div class="flap-overlay" id="flap-ov">
-          <div class="flap-msg">Flap to fly.<small>Click / tap, Space, ↑, or the FLAP button to flap. Thread the gaps. 3 lives.</small></div>
+          <div class="flap-msg">Flap to fly.<small>Click / tap, Space, ↑, or the FLAP button. It speeds up as you go. <b>Clear the first pipe to start for real</b> — crash before that and it's a free retry.</small></div>
           <button class="btn btn-primary flap-go" type="button">▶ Start</button>
         </div>
       </div>
@@ -1214,13 +1218,14 @@
     function measure() { const r = stage.getBoundingClientRect(); W = r.width; H = r.height; }
     function paintBird() { bird.style.left = birdX() + "px"; bird.style.top = by + "px"; bird.style.transform = `rotate(${Math.max(-28, Math.min(70, vy * 5))}deg)`; }
     function spawnPipe() {
-      const gapTop = 28 + Math.random() * Math.max(20, H - GROUND - GAP - 56);
+      const gap = Math.max(108, GAP - score * 4); // gap narrows as you score
+      const gapTop = 28 + Math.random() * Math.max(20, H - GROUND - gap - 56);
       const top = document.createElement("div"); top.className = "flap-pipe flap-pipe-top";
       top.style.left = W + "px"; top.style.height = gapTop + "px"; top.style.width = PW + "px";
       const bot = document.createElement("div"); bot.className = "flap-pipe flap-pipe-bot";
-      bot.style.left = W + "px"; bot.style.top = (gapTop + GAP) + "px"; bot.style.height = (H - GROUND - gapTop - GAP) + "px"; bot.style.width = PW + "px";
+      bot.style.left = W + "px"; bot.style.top = (gapTop + gap) + "px"; bot.style.height = (H - GROUND - gapTop - gap) + "px"; bot.style.width = PW + "px";
       layer.append(top, bot);
-      pipes.push({ top, bot, x: W, gapTop, scored: false });
+      pipes.push({ top, bot, x: W, gapTop, gap, scored: false });
     }
     function onKey(e) {
       if (e.key !== " " && e.key !== "ArrowUp" && e.key !== "Spacebar") return;
@@ -1239,12 +1244,14 @@
       const floor = H - GROUND - BIRD;
       if (by >= floor) { by = floor; paintBird(); gameOver(); return; }
       spawnAcc += dt;
-      if (spawnAcc >= 1500) { spawnAcc = 0; spawnPipe(); }
+      const interval = Math.max(1050, 1500 - score * 45);   // pipes arrive faster as you score
+      if (spawnAcc >= interval) { spawnAcc = 0; spawnPipe(); }
       const bx = birdX(), m = 6;
+      const pspeed = 2.6 + Math.min(2.6, score * 0.12);      // and they move faster
       for (let i = pipes.length - 1; i >= 0; i--) {
         const p = pipes[i];
-        p.x -= 2.6 * f; p.top.style.left = p.x + "px"; p.bot.style.left = p.x + "px";
-        if (bx + BIRD - m > p.x && bx + m < p.x + PW && (by + m < p.gapTop || by + BIRD - m > p.gapTop + GAP)) { gameOver(); return; }
+        p.x -= pspeed * f; p.top.style.left = p.x + "px"; p.bot.style.left = p.x + "px";
+        if (bx + BIRD - m > p.x && bx + m < p.x + PW && (by + m < p.gapTop || by + BIRD - m > p.gapTop + p.gap)) { gameOver(); return; }
         if (!p.scored && p.x + PW < bx) { p.scored = true; score++; scoreEl.textContent = score; }
         if (p.x < -PW) { p.top.remove(); p.bot.remove(); pipes.splice(i, 1); }
       }
@@ -1263,15 +1270,18 @@
     function gameOver() {
       cleanup();
       if (score > best) best = score;
-      lives = Math.max(0, lives - 1);
-      livesEl.textContent = lives > 0 ? "❤️".repeat(lives) : "💀";
+      const passedFirst = score >= 1; // lives only count once you've cleared a pipe
+      if (passedFirst) { lives = Math.max(0, lives - 1); livesEl.textContent = lives > 0 ? "❤️".repeat(lives) : "💀"; }
       const points = best < 1 ? 0 : best < 3 ? 1 : best < 6 ? 2 : 3;
       const verdicts = ["Gravity won instantly. We respect the commitment.", "A few gaps cleared — not bad.", "Genuinely solid flapping.", "Inhuman focus. The pattern is yours."];
       setAnswer(points, { flappyBest: best });
       reveal.hidden = false;
       reveal.innerHTML = `Best run: <b>${best}</b> pipe${best === 1 ? "" : "s"} — ${verdicts[points]}<br><span class="dodge-twist">…the deeper the focus, the more autistic we're afraid you are.</span>`;
       ov.style.display = "";
-      if (lives > 0) {
+      if (!passedFirst) {
+        ov.innerHTML = `<div class="flap-msg">🐤 You didn't clear the first pipe!<small>No life lost — get past pipe #1 and the real run begins.</small></div><button class="btn btn-primary flap-go" type="button">↻ Try again</button>`;
+        ov.querySelector(".flap-go").addEventListener("click", start);
+      } else if (lives > 0) {
         ov.innerHTML = `<div class="flap-msg">💥 Down you go<small>Score ${score} · ${lives} ${lives === 1 ? "life" : "lives"} left</small></div><button class="btn btn-primary flap-go" type="button">↻ Use a life</button>`;
         ov.querySelector(".flap-go").addEventListener("click", start);
       } else {
@@ -1693,8 +1703,9 @@
     // 3 levels: easy / medium / hard. More lanes, more dots per lane, faster.
     const midX = (startX2 + endX1) / 2;
     const LEVELS = [
-      // Easy: two gentle lanes, one coin dead-center so you must step into traffic.
-      { name: "Easy",   lanes: [150, 240],                    per: 2, base: 1.5, coins: [[midX, 195]] },
+      // Easy: two gentle lanes + a ring of dots ORBITING the center coin, so you
+      // have to time your grab through the spinning circle. [cx,cy,radius,count,speed]
+      { name: "Easy",   lanes: [150, 240],                    per: 2, base: 1.5, coins: [[midX, 195]], orbits: [[midX, 195, 52, 4, 0.045]] },
       // Medium: four evenly-spaced lanes, alternating directions, two coins that
       // force a diagonal weave (top-left → bottom-right).
       { name: "Medium", lanes: [100, 165, 230, 295],          per: 2, base: 2.1, coins: [[startX2 + 80, 122], [endX1 - 80, 272]] },
@@ -1708,6 +1719,12 @@
         for (let k = 0; k < L.per; k++) {
           const x = startX2 + span * ((k + (li % 2 ? 0.5 : 0)) / L.per) + 30;
           arr.push({ x, y, r: 15, vx: sign * (L.base + li * 0.12), xMin: startX2 + 4, xMax: endX1 - 4 });
+        }
+      });
+      (L.orbits || []).forEach(([cx, cy, radius, count, speed]) => {
+        for (let k = 0; k < count; k++) {
+          const angle = (k / count) * Math.PI * 2;
+          arr.push({ orbit: true, cx, cy, radius, angle, speed: speed || 0.04, r: 14, x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius });
         }
       });
       return arr;
@@ -1793,7 +1810,10 @@
       const sp = 3.0 * f;
       if (dir.left) px -= sp; if (dir.right) px += sp; if (dir.up) py -= sp; if (dir.down) py += sp;
       px = Math.max(PS / 2, Math.min(VW - PS / 2, px)); py = Math.max(PS / 2, Math.min(VH - PS / 2, py));
-      for (const e of enemies) { e.x += e.vx * f; if (e.x <= e.xMin) { e.x = e.xMin; e.vx = Math.abs(e.vx); } else if (e.x >= e.xMax) { e.x = e.xMax; e.vx = -Math.abs(e.vx); } }
+      for (const e of enemies) {
+        if (e.orbit) { e.angle += e.speed * f; e.x = e.cx + Math.cos(e.angle) * e.radius; e.y = e.cy + Math.sin(e.angle) * e.radius; }
+        else { e.x += e.vx * f; if (e.x <= e.xMin) { e.x = e.xMin; e.vx = Math.abs(e.vx); } else if (e.x >= e.xMax) { e.x = e.xMax; e.vx = -Math.abs(e.vx); } }
+      }
       const half = PS / 2;
       // collect coins on contact
       for (const c of coins) {
@@ -1870,8 +1890,8 @@
   }
 
   // "What's happening in this picture?" — shows a screenshot (Q.img) and four
-  // shuffled choices. The highest-scoring option is the right answer; picking
-  // reveals correct/wrong plus Q.explain. Missing image falls back to a note.
+  // shuffled choices. Pick one (no right/wrong reveal, no explanation); the
+  // player just hits Next to move on.
   function renderImgQuizGame(body, Q, setAnswer) {
     const order = Q.opts.map((_, i) => i);
     for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
@@ -1884,25 +1904,12 @@
           <figcaption class="imgq-missing-note">🖼️ screenshot goes here</figcaption>
         </figure>
         <div class="options imgq-opts">${optsHtml}</div>
-        <div class="imgq-reveal" hidden></div>
       </div>`;
-    const reveal = $(".imgq-reveal", body);
-    const correctIdx = Q.opts.reduce((best, o, idx) => o[1] > Q.opts[best][1] ? idx : best, 0);
-    let picked = false;
     body.querySelectorAll(".imgq-opt").forEach(btn => {
       btn.addEventListener("click", () => {
-        if (picked) return;
-        picked = true;
-        const oi = +btn.dataset.oi;
-        body.querySelectorAll(".imgq-opt").forEach(b => {
-          b.disabled = true;
-          const bi = +b.dataset.oi;
-          if (bi === correctIdx) b.classList.add("opt-correct");
-          else if (bi === oi) b.classList.add("opt-wrong");
-        });
-        reveal.hidden = false;
-        reveal.innerHTML = `${oi === correctIdx ? "✅ Correct!" : "❌ Not quite."} ${Q.explain || ""}`;
-        setAnswer(Q.opts[oi][1]);
+        body.querySelectorAll(".imgq-opt").forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        setAnswer(Q.opts[+btn.dataset.oi][1]);
       });
     });
   }
@@ -1929,9 +1936,9 @@
         const node = el(`
           <div class="card char-create fade-in">
             <div class="step-tag"><span class="step-num">1</span> Create your character <span class="step-arrow">→</span> <span class="step-faded">2 · take the test</span></div>
-            <h2 class="section-title">First, build your autist</h2>
+            <h2 class="section-title">Create your own character</h2>
             <p class="section-sub">Make your little character below - <b>this isn't the test yet</b>. When you're happy with them, hit start and the 12 questions begin.</p>
-            <div class="char-note"><span><b>Use your real name 🪪.</b> The host approves every contestant by hand and will only wave through names he actually recognizes. Fake names, bits, and aliases get rejected at the door 🚪.</span></div>
+            <div class="char-note"><span><b>Use your real name.</b> The host approves every contestant by hand and will only wave through names he actually recognizes. Fake names, bits, and aliases get rejected at the door.</span></div>
             <div class="char-layout">
               <div class="char-form">
                 <div class="char-row">
@@ -2196,29 +2203,26 @@
         return;
       }
 
-      // result step
+      // result step — NO score reveal; results go live at the party
       if (state.done) {
-        const t = tierFor(state.score);
         const node = el(`
-          <div class="card result-card fade-in">
-            <div class="result-emoji"><span class="avchip" style="width:104px;height:104px">${avatarSVG(state.avatar)}</span></div>
-            <div class="q-count">${esc(state.name)}, you are…</div>
-            <div class="result-tier"><span class="grad">${t.name}</span></div>
-            <p class="result-blurb">${t.blurb}</p>
-            <div class="score-meter">
-              <div class="meter-track"><div class="meter-pin" style="left:0%"></div></div>
-              <div class="meter-scale"><span>Neurotypical</span><span>Maximum Autism</span></div>
+          <div class="card result-card submitted-card fade-in">
+            <div class="result-avatar"><span class="avchip" style="width:116px;height:116px">${avatarSVG(state.avatar)}</span><div class="ra-stamp">✓ IN</div></div>
+            <div class="q-count">Locked in, ${esc(state.firstName || state.name)} 🎉</div>
+            <h2 class="result-tier"><span class="grad">Results submitted!</span></h2>
+            <p class="result-blurb">Your spot on the spectrum is sealed and sent to the host. The big reveal happens <b>LIVE at the party</b> on the giant graph — no peeking, not even for you.</p>
+            <div class="sealed-spectrum">
+              <div class="sealed-bar"></div>
+              <div class="sealed-pin">?</div>
             </div>
-            <div class="submitted-banner">
-              ✅ Submitted! You're in the queue. The host will approve you, then you'll appear on the spectrum graph at the party.
-            </div>
-            <div class="quiz-nav" style="justify-content:center;margin-top:24px">
+            <div class="sealed-tag">🤫 your spot · revealed at the party</div>
+            <p class="result-joke">We'd tell you your score… but then we couldn't plot you publicly in front of everyone for maximum drama. Patience. 😈</p>
+            <div class="quiz-nav" style="justify-content:center;margin-top:10px">
               <button class="btn btn-ghost btn-sm" id="retake">Take it again</button>
             </div>
           </div>`);
         shellEl.appendChild(node);
-        setTimeout(() => { $(".meter-pin", node).style.left = state.score + "%"; }, 150);
-        confetti.burst(150);
+        confetti.burst(180);
         $("#retake", node).addEventListener("click", () => {
           state.step = -1; state.done = false; state.welcome = false; state.dateStep = ""; state.returningFull = ""; state.returningSentence = ""; state.answers = QUESTIONS.map(() => null); state.metrics = {}; state.bankPin = ""; paint();
         });
@@ -2281,6 +2285,8 @@
       const isLast = i === QUESTIONS.length - 1;
       const nextBtn = $("#next-btn", node);
       nextBtn.textContent = isLast ? "See my result →" : "Next →";
+      // polo auto-advances on pick — keep the button (it clicks it) but hide it
+      if (Q.kind === "polo") { const nav = node.querySelector(".quiz-nav-next"); if (nav) nav.style.display = "none"; }
       if (state.answers[i] != null) nextBtn.disabled = false;
       nextBtn.addEventListener("click", () => {
         if (state.answers[i] == null) return;
@@ -2574,23 +2580,24 @@
      guest up along the bottom, then spotlights + roasts one winner
      per fun-fact award (derived from quiz metrics) before the reveal.
      ---------------------------------------------------------- */
+  // Each award is a metric-based, Mario-Party-style bar race: every guest with
+  // that metric gets an animated bar; the winner's bar is longest. dir:"high"
+  // = bigger value wins; dir:"low" = smaller value wins (bar is inverted so the
+  // winner is still longest).
   function buildAwards(guests) {
-    const list = [];
-    const hasT = g => g.metrics && typeof g.metrics.trainWatch === "number";
-    const hasE = g => g.metrics && typeof g.metrics.eyeContact === "number";
-    const hasD = g => g.metrics && typeof g.metrics.dodge === "number";
-    const withT = guests.filter(hasT), withE = guests.filter(hasE), withD = guests.filter(hasD);
-    const top = (arr, f) => arr.slice().sort((a, b) => f(b) - f(a))[0];
-    const bot = (arr, f) => arr.slice().sort((a, b) => f(a) - f(b))[0];
-    if (withT.length) { const g = top(withT, x => x.metrics.trainWatch); list.push({ emoji: "🚂", title: "Longest Train Stare", g, stat: `watched a looping cartoon train for <b>${g.metrics.trainWatch}s</b>`, roast: "We were genuinely worried you'd missed your stop." }); }
-    if (withT.length > 1) { const g = bot(withT, x => x.metrics.trainWatch); list.push({ emoji: "⚡", title: "Quickest Draw", g, stat: `picked a train car in <b>${g.metrics.trainWatch}s</b> flat`, roast: "Didn't even watch the train go by. Are you sure you're at the right party?" }); }
-    if (withE.length) { const g = top(withE, x => x.metrics.eyeContact); list.push({ emoji: "👁️", title: "The Iron Gaze", g, stat: `held eye contact for <b>${g.metrics.eyeContact}s</b> without flinching`, roast: "Nobody asked you to win this one. Please, blink." }); }
-    if (withE.length > 1) { const g = bot(withE, x => x.metrics.eyeContact); list.push({ emoji: "🫣", title: "First to Crack", g, stat: `lasted <b>${g.metrics.eyeContact}s</b> of eye contact before bailing`, roast: "Honestly? The most relatable person in the room." }); }
-    if (withD.length) { const g = top(withD, x => x.metrics.dodge); list.push({ emoji: "🎮", title: "Reflex Champion", g, stat: `kept their avatar alive for <b>${g.metrics.dodge}s</b>`, roast: "Unsettling hand-eye control. We see those gamer hours." }); }
-    const won = guests.filter(g => g.metrics && g.metrics.whgWon === 1 && typeof g.metrics.whgDeaths === "number");
-    if (won.length) { const g = bot(won, x => x.metrics.whgDeaths); list.push({ emoji: "🟥", title: "Ice in the Veins", g, stat: `beat the World's Hardest Game with just <b>${g.metrics.whgDeaths}</b> death${g.metrics.whgDeaths === 1 ? "" : "s"}`, roast: "Most people rage-quit. You went quiet and locked in. Terrifying." }); }
-    if (guests.length) { const g = guests.slice().sort((a, b) => Math.abs(a.score - 50) - Math.abs(b.score - 50))[0]; list.push({ emoji: "🎯", title: "Dead Center", g, stat: `landed at exactly <b>${g.score}/100</b>`, roast: "The living embodiment of 'well… it's a spectrum.'" }); }
-    return list;
+    const defs = [
+      { emoji: "🚂", title: "Longest Train Stare", key: "trainWatch", dir: "high", suffix: "s", roast: "we were genuinely worried you'd missed your stop.", min: 1 },
+      { emoji: "⚡", title: "Quickest Draw",        key: "trainWatch", dir: "low",  suffix: "s", roast: "picked a train and bolted. Did you even see it?", min: 2 },
+      { emoji: "👁️", title: "The Iron Gaze",        key: "eyeContact", dir: "high", suffix: "s", roast: "nobody asked you to win this. Please, blink.", min: 1 },
+      { emoji: "🎮", title: "Reflex Champion",       key: "dodge",      dir: "high", suffix: "s", roast: "unsettling reflexes. We see those gamer hours.", min: 1 },
+      { emoji: "🐤", title: "Flappy Legend",         key: "flappyBest", dir: "high", suffix: " pipes", roast: "you and that bird share one beautifully focused brain.", min: 1 },
+      { emoji: "🔁", title: "Never Surrenders",      key: "rpsGames",   dir: "high", suffix: " games", roast: "replayed an unwinnable game this many times. Iconic.", min: 1 },
+      { emoji: "🟥", title: "Ice in the Veins",      key: "whgDeaths",  dir: "low",  suffix: " deaths", roast: "cool under fire. Mildly terrifying.", min: 2 },
+    ];
+    return defs.map(d => {
+      const pool = guests.filter(g => g.metrics && typeof g.metrics[d.key] === "number");
+      return pool.length >= (d.min || 1) ? Object.assign({}, d, { pool }) : null;
+    }).filter(Boolean);
   }
 
   let awardsKeyHandler = null;
@@ -2660,9 +2667,11 @@
     const countEl = $("#aw-count", root), nextBtn = $("#aw-next", root), backBtn = $("#aw-back", root);
 
     if (!guests.length || !awards.length) {
-      stageEl.innerHTML = `<div class="placeholder">No approved guests yet.<br>Approve some in the <b>Admin</b> queue first.</div>`;
+      stageEl.innerHTML = `<div class="placeholder">${dbReady ? "No approved guests yet.<br>Approve some in the <b>Admin</b> queue first." : "Loading guests…"}</div>`;
       nextBtn.disabled = true;
       backBtn.addEventListener("click", () => navigate("/admin"));
+      // once cloud data arrives, re-render so the show populates
+      liveRefresh = () => { if (currentHash().indexOf("/intro") === 0 && store.approved().length) render(); };
       return root;
     }
 
@@ -2673,22 +2682,35 @@
     const toons = Array.from(rosterEl.querySelectorAll(".roster-toon"));
 
     function showAward(n) {
-      const a = awards[n], wi = guests.indexOf(a.g);
+      const a = awards[n];
+      const ranked = a.pool.slice().sort((x, y) => a.dir === "high" ? (y.metrics[a.key] - x.metrics[a.key]) : (x.metrics[a.key] - y.metrics[a.key]));
+      const winner = ranked[0], wi = guests.indexOf(winner);
+      const shown = ranked.slice(0, 10);
+      const maxV = Math.max.apply(null, shown.map(g => g.metrics[a.key]).concat(0.0001));
+      const barScore = (v) => a.dir === "high" ? v : (maxV - v + maxV * 0.12); // invert so the winner (low) is longest
+      const maxScore = Math.max.apply(null, shown.map(g => barScore(g.metrics[a.key])).concat(0.0001));
+      const rows = shown.map((g, idx) => {
+        const v = g.metrics[a.key];
+        const pct = Math.max(12, Math.round(barScore(v) / maxScore * 100));
+        return `<div class="mp-row${idx === 0 ? " mp-win" : ""}">
+          <span class="mp-rank">${idx === 0 ? "🏆" : (idx + 1)}</span>
+          <span class="avchip mp-av" style="width:42px;height:42px">${avatarSVG(g.avatar)}</span>
+          <span class="mp-name">${esc(g.firstName || g.name)}</span>
+          <div class="mp-track"><div class="mp-bar" style="--w:${pct}%;animation-delay:${(idx * 0.09).toFixed(2)}s"></div></div>
+          <span class="mp-val">${v}${a.suffix || ""}</span>
+        </div>`;
+      }).join("");
       stageEl.innerHTML = `<div class="award-card fade-in">
         <div class="award-kicker">${a.emoji} Award ${n + 1} of ${awards.length}</div>
         <div class="award-title">${esc(a.title)}</div>
-        <div class="award-winner">
-          <span class="avchip" style="width:118px;height:118px">${avatarSVG(a.g.avatar)}</span>
-          <div class="award-name">${esc(a.g.name)}</div>
-        </div>
-        <div class="award-stat">${a.stat}</div>
-        <div class="award-roast">“${esc(a.roast)}”</div>
+        <div class="mp-chart">${rows}</div>
+        <div class="award-roast">🏆 <b>${esc(winner.firstName || winner.name)}</b> — ${esc(a.roast)}</div>
       </div>`;
       toons.forEach((t, i) => { t.classList.toggle("spotlight", i === wi); t.classList.toggle("dim", i !== wi); });
       if (toons[wi]) toons[wi].scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
       countEl.textContent = `${n + 1} / ${awards.length}`;
       nextBtn.textContent = n >= awards.length - 1 ? "Start the Reveal →" : "Next award →";
-      confetti.burst(70);
+      confetti.burst(80);
     }
     function go(delta) {
       if (awardIdx >= awards.length - 1 && delta > 0) { navigate("/present"); return; }
@@ -2746,8 +2768,10 @@
     const finaleStart = guests.length - 3; // array index of the 3rd-place finalist
 
     if (!guests.length) {
-      stage.innerHTML = `<div class="placeholder">No approved guests yet.<br>Approve some in the <b>Admin</b> queue first.</div>`;
+      stage.innerHTML = `<div class="placeholder">${dbReady ? "No approved guests yet.<br>Approve some in the <b>Admin</b> queue first." : "Loading guests…"}</div>`;
       revealBtn.disabled = true;
+      // populate once cloud data arrives — but never interrupt an in-progress reveal
+      liveRefresh = () => { if (currentHash().indexOf("/present") === 0 && presentRevealed === 0 && store.approved().length) render(); };
     }
 
     // clamp revealed to current guest count

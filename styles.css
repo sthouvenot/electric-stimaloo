@@ -410,20 +410,25 @@ a { color: inherit; }
 
 /* ---- quiz mini-games ---- */
 /* Train Watcher: a looping train; you "pick a car" but you're scored on watch time */
-.tw-stage { position: relative; height: 124px; overflow: hidden; border: var(--border); border-radius: 16px;
+.tw-stage { position: relative; height: 134px; overflow: hidden; border: var(--border); border-radius: 16px;
   background: linear-gradient(#eaf4ff, #fffdf8); box-shadow: var(--shadow-sm); }
-.tw-train { position: absolute; top: 30px; left: 0; display: flex; align-items: flex-end; gap: 8px; padding-left: 14px;
+.tw-train { position: absolute; top: 36px; left: 0; display: flex; align-items: flex-end; gap: 7px; padding-left: 14px;
   white-space: nowrap; animation: tw-roll 9s linear infinite; will-change: transform; }
 .tw-stopped .tw-train { animation-play-state: paused; }
 @keyframes tw-roll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-.tw-loco { font-size: 42px; line-height: 1; }
-.tw-car { width: 60px; height: 46px; flex: 0 0 auto; border: 3px solid var(--ink); border-radius: 7px 11px 4px 4px;
-  background: var(--car); display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  cursor: pointer; box-shadow: 2px 2px 0 var(--ink); padding: 0; transition: transform .1s; }
-.tw-car i { width: 13px; height: 13px; background: rgba(255,255,255,.75); border: 2px solid var(--ink); border-radius: 2px; }
+.tw-loco { font-size: 46px; line-height: 1; margin-right: 1px; }
+.tw-car { position: relative; width: 58px; height: 44px; flex: 0 0 auto; border: 3px solid var(--ink); border-radius: 10px 13px 3px 3px;
+  background: var(--car); cursor: pointer; box-shadow: 2px 2px 0 var(--ink); padding: 0; transition: transform .1s; }
+/* coupler that links each car to the one before it (so the train reads as connected) */
+.tw-car::before { content: ""; position: absolute; left: -8px; bottom: 12px; width: 9px; height: 5px; background: var(--ink); border-radius: 2px; }
+.tw-roof { position: absolute; top: -6px; left: 7px; right: 7px; height: 7px; background: rgba(0,0,0,.22); border: 2px solid var(--ink); border-radius: 5px 5px 0 0; }
+.tw-cab { position: absolute; inset: 5px 6px 7px; display: flex; align-items: center; justify-content: center; gap: 7px; }
+.tw-win { width: 12px; height: 13px; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 3px; }
+.tw-wheel { position: absolute; bottom: -8px; width: 15px; height: 15px; border-radius: 50%; background: #2a2a2a; border: 2.5px solid var(--ink); }
+.tw-wl { left: 7px; } .tw-wr { right: 7px; }
 .tw-car:hover { transform: translateY(-3px); }
-.tw-car.tw-picked { outline: 3px dashed var(--ink); outline-offset: 2px; transform: translateY(-5px) scale(1.08); }
-.tw-track { position: absolute; left: 0; right: 0; bottom: 18px; height: 5px;
+.tw-car.tw-picked { outline: 3px dashed var(--ink); outline-offset: 3px; transform: translateY(-5px) scale(1.08); z-index: 2; }
+.tw-track { position: absolute; left: 0; right: 0; bottom: 34px; height: 5px;
   background: repeating-linear-gradient(90deg, var(--ink) 0 16px, transparent 16px 30px); }
 .tw-hint { text-align: center; color: var(--ink-soft); font-family: var(--font-head); font-weight: 700; margin: 14px 0 0; }
 .tw-reveal { margin: 16px auto 0; max-width: 460px; text-align: center; font-size: 16px; line-height: 1.4;
@@ -524,8 +529,9 @@ a { color: inherit; }
 .rps-move span { font-family: var(--font-head); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); }
 .rps-move:hover:not(:disabled) { transform: translate(-1px, -1px); background: var(--c3); }
 .rps-move:disabled { opacity: .45; cursor: default; }
-.rps-giveup { background: none; border: none; font-family: var(--font-head); font-weight: 700; font-size: 13px; color: var(--ink-faint); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; opacity: .7; }
-.rps-giveup:hover { opacity: 1; }
+.rps-giveup { font-family: var(--font-head); font-weight: 800; font-size: 18px; color: var(--ink); background: var(--c3); border: var(--border); border-radius: 999px; box-shadow: var(--shadow); padding: 15px 34px; cursor: pointer; transition: transform .1s, box-shadow .1s; }
+.rps-giveup:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-lg); }
+.rps-giveup:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
 .rps-reveal { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--ink-soft); text-align: center; line-height: 1.5; max-width: 480px; }
 .rps-twist { color: var(--c6); }
 .start-row { align-items: center; flex-wrap: wrap; }
@@ -633,6 +639,16 @@ a { color: inherit; }
 /* result */
 .result-card { text-align: center; max-width: 640px; margin: 0 auto; position: relative; overflow: hidden; }
 .result-emoji { font-size: 82px; line-height: 1; margin-bottom: 6px; animation: pop .5s cubic-bezier(.2,1.5,.4,1); }
+/* "results submitted" screen (no score reveal) */
+.result-avatar { position: relative; width: 116px; margin: 0 auto 12px; animation: pop .5s cubic-bezier(.2,1.5,.4,1); }
+.result-avatar .avchip { width: 116px; height: 116px; border: 4px solid var(--ink); }
+.ra-stamp { position: absolute; right: -8px; bottom: -6px; background: var(--c4); color: #fff; font-family: var(--font-head); font-weight: 800; font-size: 13px; border: 3px solid var(--ink); border-radius: 999px; padding: 3px 10px; transform: rotate(-9deg); box-shadow: var(--shadow-sm); }
+.sealed-spectrum { position: relative; max-width: 460px; margin: 22px auto 8px; }
+.sealed-bar { height: 26px; border-radius: 999px; background: var(--rainbow); border: var(--border); opacity: .5; filter: saturate(.6); }
+.sealed-pin { position: absolute; top: 50%; left: 50%; width: 36px; height: 36px; border-radius: 50%; background: var(--white); border: var(--border); display: grid; place-items: center; font-family: var(--font-display); font-size: 19px; box-shadow: var(--shadow-sm); transform: translate(-50%, -50%); animation: sealSlide 3.4s ease-in-out infinite; }
+@keyframes sealSlide { 0%, 100% { left: 16%; } 50% { left: 84%; } }
+.sealed-tag { font-family: var(--font-head); font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); margin-top: 12px; }
+.result-joke { color: var(--ink-faint); font-style: italic; font-size: 14px; max-width: 430px; margin: 16px auto 14px; line-height: 1.45; }
 @keyframes pop { from { transform: scale(0) rotate(-20deg); } to { transform: scale(1) rotate(0); } }
 .result-tier { font-family: var(--font-display); font-weight: 400; font-size: clamp(30px, 6.5vw, 52px); margin: 8px 0; line-height: .95;
   background: var(--rainbow); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
@@ -763,7 +779,20 @@ a { color: inherit; }
 .award-winner .avchip { border: var(--border); box-shadow: var(--shadow); background: var(--paper-2); animation: aw-bob 1.7s ease-in-out infinite; }
 .award-name { font-family: var(--font-head); font-weight: 800; font-size: 24px; }
 .award-stat { margin-top: 14px; font-size: 18px; color: var(--ink); line-height: 1.4; }
-.award-roast { margin: 10px auto 0; max-width: 460px; font-style: italic; font-size: 16px; color: var(--c1); font-weight: 600; line-height: 1.4; }
+.award-roast { margin: 14px auto 0; max-width: 480px; font-style: italic; font-size: 16px; color: var(--c1); font-weight: 600; line-height: 1.4; }
+/* Mario-Party-style animated bar race */
+.mp-chart { display: grid; gap: 9px; margin: 18px auto 4px; max-width: 540px; text-align: left; }
+.mp-row { display: grid; grid-template-columns: 26px 42px 84px 1fr 64px; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 12px; }
+.mp-row.mp-win { background: rgba(255,210,63,.22); box-shadow: inset 0 0 0 2.5px var(--ink); }
+.mp-rank { font-family: var(--font-display); font-size: 18px; text-align: center; }
+.mp-av { border: 2.5px solid var(--ink); background: var(--paper-2); }
+.mp-row.mp-win .mp-av { box-shadow: 0 0 0 3px var(--c3); }
+.mp-name { font-family: var(--font-head); font-weight: 800; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-track { height: 20px; background: var(--paper-2); border: 2.5px solid var(--ink); border-radius: 999px; overflow: hidden; }
+.mp-bar { height: 100%; width: var(--w); background: var(--rainbow); border-radius: 999px; animation: mpGrow .9s cubic-bezier(.2,.85,.25,1) both; }
+.mp-row.mp-win .mp-bar { background: var(--c3); }
+@keyframes mpGrow { from { width: 0; } to { width: var(--w); } }
+.mp-val { font-family: var(--font-head); font-weight: 800; font-size: 14px; text-align: right; }
 @keyframes aw-pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes aw-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 .award-roster { display: flex; gap: 12px; overflow-x: auto; padding: 16px 6px 20px; border-top: 3px dashed var(--ink); margin-bottom: 18px; scrollbar-width: none; }

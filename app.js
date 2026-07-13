@@ -385,6 +385,45 @@
         ["Playing music only on the left so they hear it in one ear", 1],
       ],
     },
+    // "Reading the Mind in the Eyes" test — an actual autism-research instrument.
+    // Misreading the eyes is the autistic-coded outcome, so the RIGHT emotion
+    // (answer) scores 0 and the foils score 2. answer = index of the textbook emotion.
+    {
+      kind: "imgquiz",
+      q: "What is this person feeling? 👀",
+      img: "photos/eyes/1.webp",
+      imgAlt: "A close-up of a person's eyes",
+      answer: 0,
+      explain: "The textbook answer is <b>playful</b>. Reading a whole mood off a two-inch strip of face is a party trick some of us just never installed. 👀",
+      opts: [["Playful", 0], ["Comforting", 2], ["Irritated", 2], ["Bored", 2]],
+    },
+    {
+      kind: "imgquiz",
+      q: "What is this person feeling? 👀",
+      img: "photos/eyes/2.webp",
+      imgAlt: "A close-up of a person's eyes",
+      answer: 1,
+      explain: "The textbook answer is <b>upset</b>. Eyes are just wet circles — expecting them to broadcast <i>feelings</i> is a big ask.",
+      opts: [["Terrified", 2], ["Upset", 0], ["Arrogant", 2], ["Annoyed", 2]],
+    },
+    {
+      kind: "imgquiz",
+      q: "What is this person feeling? 👀",
+      img: "photos/eyes/3.webp",
+      imgAlt: "A close-up of a person's eyes",
+      answer: 2,
+      explain: "The textbook answer is <b>desire</b>. Yeah… we didn't get that from the eyebrows either.",
+      opts: [["Joking", 2], ["Flustered", 2], ["Desire", 0], ["Convinced", 2]],
+    },
+    {
+      kind: "imgquiz",
+      q: "What is this person feeling? 👀",
+      img: "photos/eyes/4.webp",
+      imgAlt: "A close-up of a person's eyes",
+      answer: 1,
+      explain: "The textbook answer is <b>insisting</b>. If you nailed all four of these, we're a little suspicious of you.",
+      opts: [["Joking", 2], ["Insisting", 0], ["Amused", 2], ["Relaxed", 2]],
+    },
     {
       kind: "polo",
       bare: true, // renders its own meme-style card; hide the default chrome
@@ -1891,7 +1930,9 @@
 
   // "What's happening in this picture?" — shows a screenshot (Q.img) and four
   // shuffled choices. Pick one (no right/wrong reveal, no explanation); the
-  // player just hits Next to move on.
+  // player just hits Next to move on. Scoring is entirely in the option points,
+  // so the "right" answer can score low (e.g. the eyes test: misreading = more
+  // autistic). Missing image falls back to a note.
   function renderImgQuizGame(body, Q, setAnswer) {
     const order = Q.opts.map((_, i) => i);
     for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }

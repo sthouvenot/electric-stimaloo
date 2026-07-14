@@ -363,6 +363,11 @@
       opts: [["Gave up fast",0],["A couple tries",1],["Kept grinding",2],["Would not quit",3]],
     },
     {
+      kind: "eggs",
+      q: "Feed the egg.",
+      opts: [["Fed it nothing",0],["Fed it a few",1],["Fed it a lot",2],["Fed it far too many",3]],
+    },
+    {
       kind: "typing",
       q: "Type this sentence as fast as you can.",
       opts: [["Slow",0],["Decent",1],["Fast",2],["Blazing",3]],
@@ -1330,6 +1335,85 @@
     stage.addEventListener("pointerdown", (e) => { if (!running && ov.style.display !== "none") return; e.preventDefault(); flap(); });
     $("#flap-flap", body).addEventListener("pointerdown", (e) => { e.preventDefault(); flap(); });
     ov.querySelector(".flap-go").addEventListener("click", start);
+  }
+
+  // "FEED EGGS" — a deadpan drag-to-feed game (homage to the ITYSL bit, drawn
+  // from scratch in a muted monochrome style). Drag eggs from the basket onto
+  // the egg; each one is +1. Feeding more = more autistic (the compulsion to
+  // keep going). Open-ended, so Next is enabled from the first egg. The metric
+  // eggsFed drives the "Fed the Most Eggs" award.
+  function renderEggGame(body, Q, setAnswer) {
+    const EGG = c => `<svg viewBox="0 0 40 52" xmlns="http://www.w3.org/2000/svg"><path d="M20 2 C31 2 36 24 36 34 A16 17 0 0 1 4 34 C4 24 9 2 20 2 Z" fill="#e7eef1" stroke="${c}" stroke-width="2.5"/></svg>`;
+    const guySVG = `<svg viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg">
+      <line x1="49" y1="118" x2="45" y2="146" stroke="#33454f" stroke-width="4" stroke-linecap="round"/>
+      <line x1="71" y1="118" x2="75" y2="146" stroke="#33454f" stroke-width="4" stroke-linecap="round"/>
+      <line x1="36" y1="146" x2="52" y2="146" stroke="#33454f" stroke-width="4" stroke-linecap="round"/>
+      <line x1="68" y1="146" x2="84" y2="146" stroke="#33454f" stroke-width="4" stroke-linecap="round"/>
+      <path d="M60 6 C88 6 102 52 102 78 A42 46 0 0 1 18 78 C18 52 32 6 60 6 Z" fill="#cfe0e6" stroke="#33454f" stroke-width="3"/>
+      <circle cx="45" cy="48" r="7.5" fill="#f2f7f9" stroke="#33454f" stroke-width="2"/><circle cx="46" cy="49" r="3" fill="#33454f"/>
+      <circle cx="75" cy="48" r="7.5" fill="#f2f7f9" stroke="#33454f" stroke-width="2"/><circle cx="74" cy="49" r="3" fill="#33454f"/>
+      <ellipse cx="60" cy="89" rx="21" ry="25" fill="#24343f"/>
+    </svg>`;
+    const basketSVG = `<svg viewBox="0 0 130 96" xmlns="http://www.w3.org/2000/svg">
+      <g fill="#e7eef1" stroke="#33454f" stroke-width="1.6">
+        <ellipse cx="42" cy="40" rx="11" ry="14"/><ellipse cx="65" cy="34" rx="11" ry="14"/><ellipse cx="88" cy="40" rx="11" ry="14"/>
+        <ellipse cx="54" cy="30" rx="11" ry="14"/><ellipse cx="77" cy="30" rx="11" ry="14"/>
+      </g>
+      <path d="M18 50 Q65 62 112 50 L100 90 L30 90 Z" fill="#b7cdd5" stroke="#33454f" stroke-width="3"/>
+      <path d="M18 50 Q65 62 112 50" fill="none" stroke="#33454f" stroke-width="3"/>
+      <path d="M40 53 L34 87 M60 56 L58 89 M80 56 L82 89 M98 53 L94 87" stroke="#33454f" stroke-width="1.3" fill="none" opacity=".55"/>
+    </svg>`;
+    body.innerHTML = `
+      <div class="egg-screen" id="egg-screen">
+        <div class="egg-title">FEED EGGS</div>
+        <div class="egg-msg"><div class="egg-msg-bar"></div><div class="egg-msg-text" id="egg-msg">Drag an egg from the basket into the egg.</div></div>
+        <div class="egg-hand" aria-hidden="true">👆</div>
+        <div class="egg-guy" id="egg-guy">${guySVG}</div>
+        <div class="egg-basket" id="egg-basket" title="drag an egg">${basketSVG}</div>
+        <div class="egg-count" id="egg-count">EGGS: 0</div>
+      </div>
+      <div class="egg-reveal" id="egg-reveal" hidden></div>`;
+    const guy = $("#egg-guy", body), basket = $("#egg-basket", body);
+    const countEl = $("#egg-count", body), msgEl = $("#egg-msg", body), reveal = $("#egg-reveal", body);
+    let count = 0, dragEl = null;
+    const scoreFor = n => n === 0 ? 0 : n < 5 ? 1 : n < 12 ? 2 : 3;
+    setAnswer(0, { eggsFed: 0 }); // open-ended: Next is available from the start
+    function feed() {
+      count++;
+      countEl.textContent = "EGGS: " + count;
+      msgEl.textContent = `You now have ${count} egg${count === 1 ? "" : "s"}.`;
+      guy.classList.remove("egg-gulp"); void guy.offsetWidth; guy.classList.add("egg-gulp");
+      reveal.hidden = false;
+      reveal.innerHTML = `🥚 The egg has eaten <b>${count}</b> egg${count === 1 ? "" : "s"}. It would like more.<br><span class="dodge-twist">…the longer you keep feeding it, the more autistic we're afraid you are.</span>`;
+      setAnswer(scoreFor(count), { eggsFed: count });
+    }
+    function onMove(e) {
+      if (!dragEl) return;
+      if (!document.body.contains(guy)) { endDrag(); return; }
+      dragEl.style.left = e.clientX + "px"; dragEl.style.top = e.clientY + "px";
+    }
+    function endDrag(e) {
+      basket.removeEventListener("pointermove", onMove);
+      basket.removeEventListener("pointerup", endDrag);
+      basket.removeEventListener("pointercancel", endDrag);
+      let hit = false;
+      if (e && dragEl) { const r = guy.getBoundingClientRect(); hit = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom; }
+      if (dragEl) { dragEl.remove(); dragEl = null; }
+      if (hit) feed();
+    }
+    basket.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      if (dragEl) return;
+      try { basket.setPointerCapture(e.pointerId); } catch (_) {}
+      dragEl = document.createElement("div");
+      dragEl.className = "egg-drag";
+      dragEl.innerHTML = EGG("#33454f");
+      dragEl.style.left = e.clientX + "px"; dragEl.style.top = e.clientY + "px";
+      document.body.appendChild(dragEl);
+      basket.addEventListener("pointermove", onMove);
+      basket.addEventListener("pointerup", endDrag);
+      basket.addEventListener("pointercancel", endDrag);
+    });
   }
 
   // Rigged rock-paper-scissors, best 3 of 5. The computer ALWAYS wins the match
@@ -2373,9 +2457,10 @@
     else if (kind === "flappy") { renderFlappyGame(qbody, Q, setAnswer, state.avatar); }
     else if (kind === "whg") { renderWhgGame(qbody, Q, setAnswer); }
     else if (kind === "rps") { renderRpsGame(qbody, Q, setAnswer, state.avatar); }
+    else if (kind === "eggs") { renderEggGame(qbody, Q, setAnswer); }
     else if (kind === "imgquiz") { renderImgQuizGame(qbody, Q, setAnswer); }
   }
-  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", polo: "Polo holes", reenterpin: "Re-enter PIN" };
+  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", polo: "Polo holes", reenterpin: "Re-enter PIN" };
 
   function submitToQueue(state) {
     bumpCtr();
@@ -2633,6 +2718,7 @@
       { emoji: "🎮", title: "Reflex Champion",       key: "dodge",      dir: "high", suffix: "s", roast: "unsettling reflexes. We see those gamer hours.", min: 1 },
       { emoji: "🐤", title: "Flappy Legend",         key: "flappyBest", dir: "high", suffix: " pipes", roast: "you and that bird share one beautifully focused brain.", min: 1 },
       { emoji: "🔁", title: "Never Surrenders",      key: "rpsGames",   dir: "high", suffix: " games", roast: "replayed an unwinnable game this many times. Iconic.", min: 1 },
+      { emoji: "🥚", title: "Fed the Most Eggs",     key: "eggsFed",    dir: "high", suffix: " eggs", roast: "the egg never asked for this. You kept going anyway.", min: 1 },
       { emoji: "🟥", title: "Ice in the Veins",      key: "whgDeaths",  dir: "low",  suffix: " deaths", roast: "cool under fire. Mildly terrifying.", min: 2 },
     ];
     return defs.map(d => {

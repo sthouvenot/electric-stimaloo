@@ -989,6 +989,29 @@ a { color: inherit; }
 .imgq-opt.opt-wrong { background: #f7c9c9; border-color: var(--c1); }
 .imgq-reveal { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--ink-soft); text-align: center; line-height: 1.5; }
 
+/* ---- FEED EGGS — muted monochrome drag-to-feed game ---- */
+.egg-screen { --egg-bg: #a7c1cb; --egg-ink: #33454f; --egg-panel: #bcd0d7;
+  position: relative; width: 100%; max-width: 620px; margin: 0 auto; aspect-ratio: 16 / 9; min-height: 240px;
+  background: var(--egg-bg); border: 3px solid var(--egg-ink); border-radius: 6px; overflow: hidden;
+  color: var(--egg-ink); font-family: "Courier New", ui-monospace, monospace; user-select: none; touch-action: none;
+  box-shadow: var(--shadow-sm); }
+.egg-title { position: absolute; top: 6%; left: 0; right: 0; text-align: center; font-weight: 800; letter-spacing: 3px; font-size: clamp(13px, 3.4vw, 24px); }
+.egg-msg { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); width: 48%; max-width: 260px; background: var(--egg-panel); border: 2px solid var(--egg-ink); border-radius: 2px; }
+.egg-msg-bar { height: 9px; border-bottom: 2px solid var(--egg-ink); background: repeating-linear-gradient(180deg, var(--egg-ink) 0 1px, transparent 1px 3px); opacity: .8; }
+.egg-msg-text { padding: 12px 8px; text-align: center; font-size: clamp(9px, 2.1vw, 13px); line-height: 1.4; }
+.egg-hand { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-size: clamp(15px, 3vw, 22px); opacity: .75; animation: eggHand 1.4s ease-in-out infinite; }
+@keyframes eggHand { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-4px); } }
+.egg-guy { position: absolute; left: 3%; bottom: 1%; width: 21%; min-width: 70px; }
+.egg-guy svg, .egg-basket svg { width: 100%; height: auto; display: block; }
+.egg-guy.egg-gulp { animation: eggGulp .3s ease; }
+@keyframes eggGulp { 0%,100% { transform: scale(1,1); } 45% { transform: scale(1.07,.92); } }
+.egg-basket { position: absolute; right: 3%; bottom: 12%; width: 17%; min-width: 60px; cursor: grab; touch-action: none; }
+.egg-basket:active { cursor: grabbing; }
+.egg-count { position: absolute; right: 3%; bottom: 3%; font-size: clamp(9px, 1.8vw, 12px); font-weight: 700; letter-spacing: 1px; }
+.egg-drag { position: fixed; width: 30px; height: 40px; transform: translate(-50%, -50%); pointer-events: none; z-index: 9999; filter: drop-shadow(1px 2px 1px rgba(0,0,0,.25)); }
+.egg-drag svg { width: 100%; height: 100%; display: block; }
+.egg-reveal { margin: 16px auto 0; max-width: 470px; text-align: center; font-size: 15px; line-height: 1.5; font-family: var(--font-head); font-weight: 700; color: var(--ink-soft); }
+
 /* ---- "How many holes in a Polo?" — hand-drawn trivia card ---- */
 .polo { --polo-blue: #2733e6; --polo-red: #ec1c24; --polo-pink: #f0cdf7;
   background: #fff; border: 3px solid var(--ink); border-radius: 16px; box-shadow: var(--shadow);

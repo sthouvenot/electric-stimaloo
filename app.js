@@ -1421,26 +1421,27 @@
     });
   }
 
-  // Blue-Prince-style logic puzzle: 3 boxes, one holds the correct answer. Read
-  // the rule + the self-referential signs and open the right box — one shot.
-  // Solving it by pure deduction is peak autistic-coded, so correct = 3, wrong
-  // = 0. A tiny brute-force solver derives the answer (every prize spot × every
-  // truth assignment), so scoring can never disagree with the logic. Board is
-  // verified to have exactly one deducible answer (Box 3).
+  // 3-chest logic puzzle (painted treasure-chest look). One chest holds the
+  // correct answer; read the self-referential signs and open the right one —
+  // one shot. Solving it by deduction is peak autistic-coded (correct = 3,
+  // wrong = 0). A brute-force solver derives the answer from the sign predicates
+  // so scoring can never disagree with the logic. Board (Blue/White/Black,
+  // answer = White) is solver-verified to have exactly one deducible answer.
   const BOX_BOARD = {
-    rule: "At least one sign is true, and at least one sign is false.",
-    ruleFn: (p, t, cnt) => cnt >= 1 && cnt <= 2,
+    ruleFn: () => true, // each sign is simply true or false; consistency does the work
+    colors: ["blue", "white", "black"],
+    colorNames: ["Blue", "White", "Black"],
     boxes: [
-      "The prize is in Box 1.",
-      "The prize is in Box 2.",
-      "Exactly one of these three signs is true.",
+      "You will open this box and find it empty.",
+      "A true box contains the correct answer.",
+      "This box and the white box are both false.",
     ],
     preds: [
-      (p, t) => p === 0,
-      (p, t) => p === 1,
-      (p, t) => t.reduce((a, b) => a + (b ? 1 : 0), 0) === 1,
+      (p, t) => p !== 0,                                 // box 1 is empty
+      (p, t) => t[p] === true,                           // the answer sits in a box whose sign is true
+      (p, t) => t[2] === false && t[1] === false,        // this box (Black) and the White box are both false
     ],
-    explain: "Sign 3 says <b>exactly one</b> sign is true. If the prize were in Box 1, Sign 1 would be true — but then Sign 3 can't be consistently true or false, so it's impossible. Same for Box 2. Only <b>Box 3</b> works: Signs 1 and 2 are both false, so Sign 3 is the single true sign — exactly one — which also fits 'at least one true, at least one false.'",
+    explain: "Start with the <b>Black</b> chest — it says both it and the White chest are false. If that were true it would call itself false, which is impossible, so the Black sign is <b>false</b>. That forces the <b>White</b> sign to be <b>true</b>. White says a <i>true</i> box holds the answer. If the Blue sign ('this box is empty') were false, the answer would be in Blue — but a false-signed box can't hold it, so Blue's sign is true and Blue is empty. The only true-signed box left is the <b>White chest</b> — that's the answer.",
   };
   function solveBoxes(board) {
     const answers = new Set();
@@ -1455,38 +1456,64 @@
     }
     return answers.size === 1 ? [...answers][0] : 0;
   }
+  const CHEST_TINTS = {
+    blue:  { fill: "#a9c2e0", band: "#6d86a8", stroke: "#2c3e56" },
+    white: { fill: "#eef1f4", band: "#c3cbd2", stroke: "#49555f" },
+    black: { fill: "#474d57", band: "#727a86", stroke: "#20252c" },
+  };
+  function chestSVG(colorKey) {
+    const c = CHEST_TINTS[colorKey] || CHEST_TINTS.white;
+    return `<svg viewBox="0 0 200 200" class="chest-svg" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <ellipse cx="100" cy="190" rx="80" ry="8" fill="rgba(0,0,0,.3)"/>
+      <rect x="26" y="112" width="148" height="72" rx="6" fill="${c.fill}" stroke="${c.stroke}" stroke-width="3"/>
+      <line x1="64" y1="116" x2="64" y2="180" stroke="${c.stroke}" stroke-width="1.4" opacity=".35"/>
+      <line x1="100" y1="116" x2="100" y2="180" stroke="${c.stroke}" stroke-width="1.4" opacity=".35"/>
+      <line x1="136" y1="116" x2="136" y2="180" stroke="${c.stroke}" stroke-width="1.4" opacity=".35"/>
+      <rect x="26" y="112" width="9" height="72" fill="${c.band}" stroke="${c.stroke}" stroke-width="2"/>
+      <rect x="165" y="112" width="9" height="72" fill="${c.band}" stroke="${c.stroke}" stroke-width="2"/>
+      <path d="M22,116 L22,60 Q22,26 66,26 L134,26 Q178,26 178,60 L178,116 Z" fill="${c.fill}" stroke="${c.stroke}" stroke-width="3"/>
+      <rect x="22" y="108" width="156" height="10" fill="${c.band}" stroke="${c.stroke}" stroke-width="2"/>
+      <rect x="34" y="38" width="132" height="66" rx="5" fill="#f3efe2" stroke="${c.stroke}" stroke-width="2.5"/>
+      <rect x="39" y="43" width="122" height="56" rx="3" fill="none" stroke="#b9b09a" stroke-width="1.2"/>
+      <circle cx="100" cy="126" r="5" fill="${c.band}" stroke="${c.stroke}" stroke-width="2"/>
+      <g fill="${c.band}" stroke="${c.stroke}" stroke-width="2">
+        <rect x="96" y="160" width="8" height="30" rx="2"/>
+        <circle cx="93" cy="185" r="6" fill="none"/><circle cx="107" cy="185" r="6" fill="none"/>
+      </g>
+    </svg>`;
+  }
   function renderBoxesGame(body, Q, setAnswer) {
     const board = BOX_BOARD;
     const answer = solveBoxes(board);
-    const boxesHtml = board.boxes.map((sign, i) =>
-      `<button class="boxq-box" type="button" data-i="${i}">
-         <div class="boxq-lid">📦</div>
-         <div class="boxq-num">Box ${i + 1}</div>
-         <div class="boxq-sign">"${esc(sign)}"</div>
+    const chests = board.boxes.map((sign, i) =>
+      `<button class="chest chest-${board.colors[i]}" type="button" data-i="${i}">
+         ${chestSVG(board.colors[i])}
+         <div class="chest-sign">${esc(sign)}</div>
+         <div class="chest-open" aria-hidden="true"></div>
+         <div class="chest-tag">${board.colorNames[i]} chest</div>
        </button>`).join("");
     body.innerHTML = `
-      <div class="boxq">
-        <div class="boxq-rule">📜 <b>${esc(board.rule)}</b><small>One box holds the answer. Read the signs, then open the box you can prove it's in — you get one shot.</small></div>
-        <div class="boxq-row">${boxesHtml}</div>
-        <div class="boxq-reveal" id="boxq-reveal" hidden></div>
+      <div class="chestq">
+        <div class="chestq-intro">🗝️ One chest holds the correct answer. Read the signs and open the right one — you get one shot.<small>Each sign is simply true or false.</small></div>
+        <div class="chestq-row">${chests}</div>
+        <div class="chestq-reveal" id="chestq-reveal" hidden></div>
       </div>`;
-    const reveal = $("#boxq-reveal", body);
+    const reveal = $("#chestq-reveal", body);
     let done = false;
-    body.querySelectorAll(".boxq-box").forEach(btn => {
+    body.querySelectorAll(".chest").forEach(btn => {
       btn.addEventListener("click", () => {
         if (done) return;
         done = true;
         const pick = +btn.dataset.i;
         const correct = pick === answer;
-        body.querySelectorAll(".boxq-box").forEach(b => {
+        body.querySelectorAll(".chest").forEach(b => {
           b.disabled = true;
           const bi = +b.dataset.i;
-          if (bi === answer) b.classList.add("boxq-correct");
-          else if (bi === pick) b.classList.add("boxq-empty");
+          if (bi === answer) { b.classList.add("chest-correct"); const o = b.querySelector(".chest-open"); if (o) o.textContent = "💎"; }
+          else if (bi === pick) { b.classList.add("chest-wrong"); const o = b.querySelector(".chest-open"); if (o) o.textContent = "🕳️"; }
         });
-        btn.querySelector(".boxq-lid").textContent = correct ? "💎" : "🕳️";
         reveal.hidden = false;
-        reveal.innerHTML = `${correct ? `💎 Found it — the answer was in <b>Box ${answer + 1}</b>.` : `🕳️ Empty. The answer was in <b>Box ${answer + 1}</b>.`}<br><span class="boxq-logic">${board.explain}</span>`;
+        reveal.innerHTML = `${correct ? `💎 Found it — the correct answer was in the <b>${board.colorNames[answer]} chest</b>.` : `🕳️ Empty. The correct answer was in the <b>${board.colorNames[answer]} chest</b>.`}<br><span class="chestq-logic">${board.explain}</span>`;
         setAnswer(correct ? 3 : 0, { boxSolved: correct ? 1 : 0 });
       });
     });

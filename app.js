@@ -363,23 +363,9 @@
       ],
     },
     {
-      kind: "oddone",
-      q: "One of these is not like the others. Find it.",
-      opts: [["Took forever",0],["Eventually",1],["Quick",2],["Instant",3]],
-    },
-    {
       kind: "rps",
       q: "Beat the computer in rock paper scissors — best 3 of 5.",
       opts: [["Gave up fast",0],["A couple tries",1],["Kept grinding",2],["Would not quit",3]],
-    },
-    {
-      q: "You send a long, thoughtful text. Your friend replies: \"k.\" What do they mean?",
-      opts: [
-        ["They're busy. It's fine.", 0],
-        ["Message received, nothing more", 1],
-        ["I'm re-reading the whole conversation for clues", 2],
-        ["I have already drafted three apology texts", 3],
-      ],
     },
     {
       kind: "eggs",
@@ -387,23 +373,9 @@
       opts: [["Fed it nothing",0],["Fed it a few",1],["Fed it a lot",2],["Fed it far too many",3]],
     },
     {
-      kind: "infodump",
-      q: "Tell us about your favorite thing. Don't hold back.",
-      opts: [["A sentence",0],["A paragraph",1],["Several paragraphs",2],["A dissertation",3]],
-    },
-    {
       kind: "boxes",
       q: "At least one box is true and at least one box is false.",
       opts: [["Opened the wrong box",0],["Solved it — opened the right box",3]],
-    },
-    {
-      q: "The party starts \"around 8\". You arrive:",
-      opts: [
-        ["Whenever I get there", 0],
-        ["8:30, fashionably", 1],
-        ["8:00 on the dot", 2],
-        ["7:52 — then wait in the car until exactly 8:00", 3],
-      ],
     },
     {
       kind: "typing",
@@ -414,11 +386,6 @@
       kind: "qebday",
       q: "When was Queen Elizabeth II born?",
       opts: [["No clue",0],["Right ballpark",1],["Very close",2],["Nailed the exact day",3]],
-    },
-    {
-      kind: "seq",
-      q: "Continue the sequences.",
-      opts: [["None right",0],["One right",1],["Two right",2],["All three",3]],
     },
     {
       kind: "imgtext",
@@ -472,15 +439,6 @@
       bare: true, // renders its own meme-style card; hide the default chrome
       q: "How many holes in a Polo?",
       opts: [["One", 1], ["Two", 1], ["Three", 1], ["Four", 3]], // four is correct (scored silently)
-    },
-    {
-      q: "Clothing tags and sock seams:",
-      opts: [
-        ["Never notice them", 0],
-        ["Mildly annoying", 1],
-        ["Tags get cut off immediately", 2],
-        ["I own one acceptable fabric and we do not negotiate", 3],
-      ],
     },
     {
       kind: "reenterpin",
@@ -2287,106 +2245,6 @@
     startBtn.addEventListener("click", () => { startBtn.style.display = "none"; nextRound(); });
   }
 
-  // Info-dump: free space to go off about your favorite thing. The more you
-  // write, the higher the score. Silent about that until they submit.
-  function renderInfodumpGame(body, Q, setAnswer) {
-    body.innerHTML = `
-      <div class="infodump">
-        <textarea class="infodump-input" id="infodump-in" rows="6" placeholder="Trains, a TV show, a video game, tax law, a specific rock — whatever it is, go."></textarea>
-        <div class="infodump-bar"><span class="infodump-count" id="infodump-count">0 characters</span>
-        <button class="btn btn-primary" id="infodump-done" disabled>I'm done →</button></div>
-        <div class="infodump-note" id="infodump-note" hidden></div>
-      </div>`;
-    const inp = $("#infodump-in", body), count = $("#infodump-count", body), btn = $("#infodump-done", body), note = $("#infodump-note", body);
-    inp.addEventListener("input", () => {
-      const n = inp.value.trim().length;
-      count.textContent = n + " character" + (n === 1 ? "" : "s");
-      btn.disabled = n === 0;
-    });
-    btn.addEventListener("click", () => {
-      const n = inp.value.trim().length;
-      if (!n) return;
-      const pts = n < 80 ? 0 : n < 240 ? 1 : n < 500 ? 2 : 3;
-      inp.disabled = true; btn.disabled = true; btn.textContent = "Locked in ✓";
-      note.hidden = false;
-      note.textContent = n >= 240 ? "We knew you had more in you." : "That's all? Interesting.";
-      setAnswer(pts, { infodumpChars: n });
-    });
-    setTimeout(() => inp.focus(), 60);
-  }
-
-  // Odd one out: a grid of near-identical faces, one is different. Timed from
-  // reveal to the correct click.
-  function renderOddOneGame(body, Q, setAnswer) {
-    const COLS = 6, ROWS = 5, N = COLS * ROWS;
-    const oddIdx = Math.floor(Math.random() * N);
-    const NORMAL = "😐", ODD = "😑";
-    body.innerHTML = `
-      <div class="oddone">
-        <div class="oddone-grid" style="--cols:${COLS}">${Array.from({ length: N }, (_, i) =>
-          `<button class="oddone-cell" type="button" data-i="${i}">${i === oddIdx ? ODD : NORMAL}</button>`).join("")}</div>
-        <div class="oddone-note" id="oddone-note" hidden></div>
-      </div>`;
-    const note = $("#oddone-note", body);
-    const t0 = Date.now();
-    let done = false;
-    body.querySelectorAll(".oddone-cell").forEach(cell => {
-      cell.addEventListener("click", () => {
-        if (done) return;
-        if (+cell.dataset.i !== oddIdx) {
-          cell.classList.add("oddone-wrong");
-          setTimeout(() => cell.classList.remove("oddone-wrong"), 300);
-          return;
-        }
-        done = true;
-        const secs = (Date.now() - t0) / 1000;
-        cell.classList.add("oddone-found");
-        body.querySelectorAll(".oddone-cell").forEach(c => c.disabled = true);
-        const pts = secs < 3 ? 3 : secs < 7 ? 2 : secs < 14 ? 1 : 0;
-        note.hidden = false;
-        note.innerHTML = `Found it in <b>${secs.toFixed(1)}s</b>.`;
-        setAnswer(pts, { oddOneTime: +secs.toFixed(1) });
-      });
-    });
-  }
-
-  // Continue the sequences: three number patterns, one answer each.
-  const SEQ_PUZZLES = [
-    { shown: [2, 4, 8, 16], answer: 32 },
-    { shown: [1, 1, 2, 3, 5], answer: 8 },
-    { shown: [1, 4, 9, 16], answer: 25 },
-  ];
-  function renderSeqGame(body, Q, setAnswer) {
-    body.innerHTML = `
-      <div class="seqq">
-        ${SEQ_PUZZLES.map((p, i) => `
-          <div class="seqq-row" data-i="${i}">
-            <span class="seqq-nums">${p.shown.join(", ")}, …</span>
-            <input class="seqq-in" type="number" inputmode="numeric" />
-          </div>`).join("")}
-        <button class="btn btn-primary" id="seq-submit" disabled>Check →</button>
-        <div class="seqq-note" id="seq-note" hidden></div>
-      </div>`;
-    const inputs = [...body.querySelectorAll(".seqq-in")];
-    const btn = $("#seq-submit", body), note = $("#seq-note", body);
-    const check = () => { btn.disabled = !inputs.every(i => i.value.trim() !== ""); };
-    inputs.forEach(i => i.addEventListener("input", check));
-    btn.addEventListener("click", () => {
-      let right = 0;
-      inputs.forEach((inp, i) => {
-        const ok = +inp.value === SEQ_PUZZLES[i].answer;
-        if (ok) right++;
-        inp.classList.add(ok ? "seqq-ok" : "seqq-bad");
-        inp.disabled = true;
-      });
-      btn.disabled = true; btn.textContent = "Checked ✓";
-      note.hidden = false;
-      note.textContent = `${right}/3 correct.`;
-      setAnswer(right, { seqRight: right });
-    });
-    setTimeout(() => inputs[0].focus(), 60);
-  }
-
   /* ----------------------------------------------------------
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
@@ -2810,11 +2668,8 @@
     else if (kind === "imgquiz") { renderImgQuizGame(qbody, Q, setAnswer); }
     else if (kind === "imgtext") { renderImgTextGame(qbody, Q, setAnswer); }
     else if (kind === "simon") { renderSimonGame(qbody, Q, setAnswer); }
-    else if (kind === "infodump") { renderInfodumpGame(qbody, Q, setAnswer); }
-    else if (kind === "oddone") { renderOddOneGame(qbody, Q, setAnswer); }
-    else if (kind === "seq") { renderSeqGame(qbody, Q, setAnswer); }
   }
-  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", simon: "Repeat the pattern", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", oddone: "Odd one out", rps: "Rock Paper Scissors", eggs: "Feed eggs", infodump: "Info-dump", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", seq: "Sequences", imgquiz: "What's happening", imgtext: "What's happening (typed)", polo: "Polo holes", reenterpin: "Re-enter PIN" };
+  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", simon: "Repeat the pattern", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", imgtext: "What's happening (typed)", polo: "Polo holes", reenterpin: "Re-enter PIN" };
 
   function submitToQueue(state) {
     bumpCtr();
@@ -3074,8 +2929,6 @@
       { emoji: "🔁", title: "Never Surrenders",      key: "rpsGames",   dir: "high", suffix: " games", roast: "replayed an unwinnable game this many times. Iconic.", min: 1 },
       { emoji: "🥚", title: "Fed the Most Eggs",     key: "eggsFed",    dir: "high", suffix: " eggs", roast: "the egg never asked for this. You kept going anyway.", min: 1 },
       { emoji: "🧠", title: "Pattern Prophet",       key: "simonRounds", dir: "high", suffix: " rounds", roast: "memorized beeps like it was nothing. Unnerving.", min: 1 },
-      { emoji: "📝", title: "The Info-Dumper",       key: "infodumpChars", dir: "high", suffix: " characters", roast: "nobody asked for a word count. You provided one anyway.", min: 1 },
-      { emoji: "🔎", title: "Eagle Eye",             key: "oddOneTime", dir: "low", suffix: "s", roast: "spotted the imposter instantly. Terrifying attention to detail.", min: 2 },
       { emoji: "🟥", title: "Ice in the Veins",      key: "whgDeaths",  dir: "low",  suffix: " deaths", roast: "cool under fire. Mildly terrifying.", min: 2 },
     ];
     return defs.map(d => {

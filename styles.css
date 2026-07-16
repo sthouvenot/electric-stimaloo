@@ -1012,6 +1012,23 @@ a { color: inherit; }
 .egg-drag svg { width: 100%; height: 100%; display: block; }
 .egg-reveal { margin: 16px auto 0; max-width: 470px; text-align: center; font-size: 15px; line-height: 1.5; font-family: var(--font-head); font-weight: 700; color: var(--ink-soft); }
 
+/* ---- 3-box logic puzzle (Blue Prince style) ---- */
+.boxq { max-width: 600px; margin: 0 auto; }
+.boxq-rule { font-family: var(--font-head); font-weight: 700; font-size: 16px; background: var(--paper-2); border: var(--border); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow-sm); text-align: center; margin-bottom: 18px; }
+.boxq-rule small { display: block; font-weight: 600; font-size: 13px; color: var(--ink-soft); margin-top: 6px; }
+.boxq-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.boxq-box { display: flex; flex-direction: column; align-items: center; gap: 8px; background: var(--paper-2); border: var(--border); border-radius: 14px; padding: 16px 10px; cursor: pointer; box-shadow: var(--shadow-sm); transition: transform .1s, box-shadow .1s, background .15s; text-align: center; }
+.boxq-box:hover:not(:disabled) { transform: translateY(-3px); box-shadow: var(--shadow); }
+.boxq-box:disabled { cursor: default; }
+.boxq-lid { font-size: 38px; line-height: 1; }
+.boxq-num { font-family: var(--font-head); font-weight: 800; font-size: 15px; }
+.boxq-sign { font-family: var(--font-head); font-weight: 600; font-size: 13px; color: var(--ink-soft); line-height: 1.35; }
+.boxq-box.boxq-correct { background: #c9f4d6; border-color: var(--c4); }
+.boxq-box.boxq-empty { background: #f7c9c9; border-color: var(--c1); opacity: .9; }
+.boxq-reveal { margin-top: 18px; font-family: var(--font-head); font-weight: 700; font-size: 15px; text-align: center; line-height: 1.5; color: var(--ink); }
+.boxq-logic { display: block; font-weight: 600; font-size: 13px; color: var(--ink-soft); margin-top: 8px; }
+@media (max-width: 520px) { .boxq-sign { font-size: 11.5px; } .boxq-box { padding: 12px 6px; } }
+
 /* ---- "How many holes in a Polo?" — hand-drawn trivia card ---- */
 .polo { --polo-blue: #2733e6; --polo-red: #ec1c24; --polo-pink: #f0cdf7;
   background: #fff; border: 3px solid var(--ink); border-radius: 16px; box-shadow: var(--shadow);

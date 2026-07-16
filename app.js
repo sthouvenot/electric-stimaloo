@@ -368,6 +368,11 @@
       opts: [["Fed it nothing",0],["Fed it a few",1],["Fed it a lot",2],["Fed it far too many",3]],
     },
     {
+      kind: "boxes",
+      q: "Three boxes, one holds the correct answer. Read the signs and open the right box.",
+      opts: [["Opened the wrong box",0],["Solved it — opened the right box",3]],
+    },
+    {
       kind: "typing",
       q: "Type this sentence as fast as you can.",
       opts: [["Slow",0],["Decent",1],["Fast",2],["Blazing",3]],
@@ -1416,6 +1421,77 @@
     });
   }
 
+  // Blue-Prince-style logic puzzle: 3 boxes, one holds the correct answer. Read
+  // the rule + the self-referential signs and open the right box — one shot.
+  // Solving it by pure deduction is peak autistic-coded, so correct = 3, wrong
+  // = 0. A tiny brute-force solver derives the answer (every prize spot × every
+  // truth assignment), so scoring can never disagree with the logic. Board is
+  // verified to have exactly one deducible answer (Box 3).
+  const BOX_BOARD = {
+    rule: "An ODD number of the three signs below are true (that's 1 or 3).",
+    ruleFn: (p, t, cnt) => cnt % 2 === 1,
+    boxes: [
+      "The prize is in Box 1 or Box 2.",
+      "The prize is NOT in Box 1.",
+      "Box 2's sign is lying.",
+    ],
+    preds: [
+      (p, t) => p === 0 || p === 1,
+      (p, t) => p !== 0,
+      (p, t) => t[1] === false,
+    ],
+    explain: "The rule wants an <b>odd</b> number of true signs. Prize in Box 1 → the signs read <b>T, F, T</b> = 2 true (even ✗). Prize in Box 2 → <b>T, T, F</b> = 2 true (even ✗). Prize in <b>Box 3</b> → <b>F, T, F</b> = 1 true (odd ✓). Only Box 3 fits the rule.",
+  };
+  function solveBoxes(board) {
+    const answers = new Set();
+    for (let p = 0; p < 3; p++) {
+      for (let m = 0; m < 8; m++) {
+        const t = [!!(m & 1), !!(m & 2), !!(m & 4)];
+        const cnt = t.reduce((a, b) => a + (b ? 1 : 0), 0);
+        let ok = true;
+        for (let i = 0; i < 3; i++) { if (t[i] !== board.preds[i](p, t)) { ok = false; break; } }
+        if (ok && board.ruleFn(p, t, cnt)) answers.add(p);
+      }
+    }
+    return answers.size === 1 ? [...answers][0] : 0;
+  }
+  function renderBoxesGame(body, Q, setAnswer) {
+    const board = BOX_BOARD;
+    const answer = solveBoxes(board);
+    const boxesHtml = board.boxes.map((sign, i) =>
+      `<button class="boxq-box" type="button" data-i="${i}">
+         <div class="boxq-lid">📦</div>
+         <div class="boxq-num">Box ${i + 1}</div>
+         <div class="boxq-sign">"${esc(sign)}"</div>
+       </button>`).join("");
+    body.innerHTML = `
+      <div class="boxq">
+        <div class="boxq-rule">📜 <b>${esc(board.rule)}</b><small>One box holds the answer. Read the signs, then open the box you can prove it's in — you get one shot.</small></div>
+        <div class="boxq-row">${boxesHtml}</div>
+        <div class="boxq-reveal" id="boxq-reveal" hidden></div>
+      </div>`;
+    const reveal = $("#boxq-reveal", body);
+    let done = false;
+    body.querySelectorAll(".boxq-box").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (done) return;
+        done = true;
+        const pick = +btn.dataset.i;
+        const correct = pick === answer;
+        body.querySelectorAll(".boxq-box").forEach(b => {
+          b.disabled = true;
+          const bi = +b.dataset.i;
+          if (bi === answer) b.classList.add("boxq-correct");
+          else if (bi === pick) b.classList.add("boxq-empty");
+        });
+        btn.querySelector(".boxq-lid").textContent = correct ? "💎" : "🕳️";
+        reveal.hidden = false;
+        reveal.innerHTML = `${correct ? `💎 Found it — the answer was in <b>Box ${answer + 1}</b>.` : `🕳️ Empty. The answer was in <b>Box ${answer + 1}</b>.`}<br><span class="boxq-logic">${board.explain}</span>`;
+        setAnswer(correct ? 3 : 0, { boxSolved: correct ? 1 : 0 });
+      });
+    });
+  }
+
   // Rigged rock-paper-scissors, best 3 of 5. The computer ALWAYS wins the match
   // (it reacts to your pick). Each round has a 33% chance of a TIE (computer
   // mirrors your move → replay, no score change); ties don't consume a decisive
@@ -2458,9 +2534,10 @@
     else if (kind === "whg") { renderWhgGame(qbody, Q, setAnswer); }
     else if (kind === "rps") { renderRpsGame(qbody, Q, setAnswer, state.avatar); }
     else if (kind === "eggs") { renderEggGame(qbody, Q, setAnswer); }
+    else if (kind === "boxes") { renderBoxesGame(qbody, Q, setAnswer); }
     else if (kind === "imgquiz") { renderImgQuizGame(qbody, Q, setAnswer); }
   }
-  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", polo: "Polo holes", reenterpin: "Re-enter PIN" };
+  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", polo: "Polo holes", reenterpin: "Re-enter PIN" };
 
   function submitToQueue(state) {
     bumpCtr();

@@ -1917,15 +1917,18 @@
     const startX2 = 92, endX1 = VW - 92; // inner edges of the two pink zones
     // 3 levels: easy / medium / hard. More lanes, more dots per lane, faster.
     const midX = (startX2 + endX1) / 2;
+    // Level geometry: player is 26px (half 13), dots r=15, so anything closer
+    // than 28px to a lane centerline can be clipped. Coins always sit at the
+    // MIDPOINT of a corridor between lanes, with clearance comfortably > 28.
     const LEVELS = [
-      // Easy: two gentle lanes + a ring of dots ORBITING the center coin, so you
-      // have to time your grab through the spinning circle. [cx,cy,radius,count,speed]
-      { name: "Easy",   lanes: [150, 240],                    per: 2, base: 1.5, coins: [[midX, 195]], orbits: [[midX, 195, 52, 4, 0.045]] },
-      // Medium: four evenly-spaced lanes, alternating directions, two coins that
-      // force a diagonal weave (top-left → bottom-right).
-      { name: "Medium", lanes: [100, 165, 230, 295],          per: 2, base: 2.1, coins: [[startX2 + 80, 122], [endX1 - 80, 272]] },
-      // Hard: six dense lanes, three coins on a zig-zag spanning the full height.
-      { name: "Hard",   lanes: [65, 115, 165, 215, 265, 315], per: 3, base: 2.7, coins: [[startX2 + 70, 92], [midX, 200], [endX1 - 70, 308]] },
+      // Easy: two lanes, coin in the wide corridor between them (45px clearance).
+      { name: "Easy",   lanes: [150, 240],           per: 2, base: 1.5, coins: [[midX, 195]] },
+      // Medium: three lanes 75 apart, two coins in corridor midpoints (37px
+      // clearance) forcing a top-left → bottom-right weave.
+      { name: "Medium", lanes: [120, 195, 270],      per: 3, base: 2.1, coins: [[startX2 + 80, 157], [endX1 - 80, 232]] },
+      // Hard: four lanes 80 apart with 3 fast dots each; three coins zig-zag
+      // through corridor midpoints (40px clearance) across the whole field.
+      { name: "Hard",   lanes: [90, 170, 250, 330],  per: 3, base: 2.7, coins: [[startX2 + 70, 130], [endX1 - 70, 210], [midX, 290]] },
     ];
     function buildEnemies(lv) {
       const L = LEVELS[lv], arr = [], span = endX1 - startX2;

@@ -413,7 +413,7 @@ a { color: inherit; }
 .tw-stage { position: relative; height: 134px; overflow: hidden; border: var(--border); border-radius: 16px;
   background: linear-gradient(#eaf4ff, #fffdf8); box-shadow: var(--shadow-sm); }
 .tw-train { position: absolute; top: 36px; left: 0; display: flex; align-items: flex-end; gap: 7px; padding-left: 14px;
-  white-space: nowrap; animation: tw-roll 9s linear infinite; will-change: transform; }
+  white-space: nowrap; animation: tw-roll 7s linear infinite; will-change: transform; }
 .tw-stopped .tw-train { animation-play-state: paused; }
 @keyframes tw-roll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .tw-loco { font-size: 46px; line-height: 1; margin-right: 1px; }

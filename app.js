@@ -384,7 +384,7 @@
     },
     {
       kind: "imgtext",
-      q: "What's happening in this picture? 🐧",
+      q: "What's happening in this picture?",
       img: "photos/iceberg.webp",
       imgAlt: "A huge crowd of Club Penguin penguins all packed onto one side of the iceberg",
       keywords: ["tip"], // award points if the typed answer mentions tipping
@@ -1055,7 +1055,7 @@
         const car = TRAIN_CARS[+btn.dataset.i];
         if (hint) hint.style.display = "none";
         reveal.hidden = false;
-        reveal.innerHTML = `🚂 You watched for <b>${secs.toFixed(1)} seconds</b> before picking ${car.label}.<br><span class="tw-twist">…we weren't really asking about the car.</span>`;
+        reveal.innerHTML = `You watched for <b>${secs.toFixed(1)} seconds</b> before picking ${car.label}.<br><span class="tw-twist">…we weren't really asking about the car.</span>`;
         setAnswer(points, { trainWatch: +secs.toFixed(1) });
       });
     });
@@ -1248,7 +1248,7 @@
         <div class="flap-ground"></div>
         <div class="flap-bird" id="flap-bird">${avatarSVG(avatar, { noBg: true })}</div>
         <div class="flap-overlay" id="flap-ov">
-          <div class="flap-msg">Flap to fly.<small>Click / tap, Space, ↑, or the FLAP button. It speeds up as you go. <b>Clear the first pipe to start for real</b> — crash before that and it's a free retry.</small></div>
+          <div class="flap-msg">Flap to fly.<small>Click / tap, Space, ↑, or the FLAP button. <b>Clear the first pipe to start for real</b> — crash before that and it's a free retry.</small></div>
           <button class="btn btn-primary flap-go" type="button">▶ Start</button>
         </div>
       </div>
@@ -1384,7 +1384,7 @@
       msgEl.textContent = `You now have ${count} egg${count === 1 ? "" : "s"}.`;
       guy.classList.remove("egg-gulp"); void guy.offsetWidth; guy.classList.add("egg-gulp");
       reveal.hidden = false;
-      reveal.innerHTML = `🥚 The egg has eaten <b>${count}</b> egg${count === 1 ? "" : "s"}. It would like more.<br><span class="dodge-twist">…the longer you keep feeding it, the more autistic we're afraid you are.</span>`;
+      reveal.innerHTML = `The egg has eaten <b>${count}</b> egg${count === 1 ? "" : "s"}. It would like more.`;
       setAnswer(scoreFor(count), { eggsFed: count });
     }
     function onMove(e) {
@@ -1616,7 +1616,7 @@
   function renderBankPinGame(body, Q, setAnswer, state) {
     body.innerHTML = `
       <div class="pinq">
-        <p class="pinq-note">Pick a 4-digit PIN you'd actually use. We'll rate it once you lock it in.</p>
+        <p class="pinq-note">Pick a 4-digit PIN you'd actually use.</p>
         <input class="pinq-input" id="pin-in" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off" />
         <button class="btn btn-primary" id="pin-submit" disabled>Lock it in →</button>
         <div class="pinq-checks" id="pin-checks" hidden></div>
@@ -1918,34 +1918,37 @@
     // 3 levels: easy / medium / hard. More lanes, more dots per lane, faster.
     const midX = (startX2 + endX1) / 2;
     // Level geometry: player is 26px (half 13), dots r=15, so anything closer
-    // than 28px to a lane centerline can be clipped. Coins always sit at the
-    // MIDPOINT of a corridor between lanes, with clearance comfortably > 28.
+    // than 28px to a dot's path can be clipped. Coins sit well clear of every
+    // fixed path (verticals live in their own columns, away from the coins).
+    // helper: `count` dots evenly spread along a horizontal lane at height y
+    const lane = (y, count, speed, sign) => {
+      const span = endX1 - startX2, arr = [];
+      for (let k = 0; k < count; k++) arr.push({ x: startX2 + span * ((k + 0.5) / count), y, vx: sign * speed });
+      return arr;
+    };
     const LEVELS = [
-      // Easy: two lanes, coin in the wide corridor between them (45px clearance).
-      { name: "Easy",   lanes: [150, 240],           per: 2, base: 1.5, coins: [[midX, 195]] },
-      // Medium: three lanes 75 apart, two coins in corridor midpoints (37px
-      // clearance) forcing a top-left → bottom-right weave.
-      { name: "Medium", lanes: [120, 195, 270],      per: 3, base: 2.1, coins: [[startX2 + 80, 157], [endX1 - 80, 232]] },
-      // Hard: four lanes 80 apart with 3 fast dots each; three coins zig-zag
-      // through corridor midpoints (40px clearance) across the whole field.
-      { name: "Hard",   lanes: [90, 170, 250, 330],  per: 3, base: 2.7, coins: [[startX2 + 70, 130], [endX1 - 70, 210], [midX, 290]] },
+      // Easy: four dots bobbing up/down, each in its own column; coin mid-field.
+      { name: "Easy", coins: [[midX, 195]], dots: [
+        { x: 183, y: 60,  vy: 1.6 }, { x: 274, y: 320, vy: -1.6 },
+        { x: 365, y: 60,  vy: 1.6 }, { x: 456, y: 320, vy: -1.6 },
+      ] },
+      // Medium: three horizontal lanes plus two vertical bobbers.
+      { name: "Medium", coins: [[startX2 + 80, 157], [endX1 - 80, 232]], dots: [
+        ...lane(120, 3, 2.1, 1), ...lane(195, 3, 2.2, -1), ...lane(270, 3, 2.3, 1),
+        { x: 250, y: 40, vy: 2.0 }, { x: 390, y: 340, vy: -2.0 },
+      ] },
+      // Hard: horizontals + vertical bobbers + diagonal bouncers, 3-coin zig-zag.
+      { name: "Hard", coins: [[startX2 + 70, 130], [endX1 - 70, 210], [midX, 290]], dots: [
+        ...lane(90, 2, 2.7, 1), ...lane(330, 2, 2.7, -1),
+        { x: 200, y: 60, vy: 2.2 }, { x: 270, y: 300, vy: -2.2 }, { x: 440, y: 60, vy: 2.2 },
+        { x: 150, y: 100, vx: 1.9, vy: 1.6 }, { x: 470, y: 280, vx: -1.9, vy: -1.6 }, { x: 320, y: 60, vx: 1.7, vy: 2.0 },
+      ] },
     ];
     function buildEnemies(lv) {
-      const L = LEVELS[lv], arr = [], span = endX1 - startX2;
-      L.lanes.forEach((y, li) => {
-        const sign = li % 2 === 0 ? 1 : -1;
-        for (let k = 0; k < L.per; k++) {
-          const x = startX2 + span * ((k + (li % 2 ? 0.5 : 0)) / L.per) + 30;
-          arr.push({ x, y, r: 15, vx: sign * (L.base + li * 0.12), xMin: startX2 + 4, xMax: endX1 - 4 });
-        }
-      });
-      (L.orbits || []).forEach(([cx, cy, radius, count, speed]) => {
-        for (let k = 0; k < count; k++) {
-          const angle = (k / count) * Math.PI * 2;
-          arr.push({ orbit: true, cx, cy, radius, angle, speed: speed || 0.04, r: 14, x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius });
-        }
-      });
-      return arr;
+      return LEVELS[lv].dots.map(d => ({
+        x: d.x, y: d.y, r: 15, vx: d.vx || 0, vy: d.vy || 0,
+        xMin: startX2 + 4, xMax: endX1 - 4, yMin: 19, yMax: VH - 19,
+      }));
     }
     function buildCoins(lv) { return LEVELS[lv].coins.map(([x, y]) => ({ x, y, got: false })); }
 
@@ -2029,8 +2032,8 @@
       if (dir.left) px -= sp; if (dir.right) px += sp; if (dir.up) py -= sp; if (dir.down) py += sp;
       px = Math.max(PS / 2, Math.min(VW - PS / 2, px)); py = Math.max(PS / 2, Math.min(VH - PS / 2, py));
       for (const e of enemies) {
-        if (e.orbit) { e.angle += e.speed * f; e.x = e.cx + Math.cos(e.angle) * e.radius; e.y = e.cy + Math.sin(e.angle) * e.radius; }
-        else { e.x += e.vx * f; if (e.x <= e.xMin) { e.x = e.xMin; e.vx = Math.abs(e.vx); } else if (e.x >= e.xMax) { e.x = e.xMax; e.vx = -Math.abs(e.vx); } }
+        if (e.vx) { e.x += e.vx * f; if (e.x <= e.xMin) { e.x = e.xMin; e.vx = Math.abs(e.vx); } else if (e.x >= e.xMax) { e.x = e.xMax; e.vx = -Math.abs(e.vx); } }
+        if (e.vy) { e.y += e.vy * f; if (e.y <= e.yMin) { e.y = e.yMin; e.vy = Math.abs(e.vy); } else if (e.y >= e.yMax) { e.y = e.yMax; e.vy = -Math.abs(e.vy); } }
       }
       const half = PS / 2;
       // collect coins on contact

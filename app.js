@@ -1743,7 +1743,7 @@
         result.hidden = false;
         result.innerHTML = `Finished in <b>${secs.toFixed(2)}s</b> — ${msgs[pts]}`;
         timerEl.textContent = secs.toFixed(2) + "s";
-        setAnswer(pts);
+        setAnswer(pts, { typeSecs: +secs.toFixed(2) });
       }
     });
     setTimeout(() => inp.focus(), 60);
@@ -1881,7 +1881,8 @@
       reveal.innerHTML = `📅 <b>${MONTHS[m-1]} ${d}</b>: ${factFor(m, d)}. <i>Are you fond of that?</i><br><br>The answer was <b>21 April 1926</b>. ${exact ? "🎯 Exact match! " : ""}${roasts[pts]}`;
       btn.disabled = true; btn.textContent = "Locked in";
       mSel.disabled = dIn.disabled = yIn.disabled = true;
-      setAnswer(pts);
+      // dist = days off from April 21 (wrapped around the calendar) — powers the "Closest Queen Birthday" award
+      setAnswer(pts, { qeDaysOff: dist });
     });
   }
 
@@ -2921,15 +2922,13 @@
   // winner is still longest).
   function buildAwards(guests) {
     const defs = [
-      { emoji: "🚂", title: "Longest Train Stare", key: "trainWatch", dir: "high", suffix: "s", roast: "we were genuinely worried you'd missed your stop.", min: 1 },
-      { emoji: "⚡", title: "Quickest Draw",        key: "trainWatch", dir: "low",  suffix: "s", roast: "picked a train and bolted. Did you even see it?", min: 2 },
-      { emoji: "👁️", title: "The Iron Gaze",        key: "eyeContact", dir: "high", suffix: "s", roast: "nobody asked you to win this. Please, blink.", min: 1 },
-      { emoji: "🎮", title: "Reflex Champion",       key: "dodge",      dir: "high", suffix: "s", roast: "unsettling reflexes. We see those gamer hours.", min: 1 },
-      { emoji: "🐤", title: "Flappy Legend",         key: "flappyBest", dir: "high", suffix: " pipes", roast: "you and that bird share one beautifully focused brain.", min: 1 },
-      { emoji: "🔁", title: "Never Surrenders",      key: "rpsGames",   dir: "high", suffix: " games", roast: "replayed an unwinnable game this many times. Iconic.", min: 1 },
-      { emoji: "🥚", title: "Fed the Most Eggs",     key: "eggsFed",    dir: "high", suffix: " eggs", roast: "the egg never asked for this. You kept going anyway.", min: 1 },
-      { emoji: "🧠", title: "Pattern Prophet",       key: "simonRounds", dir: "high", suffix: " rounds", roast: "memorized beeps like it was nothing. Unnerving.", min: 1 },
-      { emoji: "🟥", title: "Ice in the Veins",      key: "whgDeaths",  dir: "low",  suffix: " deaths", roast: "cool under fire. Mildly terrifying.", min: 2 },
+      { emoji: "🚂", title: "Longest Train Stare",     key: "trainWatch",  dir: "high", suffix: "s", roast: "we were genuinely worried you'd missed your stop.", min: 1 },
+      { emoji: "🐤", title: "Flappy Legend",           key: "flappyBest",  dir: "high", suffix: " pipes", roast: "you and that bird share one beautifully focused brain.", min: 1 },
+      { emoji: "🔁", title: "Never Surrenders",        key: "rpsGames",    dir: "high", suffix: " games", roast: "replayed an unwinnable game this many times. Iconic.", min: 1 },
+      { emoji: "🥚", title: "Fed the Most Eggs",       key: "eggsFed",     dir: "high", suffix: " eggs", roast: "the egg never asked for this. You kept going anyway.", min: 1 },
+      { emoji: "🧠", title: "Pattern Prophet",         key: "simonRounds", dir: "high", suffix: " rounds", roast: "memorized beeps like it was nothing. Unnerving.", min: 1 },
+      { emoji: "⌨️", title: "Fastest Typer",           key: "typeSecs",    dir: "low",  suffix: "s", roast: "typed it clean and fast. You've done this before.", min: 1 },
+      { emoji: "👑", title: "Closest Queen Birthday",  key: "qeDaysOff",   dir: "low",  suffix: " days off", roast: "why do you know when the Queen was born? (You're among friends.)", min: 1 },
     ];
     return defs.map(d => {
       const pool = guests.filter(g => g.metrics && typeof g.metrics[d.key] === "number");

@@ -1320,7 +1320,7 @@
       const verdicts = ["Gravity won instantly. We respect the commitment.", "A few gaps cleared — not bad.", "Genuinely solid flapping.", "Inhuman focus. The pattern is yours."];
       setAnswer(points, { flappyBest: best });
       reveal.hidden = false;
-      reveal.innerHTML = `Best run: <b>${best}</b> pipe${best === 1 ? "" : "s"} — ${verdicts[points]}<br><span class="dodge-twist">…the deeper the focus, the more autistic we're afraid you are.</span>`;
+      reveal.innerHTML = `Best run: <b>${best}</b> pipe${best === 1 ? "" : "s"} — ${verdicts[points]}`;
       ov.style.display = "";
       if (!passedFirst) {
         ov.innerHTML = `<div class="flap-msg">🐤 You didn't clear the first pipe!<small>No life lost — get past pipe #1 and the real run begins.</small></div><button class="btn btn-primary flap-go" type="button">↻ Try again</button>`;

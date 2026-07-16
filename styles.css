@@ -988,6 +988,9 @@ a { color: inherit; }
 .imgq-opt.opt-correct { background: #c9f4d6; border-color: var(--c4); }
 .imgq-opt.opt-wrong { background: #f7c9c9; border-color: var(--c1); }
 .imgq-reveal { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--ink-soft); text-align: center; line-height: 1.5; }
+.imgtext-input { font-family: var(--font-head); font-size: 16px; border: var(--border); border-radius: 14px; padding: 14px 16px; resize: none; background: var(--paper-2); box-shadow: var(--shadow-sm); width: 100%; }
+.imgtext-input:disabled { opacity: .7; }
+.imgtext-note { font-family: var(--font-head); font-weight: 700; font-size: 14px; color: var(--ink-soft); text-align: center; }
 
 /* ---- FEED EGGS — muted monochrome drag-to-feed game ---- */
 .egg-screen { --egg-bg: #a7c1cb; --egg-ink: #33454f; --egg-panel: #bcd0d7;

@@ -383,17 +383,12 @@
       opts: [["No clue",0],["Right ballpark",1],["Very close",2],["Nailed the exact day",3]],
     },
     {
-      kind: "imgquiz",
+      kind: "imgtext",
       q: "What's happening in this picture? 🐧",
       img: "photos/iceberg.webp",
       imgAlt: "A huge crowd of Club Penguin penguins all packed onto one side of the iceberg",
-      explain: "It's the legendary <b>Iceberg Tipping</b> — Club Penguin players spent years convinced that if enough penguins crammed onto one side and danced, the whole iceberg would finally flip over. (It never did… officially.)",
-      opts: [
-        ["Penguins all trying to tip the iceberg over", 3],
-        ["Celebrating a puffle's birthday", 1],
-        ["Running away from a penguin who smells", 1],
-        ["Playing music only on the left so they hear it in one ear", 1],
-      ],
+      keywords: ["tip"], // award points if the typed answer mentions tipping
+      opts: [["No idea",0],["Nailed it",3]],
     },
     // "Reading the Mind in the Eyes" test — an actual autism-research instrument.
     // Misreading the eyes is the autistic-coded outcome, so the RIGHT emotion
@@ -2136,6 +2131,36 @@
     });
   }
 
+  // Image + free-text answer. Type what's happening; you get points if the
+  // answer contains one of Q.keywords (matched at a word boundary, case-
+  // insensitive — so "tip" also catches tips/tipping/tipped). No right/wrong
+  // reveal; submit locks it and enables Next.
+  function renderImgTextGame(body, Q, setAnswer) {
+    body.innerHTML = `
+      <div class="imgq">
+        <figure class="imgq-shot">
+          <img src="${Q.img}" alt="${esc(Q.imgAlt || "")}" onerror="this.closest('.imgq-shot').classList.add('imgq-missing')" />
+          <figcaption class="imgq-missing-note">🖼️ screenshot goes here</figcaption>
+        </figure>
+        <textarea class="imgtext-input" id="imgtext-in" rows="2" placeholder="Type what you think is happening…"></textarea>
+        <button class="btn btn-primary" id="imgtext-submit" disabled>Submit →</button>
+        <div class="imgtext-note" id="imgtext-note" hidden></div>
+      </div>`;
+    const inp = $("#imgtext-in", body), btn = $("#imgtext-submit", body), note = $("#imgtext-note", body);
+    const kw = Q.keywords || [];
+    inp.addEventListener("input", () => { btn.disabled = inp.value.trim().length === 0; });
+    inp.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) btn.click(); });
+    btn.addEventListener("click", () => {
+      const v = inp.value.trim();
+      if (!v) return;
+      const hit = kw.some(k => new RegExp("\\b" + k, "i").test(v));
+      inp.disabled = true; btn.disabled = true; btn.textContent = "Locked in ✓";
+      note.hidden = false; note.textContent = "Answer locked in.";
+      setAnswer(hit ? (Q.score || 3) : 0, { imgTextAnswer: v });
+    });
+    setTimeout(() => inp.focus(), 60);
+  }
+
   /* ----------------------------------------------------------
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
@@ -2557,8 +2582,9 @@
     else if (kind === "eggs") { renderEggGame(qbody, Q, setAnswer); }
     else if (kind === "boxes") { renderBoxesGame(qbody, Q, setAnswer); }
     else if (kind === "imgquiz") { renderImgQuizGame(qbody, Q, setAnswer); }
+    else if (kind === "imgtext") { renderImgTextGame(qbody, Q, setAnswer); }
   }
-  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", polo: "Polo holes", reenterpin: "Re-enter PIN" };
+  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", imgtext: "What's happening (typed)", polo: "Polo holes", reenterpin: "Re-enter PIN" };
 
   function submitToQueue(state) {
     bumpCtr();

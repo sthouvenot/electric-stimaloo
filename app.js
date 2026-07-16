@@ -1427,7 +1427,7 @@
     colors: ["blue", "white", "black"],
     colorNames: ["Blue", "White", "Black"],
     boxes: [
-      "You will open this box and find it empty.",
+      "You will open this box and not find the correct answer.",
       "A true box contains the correct answer.",
       "This box and the white box are both false.",
     ],

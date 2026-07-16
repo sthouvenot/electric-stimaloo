@@ -1428,19 +1428,19 @@
   // truth assignment), so scoring can never disagree with the logic. Board is
   // verified to have exactly one deducible answer (Box 3).
   const BOX_BOARD = {
-    rule: "An ODD number of the three signs below are true (that's 1 or 3).",
-    ruleFn: (p, t, cnt) => cnt % 2 === 1,
+    rule: "At least one sign is true, and at least one sign is false.",
+    ruleFn: (p, t, cnt) => cnt >= 1 && cnt <= 2,
     boxes: [
-      "The prize is in Box 1 or Box 2.",
-      "The prize is NOT in Box 1.",
-      "Box 2's sign is lying.",
+      "The prize is in Box 1.",
+      "The prize is in Box 2.",
+      "Exactly one of these three signs is true.",
     ],
     preds: [
-      (p, t) => p === 0 || p === 1,
-      (p, t) => p !== 0,
-      (p, t) => t[1] === false,
+      (p, t) => p === 0,
+      (p, t) => p === 1,
+      (p, t) => t.reduce((a, b) => a + (b ? 1 : 0), 0) === 1,
     ],
-    explain: "The rule wants an <b>odd</b> number of true signs. Prize in Box 1 → the signs read <b>T, F, T</b> = 2 true (even ✗). Prize in Box 2 → <b>T, T, F</b> = 2 true (even ✗). Prize in <b>Box 3</b> → <b>F, T, F</b> = 1 true (odd ✓). Only Box 3 fits the rule.",
+    explain: "Sign 3 says <b>exactly one</b> sign is true. If the prize were in Box 1, Sign 1 would be true — but then Sign 3 can't be consistently true or false, so it's impossible. Same for Box 2. Only <b>Box 3</b> works: Signs 1 and 2 are both false, so Sign 3 is the single true sign — exactly one — which also fits 'at least one true, at least one false.'",
   };
   function solveBoxes(board) {
     const answers = new Set();

@@ -1017,8 +1017,6 @@ a { color: inherit; }
   background:
     linear-gradient(180deg, rgba(30,18,8,0), rgba(30,18,8,.28)),
     repeating-linear-gradient(90deg, #6d4c30 0 44px, #634329 44px 47px, #6d4c30 47px 90px); }
-.chestq-intro { font-family: var(--font-head); font-weight: 800; font-size: 15px; text-align: center; color: #fff; background: rgba(18,10,4,.55); border: 2px solid rgba(0,0,0,.5); border-radius: 12px; padding: 10px 14px; margin-bottom: 16px; line-height: 1.4; }
-.chestq-intro small { display: block; font-weight: 600; font-size: 12.5px; opacity: .85; margin-top: 4px; }
 .chestq-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .chest { position: relative; background: none; border: 0; padding: 0; cursor: pointer; display: block; transition: transform .12s; }
 .chest:hover:not(:disabled) { transform: translateY(-4px); }
@@ -1035,8 +1033,7 @@ a { color: inherit; }
 .chest.chest-correct { animation: chestPop .32s ease; }
 @keyframes chestPop { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
 .chest.chest-wrong .chest-svg { opacity: .5; }
-.chestq-reveal { margin-top: 16px; font-family: var(--font-head); font-weight: 700; font-size: 15px; text-align: center; line-height: 1.5; color: #fff; background: rgba(18,10,4,.6); border-radius: 12px; padding: 12px 15px; }
-.chestq-logic { display: block; font-weight: 600; font-size: 13px; opacity: .93; margin-top: 8px; text-align: left; }
+.chestq-reveal { margin-top: 16px; font-family: var(--font-head); font-weight: 800; font-size: 20px; text-align: center; color: #fff; background: rgba(18,10,4,.6); border-radius: 12px; padding: 12px 15px; }
 @media (max-width: 560px) {
   .chestq-row { grid-template-columns: 1fr; gap: 12px; max-width: 300px; margin: 0 auto; }
   .chest-sign { font-size: 13px; }

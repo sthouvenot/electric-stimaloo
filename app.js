@@ -369,7 +369,7 @@
     },
     {
       kind: "boxes",
-      q: "Three boxes, one holds the correct answer. Read the signs and open the right box.",
+      q: "At least one box is true and at least one box is false.",
       opts: [["Opened the wrong box",0],["Solved it — opened the right box",3]],
     },
     {
@@ -1441,7 +1441,6 @@
       (p, t) => t[p] === true,                           // the answer sits in a box whose sign is true
       (p, t) => t[2] === false && t[1] === false,        // this box (Black) and the White box are both false
     ],
-    explain: "Start with the <b>Black</b> chest — it says both it and the White chest are false. If that were true it would call itself false, which is impossible, so the Black sign is <b>false</b>. That forces the <b>White</b> sign to be <b>true</b>. White says a <i>true</i> box holds the answer. If the Blue sign ('this box is empty') were false, the answer would be in Blue — but a false-signed box can't hold it, so Blue's sign is true and Blue is empty. The only true-signed box left is the <b>White chest</b> — that's the answer.",
   };
   function solveBoxes(board) {
     const answers = new Set();
@@ -1494,7 +1493,6 @@
        </button>`).join("");
     body.innerHTML = `
       <div class="chestq">
-        <div class="chestq-intro">🗝️ One chest holds the correct answer. Read the signs and open the right one — you get one shot.<small>Each sign is simply true or false.</small></div>
         <div class="chestq-row">${chests}</div>
         <div class="chestq-reveal" id="chestq-reveal" hidden></div>
       </div>`;
@@ -1504,16 +1502,12 @@
       btn.addEventListener("click", () => {
         if (done) return;
         done = true;
-        const pick = +btn.dataset.i;
-        const correct = pick === answer;
-        body.querySelectorAll(".chest").forEach(b => {
-          b.disabled = true;
-          const bi = +b.dataset.i;
-          if (bi === answer) { b.classList.add("chest-correct"); const o = b.querySelector(".chest-open"); if (o) o.textContent = "💎"; }
-          else if (bi === pick) { b.classList.add("chest-wrong"); const o = b.querySelector(".chest-open"); if (o) o.textContent = "🕳️"; }
-        });
+        const correct = +btn.dataset.i === answer;
+        body.querySelectorAll(".chest").forEach(b => b.disabled = true);
+        btn.classList.add(correct ? "chest-correct" : "chest-wrong");
+        const o = btn.querySelector(".chest-open"); if (o) o.textContent = correct ? "💎" : "🕳️";
         reveal.hidden = false;
-        reveal.innerHTML = `${correct ? `💎 Found it — the correct answer was in the <b>${board.colorNames[answer]} chest</b>.` : `🕳️ Empty. The correct answer was in the <b>${board.colorNames[answer]} chest</b>.`}<br><span class="chestq-logic">${board.explain}</span>`;
+        reveal.textContent = correct ? "✅ Correct" : "❌ Wrong";
         setAnswer(correct ? 3 : 0, { boxSolved: correct ? 1 : 0 });
       });
     });

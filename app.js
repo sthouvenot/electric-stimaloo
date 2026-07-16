@@ -396,7 +396,7 @@
     {
       kind: "imgquiz",
       q: "What is this person feeling? 👀",
-      img: "photos/eyes/1.webp",
+      img: "photos/eyeImage1.png",
       imgAlt: "A close-up of a person's eyes",
       answer: 0,
       explain: "The textbook answer is <b>playful</b>. Reading a whole mood off a two-inch strip of face is a party trick some of us just never installed. 👀",
@@ -405,7 +405,7 @@
     {
       kind: "imgquiz",
       q: "What is this person feeling? 👀",
-      img: "photos/eyes/2.webp",
+      img: "photos/eyeImage2.png",
       imgAlt: "A close-up of a person's eyes",
       answer: 1,
       explain: "The textbook answer is <b>upset</b>. Eyes are just wet circles — expecting them to broadcast <i>feelings</i> is a big ask.",
@@ -414,7 +414,7 @@
     {
       kind: "imgquiz",
       q: "What is this person feeling? 👀",
-      img: "photos/eyes/3.webp",
+      img: "photos/eyeImage3.png",
       imgAlt: "A close-up of a person's eyes",
       answer: 2,
       explain: "The textbook answer is <b>desire</b>. Yeah… we didn't get that from the eyebrows either.",
@@ -423,7 +423,7 @@
     {
       kind: "imgquiz",
       q: "What is this person feeling? 👀",
-      img: "photos/eyes/4.webp",
+      img: "photos/eyeImage4.png",
       imgAlt: "A close-up of a person's eyes",
       answer: 1,
       explain: "The textbook answer is <b>insisting</b>. If you nailed all four of these, we're a little suspicious of you.",

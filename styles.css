@@ -781,6 +781,14 @@ a { color: inherit; }
 .award-stat { margin-top: 14px; font-size: 18px; color: var(--ink); line-height: 1.4; }
 .award-roast { margin: 14px auto 0; max-width: 480px; font-style: italic; font-size: 16px; color: var(--c1); font-weight: 600; line-height: 1.4; }
 .award-desc { margin: 6px auto 0; max-width: 460px; font-family: var(--font-body); font-weight: 500; font-size: 14px; color: var(--ink-soft); line-height: 1.45; }
+/* awards title card — the show waits here until the host hits Start */
+.award-start { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 26px 20px; }
+.as-emoji { font-size: clamp(44px, 7vh, 76px); line-height: 1; animation: crownBounce 1.4s ease-in-out infinite; }
+.as-title { font-family: var(--font-display); font-weight: 400; font-size: clamp(30px, 6.4vh, 64px); line-height: 1.02;
+  background: var(--rainbow); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 2.5px var(--ink); paint-order: stroke fill; filter: drop-shadow(4px 5px 0 var(--ink)); animation: rainbowRun 2.6s linear infinite; }
+.as-sub { font-family: var(--font-head); font-weight: 700; font-size: 16px; color: var(--ink-soft); max-width: 460px; }
+.award-start .btn { margin-top: 8px; }
 /* Mario-Party-style animated bar race */
 .mp-chart { display: grid; gap: 9px; margin: 18px auto 4px; max-width: 540px; text-align: left; }
 .mp-row { display: grid; grid-template-columns: 26px 42px 84px 1fr 64px; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 12px; }

@@ -3054,9 +3054,32 @@
       nextBtn.textContent = n >= awards.length - 1 ? "Start the Reveal →" : "Next award →";
       confetti.burst(80);
     }
+    // title card — the show waits for the host to hit Start
+    let started = false;
+    function showStart() {
+      started = false;
+      stageEl.innerHTML = `<div class="award-card award-start">
+        <div class="as-emoji">🎉</div>
+        <div class="as-title">The Awards Show</div>
+        <div class="as-sub"><b>${awards.length}</b> superlative${awards.length === 1 ? "" : "s"}, then we crown the most autistic among us.</div>
+        <button class="btn btn-primary btn-lg" id="aw-start" type="button">▶ Start the show</button>
+      </div>`;
+      countEl.textContent = "";
+      nextBtn.style.display = "none";
+      toons.forEach(t => t.classList.remove("spotlight", "dim"));
+      $("#aw-start", stageEl).addEventListener("click", startShow);
+    }
+    function startShow() {
+      if (started) return;
+      started = true;
+      nextBtn.style.display = "";
+      awardIdx = 0;
+      showAward(0);
+    }
     function go(delta) {
+      if (!started) { if (delta > 0) startShow(); else navigate("/admin"); return; }
       if (awardIdx >= awards.length - 1 && delta > 0) { navigate("/present"); return; }
-      if (awardIdx <= 0 && delta < 0) { navigate("/admin"); return; }
+      if (awardIdx <= 0 && delta < 0) { showStart(); return; } // back from award 1 → title card
       awardIdx = Math.max(0, Math.min(awards.length - 1, awardIdx + delta));
       showAward(awardIdx);
     }
@@ -3072,7 +3095,7 @@
     addEventListener("keydown", awardsKeyHandler);
     wireFullscreen(root); // TV mode for the awards show too
 
-    setTimeout(() => showAward(0), 30);
+    setTimeout(showStart, 30);
     return root;
   });
 

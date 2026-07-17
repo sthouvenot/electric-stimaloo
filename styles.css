@@ -827,6 +827,24 @@ a { color: inherit; }
 .podium-slot.second .pedestal { background: var(--c5); color: var(--white); }
 .podium-slot.third .pedestal { background: var(--c2); color: var(--white); }
 .podium-slot.first .pedestal { background: var(--c3); color: var(--ink); height: 54px; padding-top: 16px; }
+/* 1st place goes gold once it's revealed (mystery slots stay neutral) */
+.podium-slot.first.revealed .slot-body { background: linear-gradient(180deg, #fff6c2 0%, #ffd23f 55%, #f2b01e 100%); box-shadow: var(--shadow); }
+
+/* the crown banner shown once everyone's out — the podium below is the payoff */
+.finale-crown { text-align: center; }
+.fc-medal { font-size: 54px; line-height: 1; animation: pop .5s cubic-bezier(.2,1.5,.4,1); }
+.fc-title { font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 5vw, 44px); line-height: 1.05; }
+.fc-sub { font-family: var(--font-head); font-weight: 700; font-size: 17px; color: var(--ink-soft); margin-top: 6px; }
+
+/* ---------- full-screen presentation (TV mode) ---------- */
+body.present-fs .site-header, body.present-fs .site-footer { display: none !important; }
+body.present-fs .section { padding: 10px 0 16px; }
+body.present-fs .section-title, body.present-fs .section-sub { display: none; }
+body.present-fs .wrap { max-width: 96vw; }
+body.present-fs .reveal-stage { min-height: 19vh; }
+body.present-fs .graph { height: 46vh; }
+body.present-fs .podium { max-width: 780px; }
+body.present-fs .reveal-stage .name { font-size: clamp(40px, 6vw, 76px); }
 
 .finale-announce .finale-medal { font-size: 60px; line-height: 1; animation: pop .5s cubic-bezier(.2,1.5,.4,1); }
 .finale-announce .finale-place { font-family: var(--font-head); font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); font-size: 15px; margin-bottom: 4px; }

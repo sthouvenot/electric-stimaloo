@@ -666,6 +666,8 @@
   function render() {
     liveRefresh = null; // each view re-registers its own live-update hook
     const path = currentHash();
+    // the full-screen presentation chrome must never leak onto other views
+    if (("/" + (path.split("/")[1] || "")) !== "/present") document.body.classList.remove("present-fs");
     const app = $("#app");
     const key = "/" + (path.split("/")[1] || "");
     const fn = routes[key] || routes["/"];
@@ -3071,6 +3073,7 @@
   });
 
   let presentRevealed = 0; // how many revealed so far this session
+  let fsChangeHandler = null;
   route("/present", function () {
     if (load(LS.auth, false) !== true) return adminGate();
     const guests = store.approved(); // ascending by score
@@ -3091,6 +3094,7 @@
       </div>
       <div class="present-controls">
         <button class="btn btn-ghost btn-sm" id="reset-btn">↺ Reset</button>
+        <button class="btn btn-ghost btn-sm" id="fs-btn">⛶ Full screen</button>
         <span class="present-count" id="count"></span>
         <button class="btn btn-primary" id="reveal-btn">Reveal next →</button>
       </div>
@@ -3194,30 +3198,17 @@
         <div class="finale-preview-sub">The very top of the spectrum - but who takes <b>1st</b>? Reveal them one at a time…</div>
       </div>`;
     }
+    // everyone's out — the podium below IS the payoff, so the stage just crowns it
     function renderFinaleBoth() {
-      const second = guests[guests.length - 2], first = guests[guests.length - 1];
-      const ts = tierFor(second.score), tf = tierFor(first.score);
-      stage.innerHTML = `<div class="fade-in finale-both">
-        <div class="finale-both-grid">
-          <div class="finale-col second">
-            <div class="finale-medal">🥈</div>
-            <div class="finale-place">2nd Most Autistic</div>
-            <span class="avchip" style="width:92px;height:92px">${avatarSVG(second.avatar)}</span>
-            <div class="name">${esc(second.name)}</div>
-            <div class="tier">${ts.emoji} ${ts.name} · <b>${second.score}</b>/100</div>
-          </div>
-          <div class="finale-col first">
-            <div class="finale-medal">👑</div>
-            <div class="finale-place">THE MOST AUTISTIC</div>
-            <span class="avchip" style="width:112px;height:112px">${avatarSVG(first.avatar)}</span>
-            <div class="name">${esc(first.name)}</div>
-            <div class="tier">${tf.emoji} ${tf.name} · <b>${first.score}</b>/100</div>
-          </div>
-        </div>
+      const first = guests[guests.length - 1];
+      stage.innerHTML = `<div class="fade-in finale-crown">
+        <div class="fc-medal">🏆</div>
+        <div class="fc-title">The Final Podium</div>
+        <div class="fc-sub">👑 <b>${esc(first.name)}</b> takes the crown</div>
       </div>`;
     }
     function updateStage() {
-      // both finalists already out → keep them side by side
+      // everyone revealed → crown banner + the full 1st/2nd/3rd podium
       if (guests.length >= 2 && presentRevealed >= guests.length) { renderFinaleBoth(); return; }
       // about to announce the podium → preview the three finalists
       if (hasPodium && presentRevealed === finaleStart) { renderFinalePreview(); return; }
@@ -3277,6 +3268,25 @@
       dots.forEach(d => d.classList.remove("show", "current"));
       updateStage(); updateUI();
     });
+
+    // full-screen mode for the TV — hides the site chrome and grows the graph
+    const fsBtn = $("#fs-btn", root);
+    const isFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    function syncFs() {
+      const on = isFs();
+      document.body.classList.toggle("present-fs", on);
+      fsBtn.textContent = on ? "⛶ Exit full screen" : "⛶ Full screen";
+      if (typeof placeAll === "function") setTimeout(placeAll, 60); // re-measure the graph
+    }
+    fsBtn.addEventListener("click", () => {
+      const el = document.documentElement;
+      if (isFs()) (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
+      else (el.requestFullscreen || el.webkitRequestFullscreen || function () {}).call(el);
+    });
+    if (fsChangeHandler) removeEventListener("fullscreenchange", fsChangeHandler);
+    fsChangeHandler = syncFs;
+    addEventListener("fullscreenchange", fsChangeHandler);
+    syncFs();
 
     setTimeout(placeAll, 30);
     return root;

@@ -2779,7 +2779,6 @@
         <p class="section-sub">For your eyes only. Enter the host password.</p>
         <input class="name-input" id="pw" type="password" placeholder="Password" />
         <div style="margin-top:14px"><button class="btn btn-primary" id="enter" style="width:100%;justify-content:center">Enter →</button></div>
-        <p class="field-hint" style="margin-top:18px">Demo password: <b>${CONFIG.adminPassword}</b> (change it in app.js → CONFIG)</p>
       </div>
     </div></section>`);
     const pw = $("#pw", root);

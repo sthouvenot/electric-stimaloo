@@ -845,6 +845,18 @@ body.present-fs .reveal-stage { min-height: 19vh; }
 body.present-fs .graph { height: 46vh; }
 body.present-fs .podium { max-width: 780px; }
 body.present-fs .reveal-stage .name { font-size: clamp(40px, 6vw, 76px); }
+/* awards show (#/intro) in TV mode */
+body.present-fs .award-card { max-width: 900px; }
+body.present-fs .award-title { font-size: clamp(32px, 4.6vw, 58px); }
+body.present-fs .award-desc { font-size: 17px; max-width: 640px; }
+body.present-fs .award-stat { font-size: 22px; }
+body.present-fs .award-roast { font-size: 18px; }
+body.present-fs .mp-chart { max-width: 800px; }
+body.present-fs .mp-row { grid-template-columns: 30px 54px 110px 1fr 86px; gap: 12px; }
+body.present-fs .mp-av { width: 54px !important; height: 54px !important; }
+body.present-fs .mp-track { height: 26px; }
+body.present-fs .mp-name, body.present-fs .mp-val { font-size: 16px; }
+body.present-fs .mp-rank { font-size: 22px; }
 
 .finale-announce .finale-medal { font-size: 60px; line-height: 1; animation: pop .5s cubic-bezier(.2,1.5,.4,1); }
 .finale-announce .finale-place { font-family: var(--font-head); font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); font-size: 15px; margin-bottom: 4px; }

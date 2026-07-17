@@ -666,8 +666,9 @@
   function render() {
     liveRefresh = null; // each view re-registers its own live-update hook
     const path = currentHash();
-    // the full-screen presentation chrome must never leak onto other views
-    if (("/" + (path.split("/")[1] || "")) !== "/present") document.body.classList.remove("present-fs");
+    // TV mode belongs to the host screens only — never leak the chrome-hiding elsewhere
+    const fsKey = "/" + (path.split("/")[1] || "");
+    if (fsKey !== "/present" && fsKey !== "/intro") document.body.classList.remove("present-fs");
     const app = $("#app");
     const key = "/" + (path.split("/")[1] || "");
     const fn = routes[key] || routes["/"];
@@ -2924,13 +2925,13 @@
   // winner is still longest).
   function buildAwards(guests) {
     const defs = [
-      { emoji: "🚂", title: "Longest Train Stare",     key: "trainWatch",  dir: "high", suffix: "s", desc: "Watched the looping train the longest before finally picking a car.", roast: "we were genuinely worried you'd missed your stop.", min: 1 },
-      { emoji: "🐤", title: "Flappy Legend",           key: "flappyBest",  dir: "high", suffix: " pipes", desc: "Cleared the most pipes in a single run.", roast: "you and that bird share one beautifully focused brain.", min: 1 },
-      { emoji: "🔁", title: "Never Surrenders",        key: "rpsGames",    dir: "high", suffix: " games", desc: "Replayed the unwinnable rock-paper-scissors the most times before giving up.", roast: "replayed an unwinnable game this many times. Iconic.", min: 1 },
-      { emoji: "🥚", title: "Fed the Most Eggs",       key: "eggsFed",     dir: "high", suffix: " eggs", desc: "Fed more eggs than anybody else.", roast: "the egg never asked for this. You kept going anyway.", min: 1 },
-      { emoji: "🧠", title: "Pattern Prophet",         key: "simonRounds", dir: "high", suffix: " rounds", desc: "Repeated the longest Simon sequence from memory.", roast: "memorized beeps like it was nothing. Unnerving.", min: 1 },
-      { emoji: "⌨️", title: "Fastest Typer",           key: "typeSecs",    dir: "low",  suffix: "s", desc: "Typed the sentence correctly in the fewest seconds.", roast: "typed it clean and fast. You've done this before.", min: 1 },
-      { emoji: "👑", title: "Closest Queen Birthday",  key: "qeDaysOff",   dir: "low",  suffix: " days off", desc: "Guessed closest to Queen Elizabeth II's real birthday (21 April 1926).", roast: "why do you know when the Queen was born? (You're among friends.)", min: 1 },
+      { emoji: "🚂", title: "Longest Train Stare",     key: "trainWatch",  dir: "high", suffix: "s", desc: "Watched the looping train the longest before finally picking a car.", stat: v => `stared at the train for <b>${v} seconds</b>`, roast: "we were genuinely worried you'd missed your stop.", min: 1 },
+      { emoji: "🐤", title: "Flappy Legend",           key: "flappyBest",  dir: "high", suffix: " pipes", desc: "Cleared the most pipes in a single run.", stat: v => `cleared <b>${v} pipe${v === 1 ? "" : "s"}</b> in one run`, roast: "you and that bird share one beautifully focused brain.", min: 1 },
+      { emoji: "🔁", title: "Never Surrenders",        key: "rpsGames",    dir: "high", suffix: " games", desc: "Replayed the unwinnable rock-paper-scissors the most times before giving up.", stat: v => `played <b>${v} unwinnable game${v === 1 ? "" : "s"}</b> before quitting`, roast: "replayed a rigged game that many times. Iconic.", min: 1 },
+      { emoji: "🥚", title: "Fed the Most Eggs",       key: "eggsFed",     dir: "high", suffix: " eggs", desc: "Fed more eggs than anybody else.", stat: v => `fed <b>${v} egg${v === 1 ? "" : "s"}</b>`, roast: "the egg never asked for this. You kept going anyway.", min: 1 },
+      { emoji: "🧠", title: "Pattern Prophet",         key: "simonRounds", dir: "high", suffix: " rounds", desc: "Repeated the longest Simon sequence from memory.", stat: v => `remembered <b>${v} round${v === 1 ? "" : "s"}</b> of the pattern`, roast: "memorized beeps like it was nothing. Unnerving.", min: 1 },
+      { emoji: "⌨️", title: "Fastest Typer",           key: "typeSecs",    dir: "low",  suffix: "s", desc: "Typed the sentence correctly in the fewest seconds.", stat: v => `typed the whole sentence in <b>${v} seconds</b>`, roast: "typed it clean and fast. You've done this before.", min: 1 },
+      { emoji: "👑", title: "Closest Queen Birthday",  key: "qeDaysOff",   dir: "low",  suffix: " days off", desc: "Guessed closest to Queen Elizabeth II's real birthday (21 April 1926).", stat: v => v === 0 ? `nailed her birthday <b>exactly</b>` : `guessed <b>${v} day${v === 1 ? "" : "s"}</b> away from her birthday`, roast: "why do you know when the Queen was born? (You're among friends.)", min: 1 },
     ];
     return defs.map(d => {
       const pool = guests.filter(g => g.metrics && typeof g.metrics[d.key] === "number");
@@ -2997,6 +2998,7 @@
       <div class="award-roster" id="award-roster"></div>
       <div class="present-controls">
         <button class="btn btn-ghost btn-sm" id="aw-back">← Back</button>
+        <button class="btn btn-ghost btn-sm" id="fs-btn">⛶ Full screen</button>
         <span class="present-count" id="aw-count"></span>
         <button class="btn btn-primary" id="aw-next">Next award →</button>
       </div>
@@ -3043,7 +3045,8 @@
         <div class="award-title">${esc(a.title)}</div>
         <div class="award-desc">${esc(a.desc || "")}</div>
         <div class="mp-chart">${rows}</div>
-        <div class="award-roast">🏆 <b>${esc(winner.firstName || winner.name)}</b> — ${esc(a.roast)}</div>
+        <div class="award-stat">🏆 <b>${esc(winner.firstName || winner.name)}</b> ${a.stat ? a.stat(winner.metrics[a.key]) : ""}</div>
+        <div class="award-roast">“${esc(a.roast)}”</div>
       </div>`;
       toons.forEach((t, i) => { t.classList.toggle("spotlight", i === wi); t.classList.toggle("dim", i !== wi); });
       if (toons[wi]) toons[wi].scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
@@ -3067,6 +3070,7 @@
       else if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
     };
     addEventListener("keydown", awardsKeyHandler);
+    wireFullscreen(root); // TV mode for the awards show too
 
     setTimeout(() => showAward(0), 30);
     return root;
@@ -3074,6 +3078,29 @@
 
   let presentRevealed = 0; // how many revealed so far this session
   let fsChangeHandler = null;
+  // Shared "TV mode" for the host screens (#/present and #/intro): hides the site
+  // chrome and scales the stage up. Needs a real click — browsers block
+  // requestFullscreen without a user gesture. onChange re-measures after a toggle.
+  function wireFullscreen(root, onChange) {
+    const fsBtn = $("#fs-btn", root);
+    if (!fsBtn) return;
+    const isFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    function syncFs() {
+      const on = isFs();
+      document.body.classList.toggle("present-fs", on);
+      fsBtn.textContent = on ? "⛶ Exit full screen" : "⛶ Full screen";
+      if (typeof onChange === "function") setTimeout(onChange, 60);
+    }
+    fsBtn.addEventListener("click", () => {
+      const el = document.documentElement;
+      if (isFs()) (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
+      else (el.requestFullscreen || el.webkitRequestFullscreen || function () {}).call(el);
+    });
+    if (fsChangeHandler) removeEventListener("fullscreenchange", fsChangeHandler);
+    fsChangeHandler = syncFs;
+    addEventListener("fullscreenchange", fsChangeHandler);
+    syncFs();
+  }
   route("/present", function () {
     if (load(LS.auth, false) !== true) return adminGate();
     const guests = store.approved(); // ascending by score
@@ -3269,24 +3296,7 @@
       updateStage(); updateUI();
     });
 
-    // full-screen mode for the TV — hides the site chrome and grows the graph
-    const fsBtn = $("#fs-btn", root);
-    const isFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
-    function syncFs() {
-      const on = isFs();
-      document.body.classList.toggle("present-fs", on);
-      fsBtn.textContent = on ? "⛶ Exit full screen" : "⛶ Full screen";
-      if (typeof placeAll === "function") setTimeout(placeAll, 60); // re-measure the graph
-    }
-    fsBtn.addEventListener("click", () => {
-      const el = document.documentElement;
-      if (isFs()) (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
-      else (el.requestFullscreen || el.webkitRequestFullscreen || function () {}).call(el);
-    });
-    if (fsChangeHandler) removeEventListener("fullscreenchange", fsChangeHandler);
-    fsChangeHandler = syncFs;
-    addEventListener("fullscreenchange", fsChangeHandler);
-    syncFs();
+    wireFullscreen(root, placeAll); // TV mode (re-measures the graph on toggle)
 
     setTimeout(placeAll, 30);
     return root;

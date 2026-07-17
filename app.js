@@ -2991,7 +2991,7 @@
     const guests = store.approved();
     const awards = buildAwards(guests);
     let awardIdx = 0;
-    const root = wrapDiv(`<section class="section fade-in"><div class="wrap">
+    const root = wrapDiv(`<section class="section awards-view fade-in"><div class="wrap">
       <h2 class="section-title">🎉 The Awards Show</h2>
       <p class="section-sub">A few superlatives before we crown the most autistic among us. Brace yourselves. 🏆</p>
       <div class="award-stage" id="award-stage"></div>
@@ -3104,7 +3104,7 @@
   route("/present", function () {
     if (load(LS.auth, false) !== true) return adminGate();
     const guests = store.approved(); // ascending by score
-    const root = wrapDiv(`<section class="section fade-in"><div class="wrap">
+    const root = wrapDiv(`<section class="section present-view fade-in"><div class="wrap">
       <h2 class="section-title">The Reveal</h2>
       <p class="section-sub">Approved guests, least → most autistic. Reveal them one at a time - then the <b>Final 3</b> get the podium treatment. 🥁</p>
       <div class="graph-wrap">
@@ -3163,10 +3163,14 @@
       updateUI();
     }
     const topTwoStart = guests.length - 2; // 2nd place index; 1st = topTwoStart+1
+    const sectionEl = root.querySelector("section");
     function updateUI() {
       dots.forEach((d, i) => d.classList.toggle("current", i === presentRevealed - 1));
       const done = presentRevealed >= guests.length;
       revealBtn.disabled = done;
+      // champion moment: the podium is the whole show — full screen drops the graph
+      // so the finale always fits on the TV without scrolling
+      if (sectionEl) sectionEl.classList.toggle("champ-mode", guests.length > 0 && done);
       const atTopTwo = guests.length >= 2 && presentRevealed === topTwoStart;
       const inFinale = hasPodium && presentRevealed >= finaleStart;
       if (done) countEl.textContent = `${guests.length} / ${guests.length} revealed`;
@@ -3225,13 +3229,21 @@
         <div class="finale-preview-sub">The very top of the spectrum - but who takes <b>1st</b>? Reveal them one at a time…</div>
       </div>`;
     }
-    // everyone's out — the podium below IS the payoff, so the stage just crowns it
+    // everyone's out — go absolutely feral for the champion
     function renderFinaleBoth() {
       const first = guests[guests.length - 1];
-      stage.innerHTML = `<div class="fade-in finale-crown">
-        <div class="fc-medal">🏆</div>
-        <div class="fc-title">The Final Podium</div>
-        <div class="fc-sub">👑 <b>${esc(first.name)}</b> takes the crown</div>
+      const t = tierFor(first.score);
+      stage.innerHTML = `<div class="finale-crown champ">
+        <div class="fc-medal">👑</div>
+        <div class="fc-title">THE MOST AUTISTIC</div>
+        <div class="fc-champ">
+          <span class="fc-halo"><span class="avchip fc-av">${avatarSVG(first.avatar)}</span></span>
+          <div class="fc-who">
+            <div class="fc-name">${esc(first.name)}</div>
+            <div class="fc-sub">${t.emoji} ${t.name} · <b>${first.score}</b>/100</div>
+          </div>
+        </div>
+        <div class="fc-sparks"><span>✨</span><span>🎉</span><span>🏆</span><span>⚡</span><span>🌈</span><span>✨</span></div>
       </div>`;
     }
     function updateStage() {
@@ -3283,9 +3295,15 @@
         presentRevealed = guests.length;
         renderFinaleBoth();
         updateUI();
-        const rect = graph.getBoundingClientRect();
-        confetti.burst(170, rect.left + rect.width * (guests[second].score / 100));
-        confetti.burst(290, rect.left + rect.width * (guests[first].score / 100));
+        // absolute chaos: shake the stage, then rolling confetti volleys + a second fanfare.
+        // (shake the inner wrap, NOT the section — the section owns the .fade-in animation)
+        const shakeEl = root.querySelector(".graph-wrap");
+        if (shakeEl) { shakeEl.classList.add("champ-shake"); setTimeout(() => shakeEl.classList.remove("champ-shake"), 700); }
+        const W = innerWidth;
+        confetti.burst(320, W * 0.5);
+        [[240, 0.18, 320], [240, 0.82, 620], [280, 0.5, 940], [200, 0.3, 1250], [200, 0.7, 1450]]
+          .forEach(([n, at, delay]) => setTimeout(() => confetti.burst(n, W * at), delay));
+        setTimeout(() => { sfx.fanfare(); confetti.burst(360, W * 0.5); }, 1700);
       });
     }
 

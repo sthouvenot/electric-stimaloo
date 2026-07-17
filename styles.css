@@ -828,24 +828,81 @@ a { color: inherit; }
 .podium-slot.third .pedestal { background: var(--c2); color: var(--white); }
 .podium-slot.first .pedestal { background: var(--c3); color: var(--ink); height: 54px; padding-top: 16px; }
 /* 1st place goes gold once it's revealed (mystery slots stay neutral) */
-.podium-slot.first.revealed .slot-body { background: linear-gradient(180deg, #fff6c2 0%, #ffd23f 55%, #f2b01e 100%); box-shadow: var(--shadow); }
+.podium-slot.first.revealed .slot-body { background: linear-gradient(180deg, #fff6c2 0%, #ffd23f 55%, #f2b01e 100%);
+  animation: pop .5s cubic-bezier(.2,1.4,.4,1), goldPulse 1.8s ease-in-out .5s infinite; }
+@keyframes goldPulse { 0%, 100% { box-shadow: var(--shadow); } 50% { box-shadow: 0 0 0 7px rgba(255,210,63,.55), var(--shadow); } }
 
-/* the crown banner shown once everyone's out — the podium below is the payoff */
+/* the champion crowning — deliberately unhinged */
 .finale-crown { text-align: center; }
-.fc-medal { font-size: 54px; line-height: 1; animation: pop .5s cubic-bezier(.2,1.5,.4,1); }
-.fc-title { font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 5vw, 44px); line-height: 1.05; }
-.fc-sub { font-family: var(--font-head); font-weight: 700; font-size: 17px; color: var(--ink-soft); margin-top: 6px; }
+.fc-medal { font-size: clamp(38px, 4.6vw, 62px); line-height: 1; animation: crownBounce 1.1s ease-in-out infinite; }
+@keyframes crownBounce { 0%, 100% { transform: translateY(0) rotate(-7deg); } 50% { transform: translateY(-9px) rotate(7deg); } }
+.fc-title { font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 5.4vw, 62px); line-height: 1.02;
+  background: var(--rainbow); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 2.5px var(--ink); paint-order: stroke fill; filter: drop-shadow(4px 5px 0 var(--ink));
+  animation: rainbowRun 2.6s linear infinite, champPop .55s cubic-bezier(.2,1.6,.4,1); }
+@keyframes rainbowRun { to { background-position: 300% 0; } }
+@keyframes champPop { from { transform: scale(.35) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.fc-champ { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 10px; animation: champPop .55s .12s cubic-bezier(.2,1.6,.4,1) both; }
+.fc-halo { display: inline-grid; place-items: center; padding: 6px; border-radius: 50%; flex: 0 0 auto;
+  background: conic-gradient(var(--c1), var(--c2), var(--c3), var(--c4), var(--c5), var(--c6), var(--c1)); animation: haloSpin 3.2s linear infinite; }
+@keyframes haloSpin { to { transform: rotate(360deg); } }
+@keyframes haloSpinRev { to { transform: rotate(-360deg); } }
+.fc-halo .avchip { width: 92px; height: 92px; border: 3px solid var(--ink); background: var(--white); animation: haloSpinRev 3.2s linear infinite; }
+.fc-who { text-align: left; }
+.fc-name { font-family: var(--font-display); font-weight: 400; font-size: clamp(24px, 3.6vw, 46px); line-height: 1; }
+.fc-sub { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--ink-soft); margin-top: 4px; }
+.fc-sparks { display: flex; justify-content: center; gap: 14px; margin-top: 8px; font-size: 20px; }
+.fc-sparks span { animation: sparkFloat 1.8s ease-in-out infinite; }
+.fc-sparks span:nth-child(2) { animation-delay: .15s; } .fc-sparks span:nth-child(3) { animation-delay: .3s; }
+.fc-sparks span:nth-child(4) { animation-delay: .45s; } .fc-sparks span:nth-child(5) { animation-delay: .6s; }
+.fc-sparks span:nth-child(6) { animation-delay: .75s; }
+@keyframes sparkFloat { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-10px) scale(1.25); } }
+/* the whole stage kicks when the crown lands (on .graph-wrap so it never
+   clobbers the section's .fade-in animation) */
+.graph-wrap.champ-shake { animation: champShake .6s cubic-bezier(.36,.07,.19,.97); }
+@keyframes champShake { 10%, 90% { transform: translate(-3px, 1px); } 20%, 80% { transform: translate(5px, -2px); } 30%, 50%, 70% { transform: translate(-7px, 2px); } 40%, 60% { transform: translate(7px, -1px); } }
 
-/* ---------- full-screen presentation (TV mode) ---------- */
+/* ---------- full-screen TV mode (#/present + #/intro) ----------
+   The whole view is a flex column pinned to the viewport height, so it fits the
+   screen exactly and NEVER scrolls — the graph flexes into whatever space is left. */
+body.present-fs { overflow: hidden; }
 body.present-fs .site-header, body.present-fs .site-footer { display: none !important; }
-body.present-fs .section { padding: 10px 0 16px; }
 body.present-fs .section-title, body.present-fs .section-sub { display: none; }
-body.present-fs .wrap { max-width: 96vw; }
-body.present-fs .reveal-stage { min-height: 19vh; }
-body.present-fs .graph { height: 46vh; }
-body.present-fs .podium { max-width: 780px; }
-body.present-fs .reveal-stage .name { font-size: clamp(40px, 6vw, 76px); }
+body.present-fs .present-view, body.present-fs .awards-view {
+  height: 100vh; height: 100dvh; padding: 8px 0 10px; box-sizing: border-box; display: flex; overflow: hidden;
+  /* kill the .fade-in slide — its translateY(14px) offsets the view and makes the page scrollable */
+  animation: none !important; transform: none !important; }
+body.present-fs .present-view > .wrap, body.present-fs .awards-view > .wrap {
+  display: flex; flex-direction: column; width: 100%; max-width: 96vw; height: 100%; min-height: 0; }
+/* presentation */
+body.present-fs .present-view .graph-wrap { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: 14px 18px 12px; }
+body.present-fs .present-view .reveal-stage { flex: 0 0 auto; min-height: 0; margin-bottom: 6px; }
+body.present-fs .present-view .podium { flex: 0 0 auto; margin: 2px auto 8px; max-width: 780px; }
+body.present-fs .present-view .graph { flex: 1 1 auto; height: auto; min-height: 120px; }
+body.present-fs .present-view .present-controls { flex: 0 0 auto; margin-top: 8px; }
+body.present-fs .present-view .reveal-stage .name { font-size: clamp(40px, 6vw, 76px); }
+/* champion moment: the podium IS the show — drop the graph, and size the whole
+   celebration in vh so it scales to the screen and can never scroll */
+body.present-fs .present-view.champ-mode .graph { display: none; }
+body.present-fs .present-view.champ-mode .podium { margin: 8px auto 4px; }
+body.present-fs .present-view.champ-mode .fc-medal { font-size: clamp(26px, 4.4vh, 60px); }
+body.present-fs .present-view.champ-mode .fc-title { font-size: clamp(24px, 6.4vh, 64px); }
+body.present-fs .present-view.champ-mode .fc-champ { margin-top: 6px; gap: 14px; }
+body.present-fs .present-view.champ-mode .fc-halo .avchip { width: clamp(60px, 12vh, 124px); height: clamp(60px, 12vh, 124px); }
+body.present-fs .present-view.champ-mode .fc-name { font-size: clamp(20px, 4vh, 46px); }
+body.present-fs .present-view.champ-mode .fc-sub { font-size: clamp(11px, 1.7vh, 16px); }
+body.present-fs .present-view.champ-mode .fc-sparks { font-size: clamp(13px, 2.2vh, 24px); margin-top: 4px; gap: 12px; }
+body.present-fs .present-view.champ-mode .podium-slot .medal { font-size: clamp(18px, 3.2vh, 34px); }
+body.present-fs .present-view.champ-mode .podium-slot.first .medal { font-size: clamp(24px, 4.2vh, 44px); }
+body.present-fs .present-view.champ-mode .podium-slot .slot-body { min-height: 11vh; padding: 8px; gap: 2px; }
+body.present-fs .present-view.champ-mode .podium-slot.first .slot-body { min-height: 16vh; }
+body.present-fs .present-view.champ-mode .podium-slot .avchip { width: clamp(34px, 6vh, 58px) !important; height: clamp(34px, 6vh, 58px) !important; }
+body.present-fs .present-view.champ-mode .podium-slot .pedestal { height: 26px; padding: 5px; }
+body.present-fs .present-view.champ-mode .podium-slot.first .pedestal { height: 42px; padding-top: 11px; }
 /* awards show (#/intro) in TV mode */
+body.present-fs .awards-view .award-stage { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; }
+body.present-fs .awards-view .award-roster { flex: 0 0 auto; }
+body.present-fs .awards-view .present-controls { flex: 0 0 auto; margin-top: 6px; }
 body.present-fs .award-card { max-width: 900px; }
 body.present-fs .award-title { font-size: clamp(32px, 4.6vw, 58px); }
 body.present-fs .award-desc { font-size: 17px; max-width: 640px; }

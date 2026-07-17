@@ -445,8 +445,146 @@
       q: "One more thing — re-enter your bank PIN.",
       opts: [["Wrong",0],["Correct",3]],
     },
+
+    /* ----------------------------------------------------------
+       MULTIPLE CHOICE (mc: true) — shuffled in among the games by
+       buildQuizOrder(), never as a block.
+
+       Design rule: NO option is the obvious "most autistic" pick, so you can't
+       rig it. Every option is something a normal person would plausibly say —
+       the scoring instead keys on real, documented autistic cognition rather
+       than stereotypes:
+         monotropism (single-channel attention) · detail-first perception (weak
+         central coherence) · literal + precise language · interoception
+         differences · need for predictability (not just dislike of plans) ·
+         sensory load · the cost of masking · memory by context, not by face ·
+         low tolerance for ambiguous instructions · repetition as regulation.
+       Deliberately, the highest-scoring answer often reads as the *reasonable*
+       one ("I'd recalculated by minute six", "drained even though it went well").
+       ---------------------------------------------------------- */
+    {
+      kind: "choice", mc: true, label: "Apartment",
+      q: "You're in a friend's new apartment for the first time. What do you clock first?",
+      opts: [
+        ["The overall feel of the place", 0],
+        ["The one thing that's crooked, mismatched, or slightly off", 3], // detail-first perception
+        ["Who's already there", 0],
+        ["The layout — what's where", 2],
+      ],
+    },
+    {
+      kind: "choice", mc: true, label: "Your name",
+      q: "Someone says your name while you're absorbed in something. Honestly, what happens?",
+      opts: [
+        ["I hear it and answer", 0],
+        ["I hear it, but it takes me a second to surface", 2],
+        ["I genuinely don't hear it — not ignoring, just gone", 3], // monotropic attention tunnel
+        ["Depends how interesting the thing is", 1],
+      ],
+    },
+    {
+      kind: "choice", mc: true, label: "Five minutes",
+      q: "\"I'll be there in five minutes.\" They arrive in twelve. Your real reaction?",
+      opts: [
+        ["Didn't notice", 0],
+        ["That's just what \"five minutes\" means", 0],
+        ["Noted: they say five, they mean fifteen", 2],
+        ["I'd already recalculated the whole evening by minute six", 3], // literal time + precision
+      ],
+    },
+    {
+      kind: "choice", mc: true, label: "Hunger",
+      q: "How do you usually find out that you're hungry?",
+      opts: [
+        ["I feel hungry", 0],
+        ["I eat at the same times regardless", 2],
+        ["I get snappy and someone else works out that I haven't eaten", 3], // interoception
+        ["My stomach makes it obvious", 0],
+      ],
+    },
+    {
+      kind: "choice", mc: true, label: "New song",
+      q: "A song you love comes on. What actually happens next?",
+      opts: [
+        ["Add it to a playlist and move on", 0],
+        ["Play it on repeat until I've completely worn it out", 3], // repetition as regulation
+        ["Go read about who made it and how", 2],
+        ["Send it to someone", 0],
+      ],
+    },
+    {
+      kind: "choice", mc: true, label: "Cancelled plans",
+      q: "Plans you didn't even want to go to get cancelled last minute. You feel:",
+      opts: [
+        ["Relief. Pure relief.", 0],
+        ["Relieved — and still annoyed the plan changed", 3], // predictability > preference
+        ["Annoyed", 2],
+        ["No strong feeling", 0],
+      ],
+    },
+    {
+      kind: "choice", mc: true, label: "Ruins the day",
+      q: "Which of these ruins your day the fastest?",
+      opts: [
+        ["A tag in your shirt you can't get rid of", 3],           // sensory
+        ["A passive-aggressive email", 0],
+        ["Running 20 minutes behind", 2],
+        ["A flickering light nobody else has noticed", 3],          // sensory
+      ],
+    },
+    {
+      kind: "choice", mc: true, label: "After the party",
+      q: "Three hours at a party. It genuinely went well. Afterwards you feel:",
+      opts: [
+        ["Great — could do it all again", 0],
+        ["Fine", 0],
+        ["Completely drained, even though it was good", 3], // the cost of masking
+        ["Ready to leave, glad I went", 2],
+      ],
+    },
+    {
+      kind: "choice", mc: true, label: "Met twice",
+      q: "You bump into someone you've met exactly twice. What's going on in your head?",
+      opts: [
+        ["Greeting them by name", 0],
+        ["I know the face, I've lost the name", 1],
+        ["I know where we met and what they said — but not the name", 3], // context-keyed memory
+        ["No idea who this is", 2],
+      ],
+    },
+    {
+      kind: "choice", mc: true, label: "Season to taste",
+      q: "A recipe says \"season to taste.\" You:",
+      opts: [
+        ["Season it to taste", 0],
+        ["Look up how much that actually is", 3],        // ambiguity intolerance
+        ["Guess and move on", 0],
+        ["Feel a small but real flash of anger", 3],      // ambiguity intolerance
+      ],
+    },
   ];
   const MAX_RAW = QUESTIONS.length * 3;
+  // Games keep their authored order (bank PIN must come before re-enter PIN, and
+  // it stays last). The multiple-choice questions get dropped into random gaps
+  // between them, so no two players see them in the same places.
+  function buildQuizOrder() {
+    const games = [], mc = [];
+    QUESTIONS.forEach((q, i) => (q.mc ? mc : games).push(i));
+    const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+    shuffle(mc);
+    // Pick DISTINCT gaps between games (1..games.length-1 keeps the first game
+    // first and the last game last). One MC per gap means they can never land
+    // back-to-back — random placement, but always spread through the quiz.
+    const gaps = [];
+    for (let g = 1; g < games.length; g++) gaps.push(g);
+    shuffle(gaps);
+    let chosen = gaps.slice(0, mc.length);
+    while (chosen.length < mc.length) chosen.push(1 + Math.floor(Math.random() * Math.max(1, games.length - 1))); // more MC than gaps
+    chosen.sort((a, b) => b - a); // descending, so each splice can't shift the next
+    const order = games.slice();
+    chosen.forEach((pos, k) => order.splice(pos, 0, mc[k]));
+    return order;
+  }
 
   /* ----------------------------------------------------------
      TIERS - score is 0..100
@@ -2253,7 +2391,7 @@
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
-    const state = { step: -1, firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", unlocked: load(LS.pin, false), done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "" };
+    const state = { step: -1, order: buildQuizOrder(), firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", unlocked: load(LS.pin, false), done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "" };
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
     const container = el(`<section class="section"><div class="quiz-shell"></div></section>`);
     const shellEl = $(".quiz-shell", container);
@@ -2272,7 +2410,7 @@
           <div class="card char-create fade-in">
             <div class="step-tag"><span class="step-num">1</span> Create your character <span class="step-arrow">→</span> <span class="step-faded">2 · take the test</span></div>
             <h2 class="section-title">Create your own character</h2>
-            <p class="section-sub">Make your little character below - <b>this isn't the test yet</b>. When you're happy with them, hit start and the 12 questions begin.</p>
+            <p class="section-sub">Make your little character below - <b>this isn't the test yet</b>. When you're happy with them, hit start and the ${QUESTIONS.length} questions begin.</p>
             <div class="char-note"><span><b>Use your real name.</b> The host approves every contestant by hand and will only wave through names he actually recognizes. Fake names, bits, and aliases get rejected at the door.</span></div>
             <div class="char-layout">
               <div class="char-form">
@@ -2559,7 +2697,7 @@
         shellEl.appendChild(node);
         confetti.burst(180);
         $("#retake", node).addEventListener("click", () => {
-          state.step = -1; state.done = false; state.welcome = false; state.dateStep = ""; state.returningFull = ""; state.returningSentence = ""; state.answers = QUESTIONS.map(() => null); state.metrics = {}; state.bankPin = ""; paint();
+          state.step = -1; state.order = buildQuizOrder(); state.done = false; state.welcome = false; state.dateStep = ""; state.returningFull = ""; state.returningSentence = ""; state.answers = QUESTIONS.map(() => null); state.metrics = {}; state.bankPin = ""; paint();
         });
         return;
       }
@@ -2594,13 +2732,15 @@
         return;
       }
 
-      // question step
-      const i = state.step;
-      const Q = QUESTIONS[i];
-      const pct = Math.round((i / QUESTIONS.length) * 100);
+      // question step — state.step walks the shuffled order; qi is the canonical
+      // QUESTIONS index, so stored answers always line up for the host's recap
+      const total = state.order.length;
+      const qi = state.order[state.step];
+      const Q = QUESTIONS[qi];
+      const pct = Math.round((state.step / total) * 100);
       const chrome = Q.bare ? "" : `
           <div class="progress-rail"><div class="progress-fill" style="width:${pct}%"></div></div>
-          <div class="q-count">Question ${i + 1} of ${QUESTIONS.length}</div>
+          <div class="q-count">Question ${state.step + 1} of ${total}</div>
           <h2 class="q-text">${Q.q}</h2>`;
       const node = el(`
         <div class="fade-in">${chrome}
@@ -2611,20 +2751,20 @@
         </div>`);
       const qbody = $(".q-body", node);
       const setAnswer = (points, meta) => {
-        state.answers[i] = points;
+        state.answers[qi] = points;
         if (meta) Object.assign(state.metrics, meta);
         const nb = $("#next-btn", node);
         if (nb) nb.disabled = false;
       };
-      dispatchGame(qbody, Q, i, state, setAnswer);
-      const isLast = i === QUESTIONS.length - 1;
+      dispatchGame(qbody, Q, qi, state, setAnswer, state.step + 1);
+      const isLast = state.step === total - 1;
       const nextBtn = $("#next-btn", node);
       nextBtn.textContent = isLast ? "See my result →" : "Next →";
       // polo auto-advances on pick — keep the button (it clicks it) but hide it
       if (Q.kind === "polo") { const nav = node.querySelector(".quiz-nav-next"); if (nav) nav.style.display = "none"; }
-      if (state.answers[i] != null) nextBtn.disabled = false;
+      if (state.answers[qi] != null) nextBtn.disabled = false;
       nextBtn.addEventListener("click", () => {
-        if (state.answers[i] == null) return;
+        if (state.answers[qi] == null) return;
         if (isLast) {
           state.score = computeScore();
           submitToQueue(state);
@@ -2639,7 +2779,7 @@
   }
 
   // shared question dispatcher — used by both the real test and the debug sandbox
-  function dispatchGame(qbody, Q, i, state, setAnswer) {
+  function dispatchGame(qbody, Q, i, state, setAnswer, displayNum) {
     const kind = Q.kind || "choice";
     if (kind === "choice") {
       const optWrap = el(`<div class="options"></div>`);
@@ -2661,7 +2801,7 @@
     else if (kind === "color") { renderColorGame(qbody, Q, setAnswer); }
     else if (kind === "typing") { renderTypingGame(qbody, Q, setAnswer); }
     else if (kind === "qebday") { renderQueenBdayGame(qbody, Q, setAnswer); }
-    else if (kind === "polo") { renderPoloGame(qbody, Q, setAnswer, i + 1); }
+    else if (kind === "polo") { renderPoloGame(qbody, Q, setAnswer, displayNum || i + 1); }
     else if (kind === "reenterpin") { renderReenterPinGame(qbody, Q, setAnswer, state); }
     else if (kind === "dodge") { renderDodgeGame(qbody, Q, setAnswer, state.avatar); }
     else if (kind === "flappy") { renderFlappyGame(qbody, Q, setAnswer, state.avatar); }
@@ -2964,7 +3104,7 @@
 
     const menu = $("#dbg-menu", root), bodyHost = $("#dbg-body", root), scoreEl = $("#dbg-score", root);
     QUESTIONS.forEach((Q, idx) => {
-      const b = el(`<button class="dbg-item" type="button">${idx + 1}. ${GAME_LABELS[Q.kind] || Q.kind}</button>`);
+      const b = el(`<button class="dbg-item" type="button">${idx + 1}. ${Q.mc ? esc(Q.label || "Multiple choice") : (GAME_LABELS[Q.kind] || Q.kind)}</button>`);
       b.addEventListener("click", () => { debugStep = idx; mount(); });
       menu.appendChild(b);
     });

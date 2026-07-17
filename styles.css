@@ -780,6 +780,7 @@ a { color: inherit; }
 .award-name { font-family: var(--font-head); font-weight: 800; font-size: 24px; }
 .award-stat { margin-top: 14px; font-size: 18px; color: var(--ink); line-height: 1.4; }
 .award-roast { margin: 14px auto 0; max-width: 480px; font-style: italic; font-size: 16px; color: var(--c1); font-weight: 600; line-height: 1.4; }
+.award-desc { margin: 6px auto 0; max-width: 460px; font-family: var(--font-body); font-weight: 500; font-size: 14px; color: var(--ink-soft); line-height: 1.45; }
 /* Mario-Party-style animated bar race */
 .mp-chart { display: grid; gap: 9px; margin: 18px auto 4px; max-width: 540px; text-align: left; }
 .mp-row { display: grid; grid-template-columns: 26px 42px 84px 1fr 64px; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 12px; }

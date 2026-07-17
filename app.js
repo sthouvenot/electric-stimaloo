@@ -2922,13 +2922,13 @@
   // winner is still longest).
   function buildAwards(guests) {
     const defs = [
-      { emoji: "🚂", title: "Longest Train Stare",     key: "trainWatch",  dir: "high", suffix: "s", roast: "we were genuinely worried you'd missed your stop.", min: 1 },
-      { emoji: "🐤", title: "Flappy Legend",           key: "flappyBest",  dir: "high", suffix: " pipes", roast: "you and that bird share one beautifully focused brain.", min: 1 },
-      { emoji: "🔁", title: "Never Surrenders",        key: "rpsGames",    dir: "high", suffix: " games", roast: "replayed an unwinnable game this many times. Iconic.", min: 1 },
-      { emoji: "🥚", title: "Fed the Most Eggs",       key: "eggsFed",     dir: "high", suffix: " eggs", roast: "the egg never asked for this. You kept going anyway.", min: 1 },
-      { emoji: "🧠", title: "Pattern Prophet",         key: "simonRounds", dir: "high", suffix: " rounds", roast: "memorized beeps like it was nothing. Unnerving.", min: 1 },
-      { emoji: "⌨️", title: "Fastest Typer",           key: "typeSecs",    dir: "low",  suffix: "s", roast: "typed it clean and fast. You've done this before.", min: 1 },
-      { emoji: "👑", title: "Closest Queen Birthday",  key: "qeDaysOff",   dir: "low",  suffix: " days off", roast: "why do you know when the Queen was born? (You're among friends.)", min: 1 },
+      { emoji: "🚂", title: "Longest Train Stare",     key: "trainWatch",  dir: "high", suffix: "s", desc: "Watched the looping train the longest before finally picking a car.", roast: "we were genuinely worried you'd missed your stop.", min: 1 },
+      { emoji: "🐤", title: "Flappy Legend",           key: "flappyBest",  dir: "high", suffix: " pipes", desc: "Cleared the most pipes in a single run.", roast: "you and that bird share one beautifully focused brain.", min: 1 },
+      { emoji: "🔁", title: "Never Surrenders",        key: "rpsGames",    dir: "high", suffix: " games", desc: "Replayed the unwinnable rock-paper-scissors the most times before giving up.", roast: "replayed an unwinnable game this many times. Iconic.", min: 1 },
+      { emoji: "🥚", title: "Fed the Most Eggs",       key: "eggsFed",     dir: "high", suffix: " eggs", desc: "Fed more eggs than anybody else.", roast: "the egg never asked for this. You kept going anyway.", min: 1 },
+      { emoji: "🧠", title: "Pattern Prophet",         key: "simonRounds", dir: "high", suffix: " rounds", desc: "Repeated the longest Simon sequence from memory.", roast: "memorized beeps like it was nothing. Unnerving.", min: 1 },
+      { emoji: "⌨️", title: "Fastest Typer",           key: "typeSecs",    dir: "low",  suffix: "s", desc: "Typed the sentence correctly in the fewest seconds.", roast: "typed it clean and fast. You've done this before.", min: 1 },
+      { emoji: "👑", title: "Closest Queen Birthday",  key: "qeDaysOff",   dir: "low",  suffix: " days off", desc: "Guessed closest to Queen Elizabeth II's real birthday (21 April 1926).", roast: "why do you know when the Queen was born? (You're among friends.)", min: 1 },
     ];
     return defs.map(d => {
       const pool = guests.filter(g => g.metrics && typeof g.metrics[d.key] === "number");
@@ -3039,6 +3039,7 @@
       stageEl.innerHTML = `<div class="award-card fade-in">
         <div class="award-kicker">${a.emoji} Award ${n + 1} of ${awards.length}</div>
         <div class="award-title">${esc(a.title)}</div>
+        <div class="award-desc">${esc(a.desc || "")}</div>
         <div class="mp-chart">${rows}</div>
         <div class="award-roast">🏆 <b>${esc(winner.firstName || winner.name)}</b> — ${esc(a.roast)}</div>
       </div>`;

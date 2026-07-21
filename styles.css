@@ -1128,6 +1128,15 @@ body.present-fs .mp-rank { font-size: 22px; }
 .simon { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .simon-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: min(300px, 80vw); }
 .simon-pad { aspect-ratio: 1; border: var(--border); border-radius: 18px; background: var(--pad); opacity: .55; cursor: pointer; box-shadow: var(--shadow-sm); transition: opacity .12s, transform .08s; }
+/* on-screen game controls: kill the iOS tap-highlight/text-selection and the
+   double-tap-to-zoom so tapping arrows/pads doesn't select or zoom on iPhone */
+.whg-dbtn, .sub-btn, .flap-btn, .simon-pad, .tv-btn {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
 .simon-pad:disabled { cursor: default; }
 .simon-pad.lit { opacity: 1; transform: scale(1.04); box-shadow: var(--shadow); }
 .simon-pad:not(:disabled):active { transform: scale(.97); }

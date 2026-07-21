@@ -2401,13 +2401,16 @@
       reveal.textContent = `You made it through ${done} round${done === 1 ? "" : "s"}.`;
       setAnswer(pts, { simonRounds: done });
     }
-    pads.forEach(p => p.addEventListener("click", () => {
+    // use pointerdown (fires once, unlike the click-then-synthetic-click that
+    // could double-advance on mobile and desync the sequence). one press = one step.
+    pads.forEach(p => p.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
       if (!accepting || over) return;
       const i = +p.dataset.i;
+      if (i !== seq[pos]) { flash(i, 200); endGame(); return; }
       flash(i, 200);
-      if (i !== seq[pos]) { endGame(); return; }
       pos++;
-      if (pos === seq.length) setTimeout(nextRound, 550);
+      if (pos === seq.length) { accepting = false; setTimeout(nextRound, 550); }
     }));
     startBtn.addEventListener("click", () => { startBtn.style.display = "none"; nextRound(); });
   }

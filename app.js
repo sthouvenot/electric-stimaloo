@@ -2808,149 +2808,183 @@
     paint();
   }
 
-  // Brick build: a jumbled table of generic colored studded bricks and a 5-step
-  // instruction sheet. Drag the brick the current step asks for onto the plate.
-  // Each correct placement snaps in and advances the step; a wrong brick bounces
-  // back. Finish all 5 = win. Timer + give up. (Original SVG bricks, no set.)
+  // Brick build: a jumbled bin of colorful studded bricks and an instruction
+  // sheet. You get MORE bricks than you need — drag the ones the steps call for
+  // onto the plate, snapping stud-on-stud, to assemble a little model (a
+  // rocket). Leftover bricks stay in the bin. Original toy-brick art, no set.
   const BRICK_COLORS = {
-    red:    { top: "#ff5d5d", side: "#c93030" },
-    yellow: { top: "#ffd23f", side: "#c99b12" },
-    blue:   { top: "#4a9cff", side: "#1f6fd0" },
-    green:  { top: "#42c98a", side: "#1d9560" },
-    white:  { top: "#f2f4f7", side: "#c3cbd2" },
+    red:    { top: "#ff5d5d", side: "#d13a3a", stud: "#ff7a7a" },
+    orange: { top: "#ff9f45", side: "#d1721e", stud: "#ffb46b" },
+    yellow: { top: "#ffd23f", side: "#d1a613", stud: "#ffe27a" },
+    green:  { top: "#42c98a", side: "#1d9560", stud: "#67e0a6" },
+    blue:   { top: "#4a9cff", side: "#1f6fd0", stud: "#78b6ff" },
+    white:  { top: "#f2f4f7", side: "#c7ced6", stud: "#ffffff" },
+    grey:   { top: "#9aa1ab", side: "#6d747e", stud: "#b4bac2" },
   };
-  const BRICK_NAMES = { red: "red", yellow: "yellow", blue: "blue", green: "green", white: "white" };
-  // the model, bottom row up: a little tower/figure. Each step = one brick.
-  const BRICK_PLAN = [
-    { color: "green",  w: 3, label: "the green 3-stud base" },
-    { color: "blue",   w: 2, label: "a blue 2-stud brick, left" },
-    { color: "yellow", w: 2, label: "a yellow 2-stud brick, right" },
-    { color: "red",    w: 3, label: "the red 3-stud roof" },
-    { color: "white",  w: 1, label: "the white 1-stud chimney on top" },
-  ];
+  const BRICK_U = 26; // one stud = 26px
+  // grid model, built bottom-up. Each step places one brick at [col,row] (row 0
+  // = bottom). The finished silhouette reads as a rocket on a launch pad.
+  const BRICK_MODEL = { cols: 4, rows: 6, steps: [
+    { color: "grey",   w: 4, col: 0, row: 0, label: "Grey 4-wide launch pad along the bottom" },
+    { color: "blue",   w: 2, col: 1, row: 1, label: "Blue 2-wide fuel tank, centered above it" },
+    { color: "blue",   w: 2, col: 1, row: 2, label: "Another blue 2-wide, stacked on the tank" },
+    { color: "white",  w: 2, col: 1, row: 3, label: "White 2-wide cockpit band" },
+    { color: "red",    w: 2, col: 1, row: 4, label: "Red 2-wide, just under the nose" },
+    { color: "yellow", w: 1, col: 2, row: 5, label: "Yellow 1-wide nose cone on top" },
+  ] };
   function brickSVG(color, w, studless) {
-    const c = BRICK_COLORS[color];
-    const U = 22, H = 20, studR = 6, studH = 6;
-    const W = w * U;
+    const c = BRICK_COLORS[color] || BRICK_COLORS.grey;
+    const U = BRICK_U, bodyH = 22, studH = 7, studR = 7.5;
+    const W = w * U, H = bodyH + studH;
     let studs = "";
     if (!studless) for (let i = 0; i < w; i++) {
       const cx = i * U + U / 2;
-      studs += `<ellipse cx="${cx}" cy="${studH + 2}" rx="${studR}" ry="3.2" fill="${c.top}" stroke="#16130c" stroke-width="1.6"/>
-                <rect x="${cx - studR}" y="${studH - 1}" width="${studR * 2}" height="4" fill="${c.top}"/>`;
+      studs += `<rect x="${cx - studR}" y="${studH - 2}" width="${studR * 2}" height="6" fill="${c.side}"/>
+                <ellipse cx="${cx}" cy="${studH - 1}" rx="${studR}" ry="4" fill="${c.stud}" stroke="#16130c" stroke-width="1.6"/>`;
     }
-    return `<svg viewBox="0 0 ${W} ${H + studH + 6}" width="${W}" height="${H + studH + 6}" xmlns="http://www.w3.org/2000/svg">
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
       ${studs}
-      <rect x="1.5" y="${studH + 2}" width="${W - 3}" height="${H}" rx="3" fill="${c.side}" stroke="#16130c" stroke-width="2"/>
-      <rect x="1.5" y="${studH + 2}" width="${W - 3}" height="${H * 0.42}" rx="3" fill="${c.top}"/>
+      <rect x="1.5" y="${studH}" width="${W - 3}" height="${bodyH - 1.5}" rx="3" fill="${c.side}" stroke="#16130c" stroke-width="2"/>
+      <rect x="1.5" y="${studH}" width="${W - 3}" height="9" rx="3" fill="${c.top}"/>
+      <rect x="${W - 8}" y="${studH + 4}" width="4" height="${bodyH - 8}" rx="2" fill="rgba(0,0,0,.12)"/>
     </svg>`;
   }
   function renderBrickGame(body, Q, setAnswer) {
-    // table order: correct answer of each step is present, shuffled with distractors
-    const bank = BRICK_PLAN.map((p, i) => ({ id: "p" + i, color: p.color, w: p.w, plan: i, used: false }));
-    // add a couple of decoy bricks so it isn't just "drag them in order"
-    bank.push({ id: "d0", color: "blue", w: 3, plan: -1, used: false });
-    bank.push({ id: "d1", color: "green", w: 1, plan: -1, used: false });
-    for (let i = bank.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bank[i], bank[j]] = [bank[j], bank[i]]; }
+    const M = BRICK_MODEL, U = BRICK_U;
+    // bin = every brick the model needs, plus decoys, all shuffled
+    const bin = M.steps.map((s, i) => ({ id: "s" + i, color: s.color, w: s.w, step: i }));
+    [ ["red", 3], ["green", 2], ["orange", 1], ["blue", 1] ].forEach((d, i) => bin.push({ id: "x" + i, color: d[0], w: d[1], step: -1 }));
+    for (let i = bin.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bin[i], bin[j]] = [bin[j], bin[i]]; }
 
     body.innerHTML = `
       <div class="brickq">
         <div class="brickq-main">
           <div class="brick-instr">
-            <div class="brick-instr-head">📘 Instructions</div>
+            <div class="brick-instr-head">📘 Build the rocket</div>
             <ol class="brick-steps" id="brick-steps">
-              ${BRICK_PLAN.map((p, i) => `<li data-i="${i}"><span class="brick-swatch" style="background:${BRICK_COLORS[p.color].top}"></span>${p.label}</li>`).join("")}
+              ${M.steps.map((s, i) => `<li data-i="${i}"><span class="brick-swatch" style="background:${BRICK_COLORS[s.color].top}"></span>${s.label}</li>`).join("")}
             </ol>
+            <div class="brick-hint">You have spare bricks you won't need — only use what the steps ask for.</div>
           </div>
           <div class="brick-build">
-            <div class="brick-plate-wrap"><div class="brick-plate" id="brick-plate"></div><div class="brick-baseplate"></div></div>
-            <div class="brick-target" id="brick-target">Drag <b class="brick-target-txt">the green 3-stud base</b> onto the plate.</div>
+            <div class="brick-plate" id="brick-plate" style="width:${M.cols * U}px;height:${M.rows * (U * 0.87)}px">
+              <div class="brick-ghost" id="brick-ghost" hidden></div>
+            </div>
+            <div class="brick-baseplate" style="width:${M.cols * U + 16}px"></div>
+            <div class="brick-target" id="brick-target">Next: <b class="brick-target-txt">${M.steps[0].label}</b></div>
           </div>
         </div>
-        <div class="brick-table" id="brick-table">
-          ${bank.map(b => `<div class="brick-piece" data-id="${b.id}" data-plan="${b.plan}" style="left:${8 + Math.random() * 78}%;top:${10 + Math.random() * 70}%;--rot:${(Math.random() * 20 - 10).toFixed(1)}deg">${brickSVG(b.color, b.w)}</div>`).join("")}
-          <div class="brick-table-label">the bin of bricks</div>
+        <div class="brick-bin" id="brick-bin">
+          <div class="brick-bin-label">the bin of bricks</div>
+          ${bin.map(b => `<div class="brick-piece" data-id="${b.id}" data-step="${b.step}" style="left:${5 + Math.random() * 62}%;top:${16 + Math.random() * 62}%;--rot:${(Math.random() * 16 - 8).toFixed(1)}deg">${brickSVG(b.color, b.w)}</div>`).join("")}
         </div>
         <div class="brickq-hud"><span id="brick-timer">0.0s</span><button class="btn btn-ghost btn-sm" id="brick-giveup" type="button">Give up</button></div>
         <div class="brickq-note" id="brick-note" hidden></div>
       </div>`;
-    const plate = $("#brick-plate", body), stepsEl = $("#brick-steps", body), targetTxt = $(".brick-target-txt", body);
-    const table = $("#brick-table", body), timerEl = $("#brick-timer", body), note = $("#brick-note", body), giveupBtn = $("#brick-giveup", body);
+    const plate = $("#brick-plate", body), ghost = $("#brick-ghost", body), stepsEl = $("#brick-steps", body);
+    const targetTxt = $(".brick-target-txt", body), targetBox = $("#brick-target", body);
+    const binEl = $("#brick-bin", body), timerEl = $("#brick-timer", body), note = $("#brick-note", body), giveupBtn = $("#brick-giveup", body);
+    const ROWH = U * 0.87; // a brick body is a touch shorter than a stud pitch
     let step = 0, t0 = 0, tick = null, locked = false;
+
+    // where step s lands on the plate (top-left px), y measured from plate top
+    const slotXY = s => ({ x: M.steps[s].col * U, y: (M.rows - 1 - M.steps[s].row) * ROWH });
+    function showGhost() {
+      if (step >= M.steps.length) { ghost.hidden = true; return; }
+      const s = M.steps[step], p = slotXY(step);
+      ghost.hidden = false;
+      ghost.style.left = p.x + "px"; ghost.style.top = p.y + "px";
+      ghost.style.width = s.w * U + "px"; ghost.style.height = ROWH + "px";
+    }
     const highlight = () => {
       stepsEl.querySelectorAll("li").forEach((li, i) => { li.classList.toggle("done", i < step); li.classList.toggle("cur", i === step); });
-      if (step < BRICK_PLAN.length) targetTxt.textContent = BRICK_PLAN[step].label;
+      if (step < M.steps.length) targetTxt.textContent = M.steps[step].label;
+      showGhost();
     };
-    highlight();
     function startTimer() { if (t0) return; t0 = Date.now(); tick = setInterval(() => { if (!document.body.contains(body)) { clearInterval(tick); return; } timerEl.textContent = ((Date.now() - t0) / 1000).toFixed(1) + "s"; }, 100); }
-    function placeBrick(color, w) {
+    function placeBrick(s) {
+      const st = M.steps[s], p = slotXY(s);
       const el = document.createElement("div");
-      el.className = "brick-placed";
-      el.style.setProperty("--bw", w);
-      el.innerHTML = brickSVG(color, w, true);
+      el.className = "brick-set";
+      el.style.left = p.x + "px"; el.style.top = p.y + "px";
+      el.innerHTML = brickSVG(st.color, st.w, false);
       plate.appendChild(el);
     }
     function finish(won) {
       locked = true; clearInterval(tick);
-      giveupBtn.disabled = true;
-      table.querySelectorAll(".brick-piece").forEach(p => p.classList.add("brick-done"));
+      giveupBtn.disabled = true; ghost.hidden = true;
+      binEl.querySelectorAll(".brick-piece").forEach(p => p.classList.add("brick-done"));
       if (won) {
         const secs = (Date.now() - t0) / 1000;
         timerEl.textContent = secs.toFixed(1) + "s";
         const pts = secs < 30 ? 3 : secs < 60 ? 2 : 1;
-        $("#brick-target", body).innerHTML = "✅ Built!";
+        targetBox.innerHTML = "🚀 Liftoff! Rocket complete.";
         note.hidden = false; note.textContent = `Built it in ${secs.toFixed(1)}s.`;
         setAnswer(pts, { brickTime: +secs.toFixed(1) });
       } else {
-        note.hidden = false; note.textContent = `Given up at step ${step + 1} of ${BRICK_PLAN.length}.`;
+        targetBox.innerHTML = "🛠️ Left unfinished.";
+        note.hidden = false; note.textContent = `Given up at brick ${step + 1} of ${M.steps.length}.`;
         setAnswer(step === 0 ? 0 : 1, { brickSteps: step });
       }
     }
-    // pointer drag
+
     let drag = null;
-    function onMove(e) {
+    function moveDrag(e) {
       if (!drag) return;
-      drag.el.style.left = (e.clientX - drag.dx) + "px";
-      drag.el.style.top = (e.clientY - drag.dy) + "px";
-    }
-    function onUp(e) {
-      if (!drag) return;
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      const el = drag.el, planIdx = +el.dataset.plan;
+      // place the fixed brick so the grab point stays under the pointer
+      drag.el.style.left = (e.clientX - drag.gx) + "px";
+      drag.el.style.top = (e.clientY - drag.gy) + "px";
+      // light up the ghost slot when hovering it with the right brick
       const pr = plate.getBoundingClientRect();
-      const over = e.clientX >= pr.left - 40 && e.clientX <= pr.right + 40 && e.clientY >= pr.top - 40 && e.clientY <= pr.bottom + 60;
-      if (over && planIdx === step && !locked) {
-        // correct brick for this step
-        placeBrick(BRICK_PLAN[step].color, BRICK_PLAN[step].w);
-        el.remove();
-        step++;
-        highlight();
-        if (step >= BRICK_PLAN.length) finish(true);
+      const near = e.clientX > pr.left - 30 && e.clientX < pr.right + 30 && e.clientY > pr.top - 30 && e.clientY < pr.bottom + 40;
+      ghost.classList.toggle("brick-ghost-hot", !!(near && +drag.el.dataset.step === step));
+    }
+    function endDrag(e) {
+      const el = drag.el;
+      el.removeEventListener("pointermove", moveDrag);
+      el.removeEventListener("pointerup", endDrag);
+      el.removeEventListener("pointercancel", endDrag);
+      ghost.classList.remove("brick-ghost-hot");
+      const pr = plate.getBoundingClientRect();
+      const over = e.clientX >= pr.left - 34 && e.clientX <= pr.right + 34 && e.clientY >= pr.top - 34 && e.clientY <= pr.bottom + 46;
+      if (over && +el.dataset.step === step && !locked) {
+        placeBrick(step); el.remove(); step++; highlight();
+        if (step >= M.steps.length) finish(true);
       } else {
-        // snap back
+        // reparent back into the bin and restore its % slot
+        el.classList.remove("brick-dragging");
+        drag.home.parent.insertBefore(el, drag.home.next);
         el.classList.add("brick-reject");
         el.style.left = drag.home.left; el.style.top = drag.home.top;
-        setTimeout(() => el.classList.remove("brick-reject"), 300);
+        setTimeout(() => el.classList.remove("brick-reject"), 260);
+        drag = null; return;
       }
       el.classList.remove("brick-dragging");
       drag = null;
     }
-    table.querySelectorAll(".brick-piece").forEach(el => {
+    binEl.querySelectorAll(".brick-piece").forEach(el => {
       el.addEventListener("pointerdown", e => {
-        if (locked) return;
+        if (locked || drag) return;
         e.preventDefault();
         startTimer();
-        const r = el.getBoundingClientRect();
-        // switch to fixed positioning so it can leave the table box
-        el.classList.add("brick-dragging");
-        drag = { el, dx: e.clientX - r.left, dy: e.clientY - r.top, home: { left: el.style.left, top: el.style.top } };
-        el.style.left = r.left + "px"; el.style.top = r.top + "px";
+        const home = { left: el.style.left, top: el.style.top, parent: el.parentNode, next: el.nextSibling }; // bin slot, for snap-back
+        const r0 = el.getBoundingClientRect();
+        // move to <body> so no transformed ancestor (the .fade-in section!) becomes
+        // the containing block for the fixed brick — that was the drift bug.
+        document.body.appendChild(el);
+        el.classList.add("brick-dragging"); // -> position:fixed, un-rotated
+        const gx = e.clientX - r0.left, gy = e.clientY - r0.top;
+        drag = { el, gx, gy, home };
+        el.style.left = (e.clientX - gx) + "px";
+        el.style.top = (e.clientY - gy) + "px";
         try { el.setPointerCapture(e.pointerId); } catch (_) {}
-        window.addEventListener("pointermove", onMove);
-        window.addEventListener("pointerup", onUp);
+        el.addEventListener("pointermove", moveDrag);
+        el.addEventListener("pointerup", endDrag);
+        el.addEventListener("pointercancel", endDrag);
       });
     });
     giveupBtn.addEventListener("click", () => { if (!locked) finish(false); });
+    highlight();
   }
 
   /* ----------------------------------------------------------

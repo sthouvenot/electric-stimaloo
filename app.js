@@ -2653,13 +2653,19 @@
       elapsed += dt / 1000;
       // jump physics
       if (jy < 0 || vy < 0) { vy += 0.55 * f; jy += vy * f; if (jy >= 0) { jy = 0; vy = 0; } }
-      const spd = (0.40 + Math.min(0.34, elapsed * 0.012)) * (dt / 1000);
+      // ramp: base approach speed rises the whole time (no cap) so it keeps
+      // getting harder; spawns get denser + faster too.
+      const spd = (0.55 + elapsed * 0.028) * (dt / 1000);
       spawnAcc += dt;
-      const every = Math.max(720, 1250 - elapsed * 18);
+      const every = Math.max(430, 1150 - elapsed * 34);
       if (spawnAcc >= every) { spawnAcc = 0; spawn(); }
       for (let i = ents.length - 1; i >= 0; i--) {
         const e = ents[i];
-        e.z -= spd;
+        // advance in projected (t) space, not linear z, so nothing appears to
+        // stall as it reaches the player — it actually speeds up close up.
+        const tNow = Math.pow(Math.max(0, 1 - e.z), 1.9);
+        const tNext = Math.min(1.4, tNow + spd * (1.0 + 1.6 * tNow));
+        e.z = 1 - Math.pow(tNext, 1 / 1.9);
         if (e.z + e.len < -0.06) { e.el.remove(); ents.splice(i, 1); continue; }
         paintEnt(e);
         const atPlayer = e.z < 0.05 && e.z + e.len > -0.02;

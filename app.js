@@ -343,6 +343,11 @@
       opts: [["Gave up",0],["Slow sort",1],["Quick sort",2],["Speed demon",3]],
     },
     {
+      kind: "bricks",
+      q: "Follow the instructions and build the thing.",
+      opts: [["Gave up",0],["Half-built",1],["Finished it",2],["Finished it flawlessly",3]],
+    },
+    {
       kind: "dodge",
       q: "Sensory overload incoming — dodge it as long as you can.",
       opts: [
@@ -2797,6 +2802,151 @@
     paint();
   }
 
+  // Brick build: a jumbled table of generic colored studded bricks and a 5-step
+  // instruction sheet. Drag the brick the current step asks for onto the plate.
+  // Each correct placement snaps in and advances the step; a wrong brick bounces
+  // back. Finish all 5 = win. Timer + give up. (Original SVG bricks, no set.)
+  const BRICK_COLORS = {
+    red:    { top: "#ff5d5d", side: "#c93030" },
+    yellow: { top: "#ffd23f", side: "#c99b12" },
+    blue:   { top: "#4a9cff", side: "#1f6fd0" },
+    green:  { top: "#42c98a", side: "#1d9560" },
+    white:  { top: "#f2f4f7", side: "#c3cbd2" },
+  };
+  const BRICK_NAMES = { red: "red", yellow: "yellow", blue: "blue", green: "green", white: "white" };
+  // the model, bottom row up: a little tower/figure. Each step = one brick.
+  const BRICK_PLAN = [
+    { color: "green",  w: 3, label: "the green 3-stud base" },
+    { color: "blue",   w: 2, label: "a blue 2-stud brick, left" },
+    { color: "yellow", w: 2, label: "a yellow 2-stud brick, right" },
+    { color: "red",    w: 3, label: "the red 3-stud roof" },
+    { color: "white",  w: 1, label: "the white 1-stud chimney on top" },
+  ];
+  function brickSVG(color, w, studless) {
+    const c = BRICK_COLORS[color];
+    const U = 22, H = 20, studR = 6, studH = 6;
+    const W = w * U;
+    let studs = "";
+    if (!studless) for (let i = 0; i < w; i++) {
+      const cx = i * U + U / 2;
+      studs += `<ellipse cx="${cx}" cy="${studH + 2}" rx="${studR}" ry="3.2" fill="${c.top}" stroke="#16130c" stroke-width="1.6"/>
+                <rect x="${cx - studR}" y="${studH - 1}" width="${studR * 2}" height="4" fill="${c.top}"/>`;
+    }
+    return `<svg viewBox="0 0 ${W} ${H + studH + 6}" width="${W}" height="${H + studH + 6}" xmlns="http://www.w3.org/2000/svg">
+      ${studs}
+      <rect x="1.5" y="${studH + 2}" width="${W - 3}" height="${H}" rx="3" fill="${c.side}" stroke="#16130c" stroke-width="2"/>
+      <rect x="1.5" y="${studH + 2}" width="${W - 3}" height="${H * 0.42}" rx="3" fill="${c.top}"/>
+    </svg>`;
+  }
+  function renderBrickGame(body, Q, setAnswer) {
+    // table order: correct answer of each step is present, shuffled with distractors
+    const bank = BRICK_PLAN.map((p, i) => ({ id: "p" + i, color: p.color, w: p.w, plan: i, used: false }));
+    // add a couple of decoy bricks so it isn't just "drag them in order"
+    bank.push({ id: "d0", color: "blue", w: 3, plan: -1, used: false });
+    bank.push({ id: "d1", color: "green", w: 1, plan: -1, used: false });
+    for (let i = bank.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bank[i], bank[j]] = [bank[j], bank[i]]; }
+
+    body.innerHTML = `
+      <div class="brickq">
+        <div class="brickq-main">
+          <div class="brick-instr">
+            <div class="brick-instr-head">📘 Instructions</div>
+            <ol class="brick-steps" id="brick-steps">
+              ${BRICK_PLAN.map((p, i) => `<li data-i="${i}"><span class="brick-swatch" style="background:${BRICK_COLORS[p.color].top}"></span>${p.label}</li>`).join("")}
+            </ol>
+          </div>
+          <div class="brick-build">
+            <div class="brick-plate-wrap"><div class="brick-plate" id="brick-plate"></div><div class="brick-baseplate"></div></div>
+            <div class="brick-target" id="brick-target">Drag <b class="brick-target-txt">the green 3-stud base</b> onto the plate.</div>
+          </div>
+        </div>
+        <div class="brick-table" id="brick-table">
+          ${bank.map(b => `<div class="brick-piece" data-id="${b.id}" data-plan="${b.plan}" style="left:${8 + Math.random() * 78}%;top:${10 + Math.random() * 70}%;--rot:${(Math.random() * 20 - 10).toFixed(1)}deg">${brickSVG(b.color, b.w)}</div>`).join("")}
+          <div class="brick-table-label">the bin of bricks</div>
+        </div>
+        <div class="brickq-hud"><span id="brick-timer">0.0s</span><button class="btn btn-ghost btn-sm" id="brick-giveup" type="button">Give up</button></div>
+        <div class="brickq-note" id="brick-note" hidden></div>
+      </div>`;
+    const plate = $("#brick-plate", body), stepsEl = $("#brick-steps", body), targetTxt = $(".brick-target-txt", body);
+    const table = $("#brick-table", body), timerEl = $("#brick-timer", body), note = $("#brick-note", body), giveupBtn = $("#brick-giveup", body);
+    let step = 0, t0 = 0, tick = null, locked = false;
+    const highlight = () => {
+      stepsEl.querySelectorAll("li").forEach((li, i) => { li.classList.toggle("done", i < step); li.classList.toggle("cur", i === step); });
+      if (step < BRICK_PLAN.length) targetTxt.textContent = BRICK_PLAN[step].label;
+    };
+    highlight();
+    function startTimer() { if (t0) return; t0 = Date.now(); tick = setInterval(() => { if (!document.body.contains(body)) { clearInterval(tick); return; } timerEl.textContent = ((Date.now() - t0) / 1000).toFixed(1) + "s"; }, 100); }
+    function placeBrick(color, w) {
+      const el = document.createElement("div");
+      el.className = "brick-placed";
+      el.style.setProperty("--bw", w);
+      el.innerHTML = brickSVG(color, w, true);
+      plate.appendChild(el);
+    }
+    function finish(won) {
+      locked = true; clearInterval(tick);
+      giveupBtn.disabled = true;
+      table.querySelectorAll(".brick-piece").forEach(p => p.classList.add("brick-done"));
+      if (won) {
+        const secs = (Date.now() - t0) / 1000;
+        timerEl.textContent = secs.toFixed(1) + "s";
+        const pts = secs < 30 ? 3 : secs < 60 ? 2 : 1;
+        $("#brick-target", body).innerHTML = "✅ Built!";
+        note.hidden = false; note.textContent = `Built it in ${secs.toFixed(1)}s.`;
+        setAnswer(pts, { brickTime: +secs.toFixed(1) });
+      } else {
+        note.hidden = false; note.textContent = `Given up at step ${step + 1} of ${BRICK_PLAN.length}.`;
+        setAnswer(step === 0 ? 0 : 1, { brickSteps: step });
+      }
+    }
+    // pointer drag
+    let drag = null;
+    function onMove(e) {
+      if (!drag) return;
+      drag.el.style.left = (e.clientX - drag.dx) + "px";
+      drag.el.style.top = (e.clientY - drag.dy) + "px";
+    }
+    function onUp(e) {
+      if (!drag) return;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      const el = drag.el, planIdx = +el.dataset.plan;
+      const pr = plate.getBoundingClientRect();
+      const over = e.clientX >= pr.left - 40 && e.clientX <= pr.right + 40 && e.clientY >= pr.top - 40 && e.clientY <= pr.bottom + 60;
+      if (over && planIdx === step && !locked) {
+        // correct brick for this step
+        placeBrick(BRICK_PLAN[step].color, BRICK_PLAN[step].w);
+        el.remove();
+        step++;
+        highlight();
+        if (step >= BRICK_PLAN.length) finish(true);
+      } else {
+        // snap back
+        el.classList.add("brick-reject");
+        el.style.left = drag.home.left; el.style.top = drag.home.top;
+        setTimeout(() => el.classList.remove("brick-reject"), 300);
+      }
+      el.classList.remove("brick-dragging");
+      drag = null;
+    }
+    table.querySelectorAll(".brick-piece").forEach(el => {
+      el.addEventListener("pointerdown", e => {
+        if (locked) return;
+        e.preventDefault();
+        startTimer();
+        const r = el.getBoundingClientRect();
+        // switch to fixed positioning so it can leave the table box
+        el.classList.add("brick-dragging");
+        drag = { el, dx: e.clientX - r.left, dy: e.clientY - r.top, home: { left: el.style.left, top: el.style.top } };
+        el.style.left = r.left + "px"; el.style.top = r.top + "px";
+        try { el.setPointerCapture(e.pointerId); } catch (_) {}
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onUp);
+      });
+    });
+    giveupBtn.addEventListener("click", () => { if (!locked) finish(false); });
+  }
+
   /* ----------------------------------------------------------
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
@@ -3226,8 +3376,9 @@
     else if (kind === "tvvol") { renderTvVolGame(qbody, Q, setAnswer); }
     else if (kind === "subway") { renderSubwayGame(qbody, Q, setAnswer, state.avatar); }
     else if (kind === "rings") { renderRingsGame(qbody, Q, setAnswer); }
+    else if (kind === "bricks") { renderBrickGame(qbody, Q, setAnswer); }
   }
-  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", simon: "Repeat the pattern", tvvol: "TV volume", rings: "Ring sort", dodge: "Sensory dodge", flappy: "Flappy routine", subway: "Subway surf", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", imgtext: "What's happening (typed)", polo: "Polo holes", reenterpin: "Re-enter PIN" };
+  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", simon: "Repeat the pattern", tvvol: "TV volume", rings: "Ring sort", bricks: "Brick build", dodge: "Sensory dodge", flappy: "Flappy routine", subway: "Subway surf", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", imgtext: "What's happening (typed)", polo: "Polo holes", reenterpin: "Re-enter PIN" };
 
   function submitToQueue(state) {
     bumpCtr();
@@ -3485,6 +3636,7 @@
       { emoji: "🧠", title: "Pattern Prophet",         key: "simonRounds", dir: "high", suffix: " rounds", desc: "Repeated the longest Simon sequence from memory.", stat: v => `remembered <b>${v} round${v === 1 ? "" : "s"}</b> of the pattern`, roast: "memorized beeps like it was nothing. Unnerving.", min: 1 },
       { emoji: "🚇", title: "Subway Surfer",           key: "subwayCoins", dir: "high", suffix: " coins", desc: "Grabbed the most coins while dodging subway trains.", stat: v => `pocketed <b>${v} coin${v === 1 ? "" : "s"}</b> mid-dodge`, roast: "the trains missed. The coins didn't.", min: 1 },
       { emoji: "💍", title: "Ring Master",             key: "ringTime",    dir: "low",  suffix: "s", desc: "Sorted the rings by color the fastest.", stat: v => `sorted every ring in <b>${v} seconds</b>`, roast: "sorted by color at speed. The shelves at home must be immaculate.", min: 2 },
+      { emoji: "🧱", title: "Master Builder",          key: "brickTime",   dir: "low",  suffix: "s", desc: "Followed the brick instructions and built the fastest.", stat: v => `built the whole thing in <b>${v} seconds</b>`, roast: "followed the instructions to the letter, at speed. No notes.", min: 2 },
       { emoji: "⌨️", title: "Fastest Typer",           key: "typeSecs",    dir: "low",  suffix: "s", desc: "Typed the sentence correctly in the fewest seconds.", stat: v => `typed the whole sentence in <b>${v} seconds</b>`, roast: "typed it clean and fast. You've done this before.", min: 1 },
       { emoji: "👑", title: "Closest Queen Birthday",  key: "qeDaysOff",   dir: "low",  suffix: " days off", desc: "Guessed closest to Queen Elizabeth II's real birthday (21 April 1926).", stat: v => v === 0 ? `nailed her birthday <b>exactly</b>` : `guessed <b>${v} day${v === 1 ? "" : "s"}</b> away from her birthday`, roast: "why do you know when the Queen was born? (You're among friends.)", min: 1 },
     ];

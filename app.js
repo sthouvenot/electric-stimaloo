@@ -2843,8 +2843,8 @@
     { color: "blue",   w: 2, col: 4, row: 4, label: "Blue 2-wide, stacking the wing taller" },
     { color: "green",  w: 3, col: 1, row: 5, side: "left", label: "Green 3-wide head — side stud faces left for the beak" },
     { color: "yellow", w: 1, col: 0, row: 5, label: "Yellow 1-wide beak, plugged onto the head's left stud" },
-    { color: "red",    w: 2, col: 2, row: 6, label: "Red 2-wide crest feathers on top" },
-    { color: "white",  w: 1, col: 3, row: 6, label: "White 1-wide feather tip beside the crest" },
+    { color: "red",    w: 2, col: 1, row: 6, label: "Red 2-wide crest feathers on top of the head" },
+    { color: "white",  w: 1, col: 3, row: 6, label: "White 1-wide feather tip, right of the crest" },
   ] };
   // side: "" | "left" | "right" — draws an extra sideways connector stud poking
   // out that edge, so a neighbouring brick (wing, beak) can plug into the side
@@ -2883,8 +2883,14 @@
     // bin = every brick the model needs, plus decoys, all shuffled. Bricks are
     // matched by color+width (not by step index), so any brick of the right
     // color and size fits the current step — two blue 2-wides are interchangeable.
-    const bin = M.steps.map((s, i) => ({ id: "s" + i, color: s.color, w: s.w }));
-    [ ["red", 3], ["orange", 2], ["orange", 1], ["blue", 3], ["white", 2], ["grey", 2] ].forEach((d, i) => bin.push({ id: "x" + i, color: d[0], w: d[1] }));
+    // each model brick keeps its side connector (left/right/none) so the bin
+    // piece SHOWS the side stud — you have to pick the one with the right stud.
+    const bin = M.steps.map((s, i) => ({ id: "s" + i, color: s.color, w: s.w, side: s.side || "" }));
+    // decoys: extra bricks you don't need. A couple of greens carry the "wrong"
+    // side stud (or none) so matching on side matters — you can't drop a plain or
+    // wrong-facing green into a slot that needs a specific side connector.
+    [ ["red", 3, ""], ["orange", 2, ""], ["orange", 1, ""], ["blue", 3, ""], ["white", 2, ""],
+      ["grey", 2, ""], ["green", 4, ""], ["green", 3, ""] ].forEach((d, i) => bin.push({ id: "x" + i, color: d[0], w: d[1], side: d[2] }));
     for (let i = bin.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bin[i], bin[j]] = [bin[j], bin[i]]; }
 
     body.innerHTML = `
@@ -2907,7 +2913,7 @@
         </div>
         <div class="brick-bin" id="brick-bin">
           <div class="brick-bin-label">the bin of bricks</div>
-          ${bin.map(b => `<div class="brick-piece" data-id="${b.id}" data-color="${b.color}" data-w="${b.w}" style="left:${5 + Math.random() * 62}%;top:${16 + Math.random() * 62}%;--rot:${(Math.random() * 16 - 8).toFixed(1)}deg">${brickSVG(b.color, b.w)}</div>`).join("")}
+          ${bin.map(b => `<div class="brick-piece" data-id="${b.id}" data-color="${b.color}" data-w="${b.w}" data-side="${b.side}" style="left:${5 + Math.random() * 62}%;top:${16 + Math.random() * 62}%;--rot:${(Math.random() * 16 - 8).toFixed(1)}deg">${brickSVG(b.color, b.w, false, b.side)}</div>`).join("")}
         </div>
         <div class="brickq-hud"><span id="brick-timer">0.0s</span><button class="btn btn-ghost btn-sm" id="brick-giveup" type="button">Give up</button></div>
         <div class="brickq-note" id="brick-note" hidden></div>
@@ -2920,8 +2926,10 @@
 
     // where step s lands on the plate (top-left px), y measured from plate top
     const slotXY = s => ({ x: M.steps[s].col * U, y: (M.rows - 1 - M.steps[s].row) * ROWH });
-    // a brick fits the current step if its color + width match what the step needs
-    const fits = el => step < M.steps.length && el.dataset.color === M.steps[step].color && +el.dataset.w === M.steps[step].w;
+    // a brick fits the current step if its color, width AND side connector match —
+    // so you must pick the green with the correct side stud, not a plain one.
+    const fits = el => step < M.steps.length && el.dataset.color === M.steps[step].color
+      && +el.dataset.w === M.steps[step].w && (el.dataset.side || "") === (M.steps[step].side || "");
     function showGhost() {
       if (step >= M.steps.length) { ghost.hidden = true; return; }
       const s = M.steps[step], p = slotXY(step);
@@ -2985,18 +2993,33 @@
       const over = e.clientX >= pr.left - 34 && e.clientX <= pr.right + 34 && e.clientY >= pr.top - 34 && e.clientY <= pr.bottom + 46;
       if (over && fits(el) && !locked) {
         placeBrick(step); el.remove(); step++; highlight();
-        if (step >= M.steps.length) finish(true);
-      } else {
-        // reparent back into the bin and restore its % slot
         el.classList.remove("brick-dragging");
-        drag.home.parent.insertBefore(el, drag.home.next);
+        drag = null;
+        if (step >= M.steps.length) finish(true);
+        return;
+      }
+      // not placed on the plate — drop it back in the bin. If it was released
+      // over the bin, leave it right where you dropped it (so you can rearrange /
+      // dig for pieces); otherwise snap it home.
+      el.classList.remove("brick-dragging");
+      const br = binEl.getBoundingClientRect();
+      const overBin = e.clientX >= br.left && e.clientX <= br.right && e.clientY >= br.top && e.clientY <= br.bottom;
+      binEl.appendChild(el);
+      if (overBin && !locked) {
+        // convert drop point (pointer minus grab offset) to a % within the bin
+        const w = el.getBoundingClientRect().width, h = el.getBoundingClientRect().height;
+        let lx = e.clientX - drag.gx - br.left, ly = e.clientY - drag.gy - br.top;
+        lx = Math.max(0, Math.min(br.width - w, lx));
+        ly = Math.max(0, Math.min(br.height - h, ly));
+        el.style.left = (lx / br.width * 100).toFixed(2) + "%";
+        el.style.top = (ly / br.height * 100).toFixed(2) + "%";
+      } else {
+        // dropped off in no-man's-land — bounce back to where it started
         el.classList.add("brick-reject");
         el.style.left = drag.home.left; el.style.top = drag.home.top;
         setTimeout(() => el.classList.remove("brick-reject"), 260);
-        drag = null; return;
       }
-      el.classList.remove("brick-dragging");
-      drag = null;
+      drag = null; return;
     }
     binEl.querySelectorAll(".brick-piece").forEach(el => {
       el.addEventListener("pointerdown", e => {

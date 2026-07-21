@@ -333,6 +333,11 @@
       opts: [["Lost it early",0],["A few rounds",1],["Strong memory",2],["Photographic",3]],
     },
     {
+      kind: "tvvol",
+      q: "Set the TV volume.",
+      opts: [["Odd. Chaos.",0],["Even, at least",1],["A multiple of 5",2],["Perfectly round",3]],
+    },
+    {
       kind: "dodge",
       q: "Sensory overload incoming — dodge it as long as you can.",
       opts: [
@@ -2387,6 +2392,65 @@
     startBtn.addEventListener("click", () => { startBtn.style.display = "none"; nextRound(); });
   }
 
+  // TV volume: nudge the volume with the remote, then we judge the number —
+  // PIN-style checklist. Starts on a cursed 13. Even / multiple of 5 /
+  // perfectly round (multiple of 10) each earn a point.
+  function renderTvVolGame(body, Q, setAnswer) {
+    let vol = 13, locked = false;
+    body.innerHTML = `
+      <div class="tvq">
+        <div class="tv">
+          <div class="tv-screen">
+            <div class="tv-osd">
+              <span class="tv-osd-label">VOL</span>
+              <span class="tv-osd-num" id="tv-num">13</span>
+              <div class="tv-osd-bar"><div class="tv-osd-fill" id="tv-fill"></div></div>
+            </div>
+          </div>
+          <div class="tv-foot"></div>
+        </div>
+        <div class="tv-remote">
+          <div class="tv-remote-dot"></div>
+          <button class="tv-btn" id="tv-down" type="button" aria-label="volume down">−</button>
+          <span class="tv-remote-label">VOL</span>
+          <button class="tv-btn" id="tv-up" type="button" aria-label="volume up">+</button>
+        </div>
+        <button class="btn btn-primary" id="tv-set">Set it →</button>
+        <div class="pinq-checks" id="tv-checks" hidden></div>
+      </div>`;
+    const num = $("#tv-num", body), fill = $("#tv-fill", body), checks = $("#tv-checks", body), setBtn = $("#tv-set", body);
+    const paint = () => { num.textContent = vol; fill.style.width = vol + "%"; };
+    paint();
+    let rep = null;
+    const step = d => { if (locked) return; vol = Math.max(0, Math.min(100, vol + d)); paint(); };
+    const hold = (btn, d) => {
+      btn.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        step(d);
+        clearInterval(rep);
+        rep = setInterval(() => step(d), 140);
+      });
+      ["pointerup", "pointerleave", "pointercancel"].forEach(ev => btn.addEventListener(ev, () => clearInterval(rep)));
+    };
+    hold($("#tv-up", body), 1);
+    hold($("#tv-down", body), -1);
+    setBtn.addEventListener("click", () => {
+      if (locked) return;
+      locked = true;
+      clearInterval(rep);
+      const cs = [
+        { ok: vol % 2 === 0,  good: "Even", bad: "Odd" },
+        { ok: vol % 5 === 0,  good: "A multiple of 5", bad: "Not a multiple of 5" },
+        { ok: vol % 10 === 0, good: "Perfectly round", bad: "Not perfectly round" },
+      ];
+      const pts = cs.reduce((a, c) => a + (c.ok ? 1 : 0), 0);
+      checks.hidden = false;
+      checks.innerHTML = cs.map(c => `<div class="pinq-check ${c.ok ? "ok" : "bad"}">${c.ok ? "✅ " + c.good : "❌ " + c.bad}</div>`).join("");
+      setBtn.disabled = true; setBtn.textContent = "Volume set ✓";
+      setAnswer(pts, { tvVolume: vol });
+    });
+  }
+
   /* ----------------------------------------------------------
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
@@ -2812,8 +2876,9 @@
     else if (kind === "imgquiz") { renderImgQuizGame(qbody, Q, setAnswer); }
     else if (kind === "imgtext") { renderImgTextGame(qbody, Q, setAnswer); }
     else if (kind === "simon") { renderSimonGame(qbody, Q, setAnswer); }
+    else if (kind === "tvvol") { renderTvVolGame(qbody, Q, setAnswer); }
   }
-  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", simon: "Repeat the pattern", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", imgtext: "What's happening (typed)", polo: "Polo holes", reenterpin: "Re-enter PIN" };
+  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", simon: "Repeat the pattern", tvvol: "TV volume", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", imgtext: "What's happening (typed)", polo: "Polo holes", reenterpin: "Re-enter PIN" };
 
   function submitToQueue(state) {
     bumpCtr();

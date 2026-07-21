@@ -2727,10 +2727,12 @@
           ${[0, 1, 2].map(i => `
             <button class="ring-peg" type="button" data-i="${i}">
               <div class="ring-pole"></div>
+              <div class="ring-slots">${'<div class="ring-slot"></div>'.repeat(4)}</div>
               <div class="ring-stack" id="ring-stack-${i}"></div>
               <div class="ring-base"></div>
             </button>`).join("")}
         </div>
+        <div class="ringq-cap">Max 4 rings per pole</div>
         <button class="btn btn-ghost btn-sm" id="ring-giveup" type="button">Give up</button>
         <div class="ringq-note" id="ring-note" hidden></div>
       </div>`;
@@ -2780,7 +2782,10 @@
           sel = i; startTimer(); paint(); return;
         }
         if (sel === i) { sel = -1; paint(); return; }
-        if (pegs[i].length >= CAP) return; // pole is full
+        if (pegs[i].length >= CAP) { // pole is full — shake it
+          peg.classList.remove("peg-full"); void peg.offsetWidth; peg.classList.add("peg-full");
+          return;
+        }
         pegs[i].push(pegs[sel].pop());
         sel = -1; moves++;
         movesEl.textContent = moves + " move" + (moves === 1 ? "" : "s");

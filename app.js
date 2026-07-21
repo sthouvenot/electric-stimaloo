@@ -2715,21 +2715,11 @@
   ];
   function renderRingsGame(body, Q, setAnswer) {
     const CAP = 4;
-    // scramble from solved with random legal moves (never ends solved)
-    let pegs;
+    // fixed start: every pole holds all three colors (a latin-square rotation).
+    // BFS over the full state space says this needs 13 moves optimally — a
+    // proper puzzle, same for everyone.
+    const pegs = [[0, 1, 2], [1, 2, 0], [2, 0, 1]];
     const solved = () => pegs.every(p => p.every(c => c === p[0]));
-    do {
-      pegs = [[0, 0, 0], [1, 1, 1], [2, 2, 2]];
-      let lastMove = null;
-      for (let k = 0; k < 60; k++) {
-        const from = Math.floor(Math.random() * 3);
-        const to = Math.floor(Math.random() * 3);
-        if (from === to || !pegs[from].length || pegs[to].length >= CAP) continue;
-        if (lastMove && lastMove[0] === to && lastMove[1] === from) continue; // no instant undo
-        pegs[to].push(pegs[from].pop());
-        lastMove = [from, to];
-      }
-    } while (solved());
     body.innerHTML = `
       <div class="ringq">
         <div class="ringq-hud"><span id="ring-timer">0.0s</span><span id="ring-moves">0 moves</span></div>

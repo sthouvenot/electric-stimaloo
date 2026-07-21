@@ -2823,17 +2823,25 @@
     blue:   { top: "#4a9cff", side: "#1f6fd0", stud: "#78b6ff" },
     white:  { top: "#f2f4f7", side: "#c7ced6", stud: "#ffffff" },
     grey:   { top: "#9aa1ab", side: "#6d747e", stud: "#b4bac2" },
+    brown:  { top: "#a9713f", side: "#7d4f28", stud: "#c08a55" },
   };
-  const BRICK_U = 26; // one stud = 26px
+  const BRICK_U = 24; // one stud = 24px
   // grid model, built bottom-up. Each step places one brick at [col,row] (row 0
-  // = bottom). The finished silhouette reads as a rocket on a launch pad.
-  const BRICK_MODEL = { cols: 4, rows: 6, steps: [
-    { color: "grey",   w: 4, col: 0, row: 0, label: "Grey 4-wide launch pad along the bottom" },
-    { color: "blue",   w: 2, col: 1, row: 1, label: "Blue 2-wide fuel tank, centered above it" },
-    { color: "blue",   w: 2, col: 1, row: 2, label: "Another blue 2-wide, stacked on the tank" },
-    { color: "white",  w: 2, col: 1, row: 3, label: "White 2-wide cockpit band" },
-    { color: "red",    w: 2, col: 1, row: 4, label: "Red 2-wide, just under the nose" },
-    { color: "yellow", w: 1, col: 2, row: 5, label: "Yellow 1-wide nose cone on top" },
+  // = bottom). This silhouette reads as a little parrot perched on a branch —
+  // a chunkier, more intricate build than a plain stack. Original brick art.
+  const BRICK_MODEL = { cols: 6, rows: 8, steps: [
+    { color: "brown",  w: 6, col: 0, row: 0, label: "Brown 6-wide branch across the bottom" },
+    { color: "grey",   w: 1, col: 2, row: 1, label: "Grey 1-wide leg gripping the branch" },
+    { color: "grey",   w: 1, col: 3, row: 1, label: "Grey 1-wide second leg, next to it" },
+    { color: "green",  w: 3, col: 1, row: 2, label: "Green 3-wide belly, sitting on the legs" },
+    { color: "green",  w: 4, col: 1, row: 3, label: "Green 4-wide chest above the belly" },
+    { color: "blue",   w: 2, col: 4, row: 3, label: "Blue 2-wide folded wing on the right" },
+    { color: "green",  w: 3, col: 1, row: 4, label: "Green 3-wide upper back" },
+    { color: "blue",   w: 2, col: 4, row: 4, label: "Blue 2-wide, stacking the wing taller" },
+    { color: "green",  w: 3, col: 1, row: 5, label: "Green 3-wide head" },
+    { color: "yellow", w: 1, col: 0, row: 5, label: "Yellow 1-wide beak on the left of the head" },
+    { color: "red",    w: 2, col: 2, row: 6, label: "Red 2-wide crest feathers on top" },
+    { color: "white",  w: 1, col: 3, row: 6, label: "White 1-wide feather tip beside the crest" },
   ] };
   function brickSVG(color, w, studless) {
     const c = BRICK_COLORS[color] || BRICK_COLORS.grey;
@@ -2854,16 +2862,18 @@
   }
   function renderBrickGame(body, Q, setAnswer) {
     const M = BRICK_MODEL, U = BRICK_U;
-    // bin = every brick the model needs, plus decoys, all shuffled
-    const bin = M.steps.map((s, i) => ({ id: "s" + i, color: s.color, w: s.w, step: i }));
-    [ ["red", 3], ["green", 2], ["orange", 1], ["blue", 1] ].forEach((d, i) => bin.push({ id: "x" + i, color: d[0], w: d[1], step: -1 }));
+    // bin = every brick the model needs, plus decoys, all shuffled. Bricks are
+    // matched by color+width (not by step index), so any brick of the right
+    // color and size fits the current step — two blue 2-wides are interchangeable.
+    const bin = M.steps.map((s, i) => ({ id: "s" + i, color: s.color, w: s.w }));
+    [ ["red", 3], ["orange", 2], ["orange", 1], ["blue", 3], ["white", 2], ["grey", 2] ].forEach((d, i) => bin.push({ id: "x" + i, color: d[0], w: d[1] }));
     for (let i = bin.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bin[i], bin[j]] = [bin[j], bin[i]]; }
 
     body.innerHTML = `
       <div class="brickq">
         <div class="brickq-main">
           <div class="brick-instr">
-            <div class="brick-instr-head">📘 Build the rocket</div>
+            <div class="brick-instr-head">📘 Build the parrot</div>
             <ol class="brick-steps" id="brick-steps">
               ${M.steps.map((s, i) => `<li data-i="${i}"><span class="brick-swatch" style="background:${BRICK_COLORS[s.color].top}"></span>${s.label}</li>`).join("")}
             </ol>
@@ -2879,7 +2889,7 @@
         </div>
         <div class="brick-bin" id="brick-bin">
           <div class="brick-bin-label">the bin of bricks</div>
-          ${bin.map(b => `<div class="brick-piece" data-id="${b.id}" data-step="${b.step}" style="left:${5 + Math.random() * 62}%;top:${16 + Math.random() * 62}%;--rot:${(Math.random() * 16 - 8).toFixed(1)}deg">${brickSVG(b.color, b.w)}</div>`).join("")}
+          ${bin.map(b => `<div class="brick-piece" data-id="${b.id}" data-color="${b.color}" data-w="${b.w}" style="left:${5 + Math.random() * 62}%;top:${16 + Math.random() * 62}%;--rot:${(Math.random() * 16 - 8).toFixed(1)}deg">${brickSVG(b.color, b.w)}</div>`).join("")}
         </div>
         <div class="brickq-hud"><span id="brick-timer">0.0s</span><button class="btn btn-ghost btn-sm" id="brick-giveup" type="button">Give up</button></div>
         <div class="brickq-note" id="brick-note" hidden></div>
@@ -2892,6 +2902,8 @@
 
     // where step s lands on the plate (top-left px), y measured from plate top
     const slotXY = s => ({ x: M.steps[s].col * U, y: (M.rows - 1 - M.steps[s].row) * ROWH });
+    // a brick fits the current step if its color + width match what the step needs
+    const fits = el => step < M.steps.length && el.dataset.color === M.steps[step].color && +el.dataset.w === M.steps[step].w;
     function showGhost() {
       if (step >= M.steps.length) { ghost.hidden = true; return; }
       const s = M.steps[step], p = slotXY(step);
@@ -2921,7 +2933,7 @@
         const secs = (Date.now() - t0) / 1000;
         timerEl.textContent = secs.toFixed(1) + "s";
         const pts = secs < 30 ? 3 : secs < 60 ? 2 : 1;
-        targetBox.innerHTML = "🚀 Liftoff! Rocket complete.";
+        targetBox.innerHTML = "🦜 Done! Parrot complete.";
         note.hidden = false; note.textContent = `Built it in ${secs.toFixed(1)}s.`;
         setAnswer(pts, { brickTime: +secs.toFixed(1) });
       } else {
@@ -2940,7 +2952,7 @@
       // light up the ghost slot when hovering it with the right brick
       const pr = plate.getBoundingClientRect();
       const near = e.clientX > pr.left - 30 && e.clientX < pr.right + 30 && e.clientY > pr.top - 30 && e.clientY < pr.bottom + 40;
-      ghost.classList.toggle("brick-ghost-hot", !!(near && +drag.el.dataset.step === step));
+      ghost.classList.toggle("brick-ghost-hot", !!(near && fits(drag.el)));
     }
     function endDrag(e) {
       const el = drag.el;
@@ -2950,7 +2962,7 @@
       ghost.classList.remove("brick-ghost-hot");
       const pr = plate.getBoundingClientRect();
       const over = e.clientX >= pr.left - 34 && e.clientX <= pr.right + 34 && e.clientY >= pr.top - 34 && e.clientY <= pr.bottom + 46;
-      if (over && +el.dataset.step === step && !locked) {
+      if (over && fits(el) && !locked) {
         placeBrick(step); el.remove(); step++; highlight();
         if (step >= M.steps.length) finish(true);
       } else {

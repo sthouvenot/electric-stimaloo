@@ -338,6 +338,11 @@
       opts: [["Odd. Chaos.",0],["Even, at least",1],["A multiple of 5",2],["Perfectly round",3]],
     },
     {
+      kind: "rings",
+      q: "Sort the rings — one color per pole.",
+      opts: [["Gave up",0],["Slow sort",1],["Quick sort",2],["Speed demon",3]],
+    },
+    {
       kind: "dodge",
       q: "Sensory overload incoming — dodge it as long as you can.",
       opts: [
@@ -2406,14 +2411,14 @@
   // PIN-style checklist. Starts on a cursed 13. Even / multiple of 5 /
   // perfectly round (multiple of 10) each earn a point.
   function renderTvVolGame(body, Q, setAnswer) {
-    let vol = 13, locked = false;
+    let vol = 60, locked = false;
     body.innerHTML = `
       <div class="tvq">
         <div class="tv">
           <div class="tv-screen">
             <div class="tv-osd">
               <span class="tv-osd-label">VOL</span>
-              <span class="tv-osd-num" id="tv-num">13</span>
+              <span class="tv-osd-num" id="tv-num">60</span>
               <div class="tv-osd-bar"><div class="tv-osd-fill" id="tv-fill"></div></div>
             </div>
           </div>
@@ -2426,13 +2431,14 @@
           <button class="tv-btn" id="tv-up" type="button" aria-label="volume up">+</button>
         </div>
         <button class="btn btn-primary" id="tv-set">Set it →</button>
+        <div class="qbq-err" id="tv-err" hidden></div>
         <div class="pinq-checks" id="tv-checks" hidden></div>
       </div>`;
-    const num = $("#tv-num", body), fill = $("#tv-fill", body), checks = $("#tv-checks", body), setBtn = $("#tv-set", body);
+    const num = $("#tv-num", body), fill = $("#tv-fill", body), checks = $("#tv-checks", body), setBtn = $("#tv-set", body), err = $("#tv-err", body);
     const paint = () => { num.textContent = vol; fill.style.width = vol + "%"; };
     paint();
     let rep = null;
-    const step = d => { if (locked) return; vol = Math.max(0, Math.min(100, vol + d)); paint(); };
+    const step = d => { if (locked) return; vol = Math.max(0, Math.min(100, vol + d)); err.hidden = true; paint(); };
     const hold = (btn, d) => {
       btn.addEventListener("pointerdown", e => {
         e.preventDefault();
@@ -2446,6 +2452,11 @@
     hold($("#tv-down", body), -1);
     setBtn.addEventListener("click", () => {
       if (locked) return;
+      if (vol === 69) {
+        err.hidden = false;
+        err.textContent = "This is an autism test, not the Rice Purity Test. Pick a different number, you freak.";
+        return;
+      }
       locked = true;
       clearInterval(rep);
       const cs = [
@@ -2453,9 +2464,13 @@
         { ok: vol % 5 === 0,  good: "A multiple of 5", bad: "Not a multiple of 5" },
         { ok: vol % 10 === 0, good: "Perfectly round", bad: "Not perfectly round" },
       ];
-      const pts = cs.reduce((a, c) => a + (c.ok ? 1 : 0), 0);
+      let pts = cs.reduce((a, c) => a + (c.ok ? 1 : 0), 0);
       checks.hidden = false;
       checks.innerHTML = cs.map(c => `<div class="pinq-check ${c.ok ? "ok" : "bad"}">${c.ok ? "✅ " + c.good : "❌ " + c.bad}</div>`).join("");
+      if (vol === 67) {
+        pts = Math.min(3, pts + 1);
+        checks.innerHTML += `<div class="pinq-check ok">6️⃣7️⃣ 🫴🫴 Bonus autism point awarded</div>`;
+      }
       setBtn.disabled = true; setBtn.textContent = "Volume set ✓";
       setAnswer(pts, { tvVolume: vol });
     });
@@ -2688,6 +2703,103 @@
       b.addEventListener("pointerdown", e => { e.preventDefault(); act(b.dataset.act); }));
     ov.querySelector(".sub-go").addEventListener("click", start);
     measure(); paintPlayer(1);
+  }
+
+  // Ring sort: three poles, nine colored rings (3 of each color). Move top
+  // rings between poles until every pole holds a single color. Scrambled by
+  // legal moves from a solved board, so it's always solvable. Timer + give up.
+  const RING_COLORS = [
+    { fill: "#ff3d7f", edge: "#c21e5c" },
+    { fill: "#ffd23f", edge: "#c99b12" },
+    { fill: "#2f9bff", edge: "#1f6fd0" },
+  ];
+  function renderRingsGame(body, Q, setAnswer) {
+    const CAP = 4;
+    // scramble from solved with random legal moves (never ends solved)
+    let pegs;
+    const solved = () => pegs.every(p => p.every(c => c === p[0]));
+    do {
+      pegs = [[0, 0, 0], [1, 1, 1], [2, 2, 2]];
+      let lastMove = null;
+      for (let k = 0; k < 60; k++) {
+        const from = Math.floor(Math.random() * 3);
+        const to = Math.floor(Math.random() * 3);
+        if (from === to || !pegs[from].length || pegs[to].length >= CAP) continue;
+        if (lastMove && lastMove[0] === to && lastMove[1] === from) continue; // no instant undo
+        pegs[to].push(pegs[from].pop());
+        lastMove = [from, to];
+      }
+    } while (solved());
+    body.innerHTML = `
+      <div class="ringq">
+        <div class="ringq-hud"><span id="ring-timer">0.0s</span><span id="ring-moves">0 moves</span></div>
+        <div class="ringq-board" id="ring-board">
+          ${[0, 1, 2].map(i => `
+            <button class="ring-peg" type="button" data-i="${i}">
+              <div class="ring-pole"></div>
+              <div class="ring-stack" id="ring-stack-${i}"></div>
+              <div class="ring-base"></div>
+            </button>`).join("")}
+        </div>
+        <button class="btn btn-ghost btn-sm" id="ring-giveup" type="button">Give up</button>
+        <div class="ringq-note" id="ring-note" hidden></div>
+      </div>`;
+    const timerEl = $("#ring-timer", body), movesEl = $("#ring-moves", body), note = $("#ring-note", body), giveupBtn = $("#ring-giveup", body);
+    let sel = -1, moves = 0, t0 = 0, tick = null, locked = false;
+    function paint() {
+      for (let i = 0; i < 3; i++) {
+        const stack = $("#ring-stack-" + i, body);
+        stack.innerHTML = pegs[i].map((c, k) => {
+          const top = k === pegs[i].length - 1;
+          const lift = top && sel === i ? " ring-lift" : "";
+          return `<div class="ring${lift}" style="--rf:${RING_COLORS[c].fill};--re:${RING_COLORS[c].edge}"></div>`;
+        }).join("");
+      }
+    }
+    function startTimer() {
+      if (t0) return;
+      t0 = Date.now();
+      tick = setInterval(() => {
+        if (!document.body.contains(body)) { clearInterval(tick); return; }
+        timerEl.textContent = ((Date.now() - t0) / 1000).toFixed(1) + "s";
+      }, 100);
+    }
+    function finish(won) {
+      locked = true; sel = -1;
+      clearInterval(tick);
+      giveupBtn.disabled = true;
+      body.querySelectorAll(".ring-peg").forEach(p => p.disabled = true);
+      if (won) {
+        const secs = (Date.now() - t0) / 1000;
+        timerEl.textContent = secs.toFixed(1) + "s";
+        const pts = secs < 25 ? 3 : secs < 50 ? 2 : 1;
+        note.hidden = false; note.textContent = `Sorted in ${secs.toFixed(1)}s.`;
+        setAnswer(pts, { ringTime: +secs.toFixed(1) });
+      } else {
+        note.hidden = false; note.textContent = "Given up. The rings remain unsorted.";
+        setAnswer(0, { ringGaveUp: 1 });
+      }
+      paint();
+    }
+    body.querySelectorAll(".ring-peg").forEach(peg => {
+      peg.addEventListener("click", () => {
+        if (locked) return;
+        const i = +peg.dataset.i;
+        if (sel === -1) {
+          if (!pegs[i].length) return;
+          sel = i; startTimer(); paint(); return;
+        }
+        if (sel === i) { sel = -1; paint(); return; }
+        if (pegs[i].length >= CAP) return; // pole is full
+        pegs[i].push(pegs[sel].pop());
+        sel = -1; moves++;
+        movesEl.textContent = moves + " move" + (moves === 1 ? "" : "s");
+        paint();
+        if (solved()) finish(true);
+      });
+    });
+    giveupBtn.addEventListener("click", () => { if (!locked) finish(false); });
+    paint();
   }
 
   /* ----------------------------------------------------------
@@ -3117,8 +3229,9 @@
     else if (kind === "simon") { renderSimonGame(qbody, Q, setAnswer); }
     else if (kind === "tvvol") { renderTvVolGame(qbody, Q, setAnswer); }
     else if (kind === "subway") { renderSubwayGame(qbody, Q, setAnswer, state.avatar); }
+    else if (kind === "rings") { renderRingsGame(qbody, Q, setAnswer); }
   }
-  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", simon: "Repeat the pattern", tvvol: "TV volume", dodge: "Sensory dodge", flappy: "Flappy routine", subway: "Subway surf", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", imgtext: "What's happening (typed)", polo: "Polo holes", reenterpin: "Re-enter PIN" };
+  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", simon: "Repeat the pattern", tvvol: "TV volume", rings: "Ring sort", dodge: "Sensory dodge", flappy: "Flappy routine", subway: "Subway surf", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", imgtext: "What's happening (typed)", polo: "Polo holes", reenterpin: "Re-enter PIN" };
 
   function submitToQueue(state) {
     bumpCtr();
@@ -3375,6 +3488,7 @@
       { emoji: "🥚", title: "Fed the Most Eggs",       key: "eggsFed",     dir: "high", suffix: " eggs", desc: "Fed more eggs than anybody else.", stat: v => `fed <b>${v} egg${v === 1 ? "" : "s"}</b>`, roast: "the egg never asked for this. You kept going anyway.", min: 1 },
       { emoji: "🧠", title: "Pattern Prophet",         key: "simonRounds", dir: "high", suffix: " rounds", desc: "Repeated the longest Simon sequence from memory.", stat: v => `remembered <b>${v} round${v === 1 ? "" : "s"}</b> of the pattern`, roast: "memorized beeps like it was nothing. Unnerving.", min: 1 },
       { emoji: "🚇", title: "Subway Surfer",           key: "subwayCoins", dir: "high", suffix: " coins", desc: "Grabbed the most coins while dodging subway trains.", stat: v => `pocketed <b>${v} coin${v === 1 ? "" : "s"}</b> mid-dodge`, roast: "the trains missed. The coins didn't.", min: 1 },
+      { emoji: "💍", title: "Ring Master",             key: "ringTime",    dir: "low",  suffix: "s", desc: "Sorted the rings by color the fastest.", stat: v => `sorted every ring in <b>${v} seconds</b>`, roast: "sorted by color at speed. The shelves at home must be immaculate.", min: 2 },
       { emoji: "⌨️", title: "Fastest Typer",           key: "typeSecs",    dir: "low",  suffix: "s", desc: "Typed the sentence correctly in the fewest seconds.", stat: v => `typed the whole sentence in <b>${v} seconds</b>`, roast: "typed it clean and fast. You've done this before.", min: 1 },
       { emoji: "👑", title: "Closest Queen Birthday",  key: "qeDaysOff",   dir: "low",  suffix: " days off", desc: "Guessed closest to Queen Elizabeth II's real birthday (21 April 1926).", stat: v => v === 0 ? `nailed her birthday <b>exactly</b>` : `guessed <b>${v} day${v === 1 ? "" : "s"}</b> away from her birthday`, roast: "why do you know when the Queen was born? (You're among friends.)", min: 1 },
     ];

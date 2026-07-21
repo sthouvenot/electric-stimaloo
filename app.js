@@ -335,7 +335,7 @@
     {
       kind: "tvvol",
       q: "Set the TV volume.",
-      opts: [["Odd. Chaos.",0],["Even, at least",1],["A multiple of 5",2],["Perfectly round",3]],
+      opts: [["Odd. Chaos.",0],["Even, at least",1],["A multiple of 5",2],["Perfectly round",3],["Sixty-seven",4]],
     },
     {
       kind: "rings",
@@ -2468,7 +2468,7 @@
       checks.hidden = false;
       checks.innerHTML = cs.map(c => `<div class="pinq-check ${c.ok ? "ok" : "bad"}">${c.ok ? "✅ " + c.good : "❌ " + c.bad}</div>`).join("");
       if (vol === 67) {
-        pts = Math.min(3, pts + 1);
+        pts = 4; // scores above the normal 3-point max
         checks.innerHTML += `<div class="pinq-check ok">6️⃣7️⃣ 🫴🫴 Bonus autism point awarded</div>`;
       }
       setBtn.disabled = true; setBtn.textContent = "Volume set ✓";
@@ -2813,7 +2813,8 @@
 
     function computeScore() {
       const raw = state.answers.reduce((a, v) => a + (v == null ? 0 : v), 0);
-      return Math.round((raw / MAX_RAW) * 100);
+      // the 67 TV-volume bonus can push raw past MAX_RAW — cap at 100
+      return Math.min(100, Math.round((raw / MAX_RAW) * 100));
     }
 
     function paint() {

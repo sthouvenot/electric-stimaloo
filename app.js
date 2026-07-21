@@ -2667,7 +2667,10 @@
         // advance in projected (t) space, not linear z, so nothing appears to
         // stall as it reaches the player — it actually speeds up close up.
         const tNow = Math.pow(Math.max(0, 1 - e.z), 1.9);
-        const tNext = Math.min(1.4, tNow + spd * (1.0 + 1.6 * tNow));
+        // cap high enough that even a long train (len .26) pushes fully past the
+        // removal threshold (z + len < -.06) and leaves the screen — 1.4 was too
+        // low, so trains stalled at the bottom edge and never disappeared.
+        const tNext = Math.min(1.9, tNow + spd * (1.0 + 1.6 * tNow));
         e.z = 1 - Math.pow(tNext, 1 / 1.9);
         if (e.z + e.len < -0.06) { e.el.remove(); ents.splice(i, 1); continue; }
         paintEnt(e);

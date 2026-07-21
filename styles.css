@@ -467,7 +467,7 @@ a { color: inherit; }
 .dodge-lives { font-size: 17px; -webkit-text-stroke: 0; letter-spacing: 1px; }
 .dodge-player { position: absolute; bottom: 10px; left: 0; width: 52px; height: 52px; z-index: 3; pointer-events: none; transition: left .03s linear; }
 /* just the player — no box, no backdrop, only the little human */
-.dodge-player svg { width: 100%; height: 100%; display: block; filter: drop-shadow(2px 3px 0 rgba(0,0,0,.28)); }
+.dodge-player svg { width: 100%; height: 100%; display: block; }
 .dodge-dpad { display: flex; gap: 14px; justify-content: center; margin-top: 10px; }
 .dodge-dbtn { width: 110px; height: 54px; font-size: 22px; font-weight: 800; border: var(--border); border-radius: 14px; background: var(--paper-2); box-shadow: var(--shadow-sm); cursor: pointer; touch-action: none; user-select: none; }
 .dodge-dbtn.active { background: var(--c5); color: #fff; transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }

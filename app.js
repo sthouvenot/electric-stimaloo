@@ -2837,30 +2837,45 @@
     { color: "grey",   w: 1, col: 2, row: 1, label: "Grey 1-wide leg gripping the branch" },
     { color: "grey",   w: 1, col: 3, row: 1, label: "Grey 1-wide second leg, next to it" },
     { color: "green",  w: 3, col: 1, row: 2, label: "Green 3-wide belly, sitting on the legs" },
-    { color: "green",  w: 4, col: 1, row: 3, label: "Green 4-wide chest above the belly" },
-    { color: "blue",   w: 2, col: 4, row: 3, label: "Blue 2-wide folded wing on the right" },
-    { color: "green",  w: 3, col: 1, row: 4, label: "Green 3-wide upper back" },
+    { color: "green",  w: 4, col: 1, row: 3, side: "right", label: "Green 4-wide chest — side stud faces right for the wing" },
+    { color: "blue",   w: 2, col: 4, row: 3, label: "Blue 2-wide folded wing, plugged onto the chest's right stud" },
+    { color: "green",  w: 3, col: 1, row: 4, side: "right", label: "Green 3-wide back — side stud faces right for the wing" },
     { color: "blue",   w: 2, col: 4, row: 4, label: "Blue 2-wide, stacking the wing taller" },
-    { color: "green",  w: 3, col: 1, row: 5, label: "Green 3-wide head" },
-    { color: "yellow", w: 1, col: 0, row: 5, label: "Yellow 1-wide beak on the left of the head" },
+    { color: "green",  w: 3, col: 1, row: 5, side: "left", label: "Green 3-wide head — side stud faces left for the beak" },
+    { color: "yellow", w: 1, col: 0, row: 5, label: "Yellow 1-wide beak, plugged onto the head's left stud" },
     { color: "red",    w: 2, col: 2, row: 6, label: "Red 2-wide crest feathers on top" },
     { color: "white",  w: 1, col: 3, row: 6, label: "White 1-wide feather tip beside the crest" },
   ] };
-  function brickSVG(color, w, studless) {
+  // side: "" | "left" | "right" — draws an extra sideways connector stud poking
+  // out that edge, so a neighbouring brick (wing, beak) can plug into the side
+  // instead of only stacking on top. The SVG widens to fit the protruding stud.
+  function brickSVG(color, w, studless, side) {
     const c = BRICK_COLORS[color] || BRICK_COLORS.grey;
     const U = BRICK_U, bodyH = 22, studH = 7, studR = 7.5;
-    const W = w * U, H = bodyH + studH;
+    const bodyW = w * U, sideStud = 8; // how far the side stud sticks out
+    const padL = side === "left" ? sideStud : 0, padR = side === "right" ? sideStud : 0;
+    const W = bodyW + padL + padR, H = bodyH + studH;
+    const bx = padL; // body left edge inside the widened viewBox
     let studs = "";
     if (!studless) for (let i = 0; i < w; i++) {
-      const cx = i * U + U / 2;
+      const cx = bx + i * U + U / 2;
       studs += `<rect x="${cx - studR}" y="${studH - 2}" width="${studR * 2}" height="6" fill="${c.side}"/>
                 <ellipse cx="${cx}" cy="${studH - 1}" rx="${studR}" ry="4" fill="${c.stud}" stroke="#16130c" stroke-width="1.6"/>`;
     }
+    // sideways connector stud (drawn as an ellipse on its side hugging the edge)
+    let sideStudSVG = "";
+    if (side === "right" || side === "left") {
+      const cy = studH + bodyH / 2;
+      const ex = side === "right" ? bx + bodyW - 1 : bx + 1; // stud center rides the body edge
+      sideStudSVG = `<rect x="${side === "right" ? ex - 1 : ex - sideStud + 1}" y="${cy - studR}" width="${sideStud}" height="${studR * 2}" fill="${c.side}"/>
+                     <ellipse cx="${side === "right" ? ex + sideStud - 2 : ex - sideStud + 2}" cy="${cy}" rx="4" ry="${studR}" fill="${c.stud}" stroke="#16130c" stroke-width="1.6"/>`;
+    }
     return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+      ${sideStudSVG}
       ${studs}
-      <rect x="1.5" y="${studH}" width="${W - 3}" height="${bodyH - 1.5}" rx="3" fill="${c.side}" stroke="#16130c" stroke-width="2"/>
-      <rect x="1.5" y="${studH}" width="${W - 3}" height="9" rx="3" fill="${c.top}"/>
-      <rect x="${W - 8}" y="${studH + 4}" width="4" height="${bodyH - 8}" rx="2" fill="rgba(0,0,0,.12)"/>
+      <rect x="${bx + 1.5}" y="${studH}" width="${bodyW - 3}" height="${bodyH - 1.5}" rx="3" fill="${c.side}" stroke="#16130c" stroke-width="2"/>
+      <rect x="${bx + 1.5}" y="${studH}" width="${bodyW - 3}" height="9" rx="3" fill="${c.top}"/>
+      <rect x="${bx + bodyW - 8}" y="${studH + 4}" width="4" height="${bodyH - 8}" rx="2" fill="rgba(0,0,0,.12)"/>
     </svg>`;
   }
   function renderBrickGame(body, Q, setAnswer) {
@@ -2924,8 +2939,11 @@
       const st = M.steps[s], p = slotXY(s);
       const el = document.createElement("div");
       el.className = "brick-set";
-      el.style.left = p.x + "px"; el.style.top = p.y + "px";
-      el.innerHTML = brickSVG(st.color, st.w, false);
+      // a left-side stud widens the SVG on the left, pushing the body right by 8px;
+      // shift the element left by that much so the body still lands on its slot.
+      const leftPad = st.side === "left" ? 8 : 0;
+      el.style.left = (p.x - leftPad) + "px"; el.style.top = p.y + "px";
+      el.innerHTML = brickSVG(st.color, st.w, false, st.side);
       plate.appendChild(el);
     }
     function finish(won) {

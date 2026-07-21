@@ -358,6 +358,16 @@
       ],
     },
     {
+      kind: "subway",
+      q: "Surf the subway — dodge the trains, grab the coins.",
+      opts: [
+        ["Clipped by the first train", 0],
+        ["Survived a bit", 1],
+        ["A proper run", 2],
+        ["Certified surfer", 3],
+      ],
+    },
+    {
       kind: "whg",
       q: "Get the red square across. Don't touch the blue.",
       opts: [
@@ -2451,6 +2461,235 @@
     });
   }
 
+  // Subway-surfers-style runner: three subway tracks rushing toward the camera
+  // in fake 3D. Swipe / arrows to change lane, jump the barriers, dodge the
+  // trains, grab coins. 3 lives; best run time scores, coins feed an award.
+  // Virtual space is 560x400 with the horizon at y=150; every object carries a
+  // depth z (1 = horizon, 0 = the player's plane) and gets projected+scaled.
+  const SUB_TRAIN_COLORS = [
+    { body: "#ff8a3d", dark: "#d96a1e" }, { body: "#2f9bff", dark: "#1f6fd0" },
+    { body: "#2ec27e", dark: "#1d9560" }, { body: "#e23d4b", dark: "#b32734" },
+  ];
+  function subTrainSVG(c) {
+    return `<svg viewBox="0 0 100 130" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="10" width="92" height="116" rx="10" fill="${c.body}" stroke="#16130c" stroke-width="3"/>
+      <rect x="4" y="10" width="92" height="14" rx="7" fill="${c.dark}"/>
+      <rect x="14" y="30" width="72" height="42" rx="6" fill="#1d2733" stroke="#16130c" stroke-width="2.5"/>
+      <rect x="20" y="35" width="26" height="14" rx="3" fill="#3d5a75" opacity=".8"/>
+      <rect x="12" y="82" width="76" height="8" rx="4" fill="${c.dark}"/>
+      <circle cx="22" cy="106" r="7" fill="#ffe27a" stroke="#16130c" stroke-width="2.5"/>
+      <circle cx="78" cy="106" r="7" fill="#ffe27a" stroke="#16130c" stroke-width="2.5"/>
+      <rect x="0" y="118" width="100" height="12" rx="4" fill="#2a2d35"/>
+    </svg>`;
+  }
+  const SUB_BARRIER_SVG = `<svg viewBox="0 0 100 55" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="8" y="18" width="8" height="37" fill="#5b5446" stroke="#16130c" stroke-width="2"/>
+    <rect x="84" y="18" width="8" height="37" fill="#5b5446" stroke="#16130c" stroke-width="2"/>
+    <g stroke="#16130c" stroke-width="2.5">
+      <rect x="2" y="6" width="96" height="18" rx="4" fill="#e23d4b"/>
+    </g>
+    <g fill="#fff">
+      <rect x="14" y="8" width="12" height="14" transform="skewX(-18)" transform-origin="20 15"/>
+      <rect x="44" y="8" width="12" height="14" transform="skewX(-18)" transform-origin="50 15"/>
+      <rect x="74" y="8" width="12" height="14" transform="skewX(-18)" transform-origin="80 15"/>
+    </g>
+  </svg>`;
+  function subSceneSVG() {
+    // static backdrop: sky, sun, clouds, skyline, ground, walls, 3 tracks
+    const VP = 280, HZ = 150;
+    let rails = "", beds = "", ties = "";
+    for (const l of [-1, 0, 1]) {
+      const bx = VP + l * 168, tx = VP + l * 168 * 0.06;
+      beds += `<polygon points="${bx - 44},400 ${bx + 44},400 ${tx + 5},${HZ} ${tx - 5},${HZ}" fill="#9aa1ab"/>`;
+      rails += `<line x1="${bx - 26}" y1="400" x2="${tx - 2.5}" y2="${HZ}" stroke="#e6eaf0" stroke-width="4"/>
+                <line x1="${bx - 26}" y1="400" x2="${tx - 2.5}" y2="${HZ}" stroke="#5b6068" stroke-width="1.2"/>
+                <line x1="${bx + 26}" y1="400" x2="${tx + 2.5}" y2="${HZ}" stroke="#e6eaf0" stroke-width="4"/>
+                <line x1="${bx + 26}" y1="400" x2="${tx + 2.5}" y2="${HZ}" stroke="#5b6068" stroke-width="1.2"/>`;
+      for (let k = 1; k <= 9; k++) {
+        const t = Math.pow(k / 9.5, 1.9), y = HZ + 244 * t, f = 0.06 + 0.94 * t;
+        const cx = VP + l * 168 * f, half = 36 * f;
+        ties += `<line x1="${cx - half}" y1="${y}" x2="${cx + half}" y2="${y}" stroke="#7a5a3a" stroke-width="${Math.max(1.5, 6 * f)}"/>`;
+      }
+    }
+    let city = "";
+    const bld = [[0,52,44],[48,34,70],[86,60,38],[128,42,58],[174,30,80],[208,56,46],[258,38,64],[300,48,50],[352,32,74],[390,58,42],[436,40,60],[480,52,48],[526,36,56]];
+    bld.forEach(([x, w, h], i) => { city += `<rect x="${x}" y="${HZ - h}" width="${w}" height="${h}" fill="${i % 2 ? "#8ea0c9" : "#7c8fb8"}"/>`; });
+    return `<svg class="sub-scene" viewBox="0 0 560 400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="subsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fc0ff"/><stop offset="1" stop-color="#d8efff"/></linearGradient>
+        <linearGradient id="subgnd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c3c9d2"/><stop offset="1" stop-color="#8b929e"/></linearGradient>
+      </defs>
+      <rect x="0" y="0" width="560" height="${HZ}" fill="url(#subsky)"/>
+      <circle cx="74" cy="46" r="24" fill="#ffe27a"/><circle cx="74" cy="46" r="34" fill="#ffe27a" opacity=".28"/>
+      <g fill="#fff" opacity=".9"><ellipse cx="380" cy="52" rx="34" ry="12"/><ellipse cx="410" cy="44" rx="24" ry="10"/><ellipse cx="180" cy="78" rx="28" ry="10"/></g>
+      ${city}
+      <rect x="0" y="${HZ}" width="560" height="${400 - HZ}" fill="url(#subgnd)"/>
+      <polygon points="0,400 112,400 ${VP - 168 * 0.06 - 44},${HZ} 0,${HZ}" fill="#6e7683"/>
+      <polygon points="560,400 448,400 ${VP + 168 * 0.06 + 44},${HZ} 560,${HZ}" fill="#6e7683"/>
+      ${beds}${ties}${rails}
+    </svg>`;
+  }
+  function renderSubwayGame(body, Q, setAnswer, avatar) {
+    body.innerHTML = `
+      <div class="sub-stage" id="sub-stage">
+        ${subSceneSVG()}
+        <div class="sub-layer" id="sub-layer"></div>
+        <div class="sub-shadow" id="sub-shadow"></div>
+        <div class="sub-player" id="sub-player">${avatarSVG(avatar, { noBg: true })}</div>
+        <div class="sub-hud"><span id="sub-time">0.0s</span><span id="sub-coins">🪙 0</span><span id="sub-lives">❤️❤️❤️</span></div>
+        <div class="sub-ov" id="sub-ov">
+          <div class="sub-msg">Surf the subway.<small>Swipe or ◀ ▶ to change lanes, ▲ / swipe up to jump the barriers. Trains cannot be jumped.</small></div>
+          <button class="btn btn-primary sub-go" type="button">▶ Start</button>
+        </div>
+      </div>
+      <div class="sub-dpad">
+        <button class="sub-btn" data-act="left" type="button" aria-label="left">◀</button>
+        <button class="sub-btn" data-act="jump" type="button" aria-label="jump">▲</button>
+        <button class="sub-btn" data-act="right" type="button" aria-label="right">▶</button>
+      </div>
+      <div class="sub-reveal" hidden></div>`;
+    const VW = 560, VH = 400, HZ = 150;
+    const stage = $("#sub-stage", body), layer = $("#sub-layer", body), player = $("#sub-player", body), shadow = $("#sub-shadow", body);
+    const ov = $("#sub-ov", body), reveal = $(".sub-reveal", body);
+    const timeEl = $("#sub-time", body), coinsEl = $("#sub-coins", body), livesEl = $("#sub-lives", body);
+    let W = 0, H = 0, sx = 1, sy = 1;
+    function measure() { const r = stage.getBoundingClientRect(); W = r.width; H = r.height; sx = W / VW; sy = H / VH; }
+    const proj = z => { const t = Math.pow(Math.max(0, 1 - z), 1.9); return { t, y: HZ + 244 * t, s: 0.10 + 0.90 * t }; };
+    const laneX = (l, t) => 280 + (l - 1) * 168 * (0.06 + 0.94 * t);
+
+    let running = false, loop = null, last = 0, elapsed = 0, best = 0, lives = 3, coins = 0;
+    let lane = 1, laneVis = 1, jy = 0, vy = 0, spawnAcc = 0, ents = [], answered = false;
+    const PLAYER_W = 58;
+
+    function updateHud() { timeEl.textContent = elapsed.toFixed(1) + "s"; coinsEl.textContent = "🪙 " + coins; livesEl.textContent = lives > 0 ? "❤️".repeat(lives) : "💀"; }
+    function clearEnts() { ents.forEach(e => e.el.remove()); ents = []; }
+    function spawn() {
+      const kind = Math.random();
+      const l1 = Math.floor(Math.random() * 3);
+      if (kind < 0.5) addEnt("train", l1, 1.15);
+      else if (kind < 0.72) addEnt("barrier", l1, 1.05);
+      else { for (let k = 0; k < 3; k++) addEnt("coin", l1, 1.05 + k * 0.11); }
+      // second obstacle in a different lane once you're warmed up (never all 3)
+      if (elapsed > 10 && kind < 0.72 && Math.random() < 0.4) {
+        const l2 = (l1 + 1 + Math.floor(Math.random() * 2)) % 3;
+        addEnt(Math.random() < 0.6 ? "train" : "barrier", l2, 1.3);
+      }
+    }
+    function addEnt(type, l, z) {
+      const el = document.createElement("div");
+      el.className = "sub-ent sub-" + type;
+      if (type === "train") el.innerHTML = subTrainSVG(SUB_TRAIN_COLORS[Math.floor(Math.random() * SUB_TRAIN_COLORS.length)]);
+      else if (type === "barrier") el.innerHTML = SUB_BARRIER_SVG;
+      layer.appendChild(el);
+      ents.push({ type, lane: l, z, len: type === "train" ? 0.26 : 0, el });
+    }
+    function paintEnt(e) {
+      const p = proj(e.z);
+      let w, h;
+      if (e.type === "train") { w = 148 * p.s; h = 190 * p.s; }
+      else if (e.type === "barrier") { w = 132 * p.s; h = 66 * p.s; }
+      else { w = 30 * p.s; h = 30 * p.s; }
+      const x = laneX(e.lane, p.t) * sx - w * sx / 2;
+      const yOff = e.type === "coin" ? 26 * p.s : 0;
+      e.el.style.width = (w * sx) + "px"; e.el.style.height = (h * sy) + "px";
+      e.el.style.left = x + "px"; e.el.style.top = ((p.y - h - yOff) * sy) + "px";
+      e.el.style.zIndex = 100 + Math.round((1 - e.z) * 800);
+      e.el.style.opacity = e.z > 0.93 ? String(Math.max(0, (1 - e.z) / 0.07)) : "1";
+    }
+    function paintPlayer(f) {
+      laneVis += (lane - laneVis) * Math.min(1, 0.22 * f);
+      const t = 1, x = laneX(laneVis, t), s = 1;
+      const w = PLAYER_W * s;
+      player.style.width = (w * sx) + "px"; player.style.height = (w * 1.15 * sy) + "px";
+      player.style.left = (x * sx - w * sx / 2) + "px";
+      player.style.top = ((VH - 12 - w * 1.15 + jy) * sy) + "px";
+      shadow.style.width = (w * 0.9 * sx) + "px"; shadow.style.height = (10 * sy) + "px";
+      shadow.style.left = (x * sx - w * 0.45 * sx) + "px"; shadow.style.top = ((VH - 16) * sy) + "px";
+      shadow.style.opacity = String(0.45 * (1 + jy / 120));
+    }
+    function cleanup() { running = false; clearInterval(loop); removeEventListener("keydown", onKey); }
+    function die() {
+      cleanup();
+      stage.classList.add("sub-hit"); setTimeout(() => stage.classList.remove("sub-hit"), 220);
+      if (elapsed > best) best = elapsed;
+      lives = Math.max(0, lives - 1);
+      updateHud();
+      const pts = best < 6 ? 0 : best < 14 ? 1 : best < 25 ? 2 : 3;
+      setAnswer(pts, { subwayTime: +best.toFixed(1), subwayCoins: coins });
+      reveal.hidden = false;
+      reveal.innerHTML = `Best run: <b>${best.toFixed(1)}s</b> · 🪙 ${coins}`;
+      ov.style.display = "";
+      if (lives > 0) {
+        ov.innerHTML = `<div class="sub-msg">💥 Trained.<small>${lives} ${lives === 1 ? "life" : "lives"} left</small></div><button class="btn btn-primary sub-go" type="button">↻ Use a life</button>`;
+        ov.querySelector(".sub-go").addEventListener("click", start);
+      } else {
+        ov.innerHTML = `<div class="sub-msg">💀 Out of lives<small>Best: ${best.toFixed(1)}s · 🪙 ${coins} — hit Next →</small></div>`;
+      }
+    }
+    function tick() {
+      if (!document.body.contains(stage)) { cleanup(); return; }
+      if (!running) return;
+      const t = Date.now(); let dt = last ? t - last : 16; last = t; if (dt > 60) dt = 60; const f = dt / 16;
+      elapsed += dt / 1000;
+      // jump physics
+      if (jy < 0 || vy < 0) { vy += 0.55 * f; jy += vy * f; if (jy >= 0) { jy = 0; vy = 0; } }
+      const spd = (0.40 + Math.min(0.34, elapsed * 0.012)) * (dt / 1000);
+      spawnAcc += dt;
+      const every = Math.max(720, 1250 - elapsed * 18);
+      if (spawnAcc >= every) { spawnAcc = 0; spawn(); }
+      for (let i = ents.length - 1; i >= 0; i--) {
+        const e = ents[i];
+        e.z -= spd;
+        if (e.z + e.len < -0.06) { e.el.remove(); ents.splice(i, 1); continue; }
+        paintEnt(e);
+        const atPlayer = e.z < 0.05 && e.z + e.len > -0.02;
+        if (!atPlayer || e.lane !== lane) continue;
+        if (e.type === "coin") { coins++; updateHud(); e.el.remove(); ents.splice(i, 1); continue; }
+        if (e.type === "barrier" && jy < -26) continue; // cleared it mid-air
+        updateHud(); die(); return;
+      }
+      updateHud();
+      paintPlayer(f);
+    }
+    function start() {
+      if (running) return;
+      measure(); clearEnts();
+      lane = 1; laneVis = 1; jy = 0; vy = 0; elapsed = 0; spawnAcc = 600;
+      running = true; last = 0;
+      ov.style.display = "none"; reveal.hidden = true;
+      addEventListener("keydown", onKey);
+      updateHud(); paintPlayer(1);
+      clearInterval(loop); loop = setInterval(tick, 24);
+    }
+    const act = a => {
+      if (!running) return;
+      if (a === "left") lane = Math.max(0, lane - 1);
+      else if (a === "right") lane = Math.min(2, lane + 1);
+      else if (a === "jump" && jy === 0) vy = -9.4;
+    };
+    function onKey(e) {
+      const map = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "jump", a: "left", d: "right", w: "jump", " ": "jump" };
+      const k = map[e.key]; if (!k) return;
+      if (location.hash !== "#/test" && location.hash !== "#/debug") { cleanup(); return; }
+      e.preventDefault();
+      if (e.type === "keydown") act(k);
+    }
+    // swipe on the stage
+    let swipe = null;
+    stage.addEventListener("pointerdown", e => { swipe = { x: e.clientX, y: e.clientY }; });
+    stage.addEventListener("pointerup", e => {
+      if (!swipe) return;
+      const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y; swipe = null;
+      if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return;
+      if (Math.abs(dx) > Math.abs(dy)) act(dx > 0 ? "right" : "left");
+      else if (dy < 0) act("jump");
+    });
+    body.querySelectorAll(".sub-btn").forEach(b =>
+      b.addEventListener("pointerdown", e => { e.preventDefault(); act(b.dataset.act); }));
+    ov.querySelector(".sub-go").addEventListener("click", start);
+    measure(); paintPlayer(1);
+  }
+
   /* ----------------------------------------------------------
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
@@ -2877,8 +3116,9 @@
     else if (kind === "imgtext") { renderImgTextGame(qbody, Q, setAnswer); }
     else if (kind === "simon") { renderSimonGame(qbody, Q, setAnswer); }
     else if (kind === "tvvol") { renderTvVolGame(qbody, Q, setAnswer); }
+    else if (kind === "subway") { renderSubwayGame(qbody, Q, setAnswer, state.avatar); }
   }
-  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", simon: "Repeat the pattern", tvvol: "TV volume", dodge: "Sensory dodge", flappy: "Flappy routine", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", imgtext: "What's happening (typed)", polo: "Polo holes", reenterpin: "Re-enter PIN" };
+  const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", simon: "Repeat the pattern", tvvol: "TV volume", dodge: "Sensory dodge", flappy: "Flappy routine", subway: "Subway surf", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", imgtext: "What's happening (typed)", polo: "Polo holes", reenterpin: "Re-enter PIN" };
 
   function submitToQueue(state) {
     bumpCtr();
@@ -3134,6 +3374,7 @@
       { emoji: "🔁", title: "Never Surrenders",        key: "rpsGames",    dir: "high", suffix: " games", desc: "Replayed the unwinnable rock-paper-scissors the most times before giving up.", stat: v => `played <b>${v} unwinnable game${v === 1 ? "" : "s"}</b> before quitting`, roast: "replayed a rigged game that many times. Iconic.", min: 1 },
       { emoji: "🥚", title: "Fed the Most Eggs",       key: "eggsFed",     dir: "high", suffix: " eggs", desc: "Fed more eggs than anybody else.", stat: v => `fed <b>${v} egg${v === 1 ? "" : "s"}</b>`, roast: "the egg never asked for this. You kept going anyway.", min: 1 },
       { emoji: "🧠", title: "Pattern Prophet",         key: "simonRounds", dir: "high", suffix: " rounds", desc: "Repeated the longest Simon sequence from memory.", stat: v => `remembered <b>${v} round${v === 1 ? "" : "s"}</b> of the pattern`, roast: "memorized beeps like it was nothing. Unnerving.", min: 1 },
+      { emoji: "🚇", title: "Subway Surfer",           key: "subwayCoins", dir: "high", suffix: " coins", desc: "Grabbed the most coins while dodging subway trains.", stat: v => `pocketed <b>${v} coin${v === 1 ? "" : "s"}</b> mid-dodge`, roast: "the trains missed. The coins didn't.", min: 1 },
       { emoji: "⌨️", title: "Fastest Typer",           key: "typeSecs",    dir: "low",  suffix: "s", desc: "Typed the sentence correctly in the fewest seconds.", stat: v => `typed the whole sentence in <b>${v} seconds</b>`, roast: "typed it clean and fast. You've done this before.", min: 1 },
       { emoji: "👑", title: "Closest Queen Birthday",  key: "qeDaysOff",   dir: "low",  suffix: " days off", desc: "Guessed closest to Queen Elizabeth II's real birthday (21 April 1926).", stat: v => v === 0 ? `nailed her birthday <b>exactly</b>` : `guessed <b>${v} day${v === 1 ? "" : "s"}</b> away from her birthday`, roast: "why do you know when the Queen was born? (You're among friends.)", min: 1 },
     ];

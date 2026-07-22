@@ -596,7 +596,7 @@
     { kind: "color" },
     { kind: "tvvol" },
     { kind: "qebday" },
-    { kind: "bricks" },
+    { kind: "simon" },
     { kind: "rps" },
     { kind: "boxes" },
     { kind: "typing" },
@@ -611,7 +611,7 @@
     { kind: "imgtext" },
     { kind: "polo" },
     { kind: "flappy" },
-    { kind: "simon" }, // Simon is the last game before the closing re-enter-PIN
+    { kind: "bricks" }, // Brick build is the last game before the closing re-enter-PIN
     { kind: "reenterpin" },
   ];
   function buildQuizOrder() {

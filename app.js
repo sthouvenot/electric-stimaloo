@@ -1926,6 +1926,9 @@
         let diff = Math.abs(hue - g);
         if (diff > 180) diff = 360 - diff;
         const pts = diff < 15 ? 3 : diff < 35 ? 2 : diff < 70 ? 1 : 0;
+        // save the raw angle difference (0-180°) so scoring/awards can be decided
+        // later from real results — smaller = closer match. Also keep the shown +
+        // guessed hue in case a different scoring is wanted.
         const msgs = ["Not even close — were you even looking? 👀", "Same rough ballpark.", "Ooh, pretty close!", "Basically a perfect match. Spooky color memory."];
         // show the real color next to their guess (no confusing "degrees")
         guess.innerHTML = `
@@ -1934,7 +1937,7 @@
             <div class="colq-cmp"><div class="colq-cmp-sw" style="background:hsl(${hue},72%,56%)"></div><span>the color</span></div>
             <div class="colq-cmp"><div class="colq-cmp-sw" style="background:hsl(${g},72%,56%)"></div><span>your match</span></div>
           </div>`;
-        setAnswer(pts);
+        setAnswer(pts, { colorOff: diff, colorShown: hue, colorGuess: g });
       });
     }
   }

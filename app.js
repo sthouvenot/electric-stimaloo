@@ -1730,7 +1730,7 @@
         const o = btn.querySelector(".chest-open"); if (o) o.textContent = correct ? "💎" : "🕳️";
         reveal.hidden = false;
         reveal.textContent = correct ? "✅ Correct" : "❌ Wrong";
-        setAnswer(correct ? 3 : 0, { boxSolved: correct ? 1 : 0 });
+        setAnswer(correct ? 3 : 0, { boxSolved: correct ? 1 : 0, boxPicked: +btn.dataset.i + 1 });
       });
     });
   }
@@ -1884,7 +1884,9 @@
       btn.textContent = "PIN saved ✓";
       btn.disabled = true;
       inp.disabled = true;
-      setAnswer(pts);
+      // save the check breakdown (which of the 3 strength tests passed) so the PIN
+      // game can be re-scored later without the raw PIN.
+      setAnswer(pts, { pinChecksPassed: c.filter(x => x.ok).length, pinNoRepeat: c[0].ok, pinNoPattern: c[1].ok, pinNotBirthYear: c[2].ok });
     });
     setTimeout(() => inp.focus(), 60);
   }
@@ -2008,7 +2010,8 @@
       inp.disabled = true;
       btn.textContent = correct ? "✓ Correct" : "✗ Wrong";
       btn.disabled = true;
-      setAnswer(correct ? 3 : 0);
+      // save whether they correctly recalled their own PIN
+      setAnswer(correct ? 3 : 0, { pinRecalled: correct ? 1 : 0 });
     });
     setTimeout(() => inp.focus(), 60);
   }
@@ -2113,8 +2116,9 @@
       reveal.innerHTML = `📅 <b>${MONTHS[m-1]} ${d}</b>: ${factFor(m, d)}. <i>Are you fond of that?</i><br><br>The answer was <b>21 April 1926</b>. ${exact ? "🎯 Exact match! " : ""}${roasts[pts]}`;
       btn.disabled = true; btn.textContent = "Locked in";
       mSel.disabled = dIn.disabled = yIn.disabled = true;
-      // dist = days off from April 21 (wrapped around the calendar) — powers the "Closest Queen Birthday" award
-      setAnswer(pts, { qeDaysOff: dist });
+      // dist = days off from April 21 (wrapped) — powers the "Closest Queen Birthday"
+      // award. Also save the raw guess + year offset so it can be re-scored later.
+      setAnswer(pts, { qeDaysOff: dist, qeYearOff: yearOff, qeGuess: `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}` });
     });
   }
 
@@ -2342,7 +2346,7 @@
         // register the pick (no right/wrong reveal), then auto-advance to the next question
         body.querySelectorAll(".polo-opt").forEach(b => b.disabled = true);
         btn.classList.add("sel");
-        setAnswer(Q.opts[idx][1]);
+        setAnswer(Q.opts[idx][1], { pick_polo: Q.opts[idx][0] });
         setTimeout(() => { const nb = document.getElementById("next-btn"); if (nb && !nb.disabled) nb.click(); }, 350);
       });
     });
@@ -2366,11 +2370,14 @@
         </figure>
         <div class="options imgq-opts">${optsHtml}</div>
       </div>`;
+    // unique-ish key per image so the four eye questions don't collide
+    const imgKey = (Q.img || "img").split("/").pop().replace(/\.\w+$/, "");
     body.querySelectorAll(".imgq-opt").forEach(btn => {
       btn.addEventListener("click", () => {
         body.querySelectorAll(".imgq-opt").forEach(b => b.classList.remove("selected"));
         btn.classList.add("selected");
-        setAnswer(Q.opts[+btn.dataset.oi][1]);
+        const oi = +btn.dataset.oi;
+        setAnswer(Q.opts[oi][1], { ["pick_" + imgKey]: Q.opts[oi][0] });
       });
     });
   }
@@ -3516,7 +3523,10 @@
           state.__selByStep[i] = idx;
           optWrap.querySelectorAll(".option").forEach(x => x.classList.remove("selected"));
           b.classList.add("selected");
-          setAnswer(o[1]);
+          // save the exact option they picked (text), keyed by the question label,
+          // so re-scoring later never has to guess from points alone.
+          const picks = {}; picks[`pick_${Q.label || Q.kind || i}`] = o[0];
+          setAnswer(o[1], picks);
         });
         optWrap.appendChild(b);
       });

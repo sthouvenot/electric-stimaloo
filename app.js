@@ -3166,7 +3166,19 @@
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
-    const state = { step: -1, order: buildQuizOrder(), firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "", dateSurvey: null, alreadyDone: false, resuming: false };
+    const state = { step: -1, order: buildQuizOrder(), firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "", dateSurvey: null, alreadyDone: false, resuming: false, resumeTip: false };
+
+    // after the "you can resume" heads-up: run the date-guest / returning-guest
+    // intros (if any), otherwise drop straight into Q1.
+    function proceedAfterTip() {
+      state.resumeTip = false;
+      const date = findDateGuest(state.firstName, state.lastInitial);
+      if (date) { state.dateStep = "survey"; state.welcome = false; state.step = 0; paint(); window.scrollTo({ top: 0, behavior: "auto" }); return; }
+      const ret = findReturningGuest(state.firstName, state.lastInitial);
+      if (ret) { state.returningFull = ret.full; state.returningSentence = RETURNING_SENTENCES[ret.full] || RETURNING_FALLBACK; state.welcome = true; }
+      else { state.returningFull = ""; state.returningSentence = ""; state.welcome = false; }
+      state.step = 0; paint(); window.scrollTo({ top: 0, behavior: "auto" });
+    }
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
     const container = el(`<section class="section"><div class="quiz-shell"></div></section>`);
     const shellEl = $(".quiz-shell", container);
@@ -3377,12 +3389,9 @@
             state.step = Math.max(0, Math.min(prog.step || 0, state.order.length - 1));
             paint(); window.scrollTo({ top: 0 }); return;
           }
-          const date = findDateGuest(state.firstName, state.lastInitial);
-          if (date) { state.dateStep = "survey"; state.welcome = false; state.step = 0; paint(); window.scrollTo({ top: 0, behavior: "auto" }); return; }
-          const ret = findReturningGuest(state.firstName, state.lastInitial);
-          if (ret) { state.returningFull = ret.full; state.returningSentence = RETURNING_SENTENCES[ret.full] || RETURNING_FALLBACK; state.welcome = true; state.step = 0; paint(); }
-          else { state.returningFull = ""; state.returningSentence = ""; state.welcome = false; state.step = 0; paint(); }
-          window.scrollTo({ top: 0, behavior: "auto" }); // start the test from the top
+          // fresh start: first show the "you can come back" heads-up, then the
+          // date/returning intros and Q1 follow when they continue.
+          state.resumeTip = true; state.step = 0; paint(); window.scrollTo({ top: 0, behavior: "auto" });
         };
         startBtn.addEventListener("click", go);
         // tapping the name on the preview jumps back up to the name fields
@@ -3406,6 +3415,24 @@
         markSel();
         refresh();
         setTimeout(() => first.focus(), 60);
+        return;
+      }
+
+      // heads-up right after Start: you can leave and come back by re-entering
+      // the same name (matches the date-screen interstitial style).
+      if (state.resumeTip) {
+        const node = el(`
+          <div class="card welcome-back fade-in">
+            <span class="wb-tag">☕ Before you begin</span>
+            <div class="wb-avatar"><span class="avchip" style="width:96px;height:96px">${avatarSVG(state.avatar)}</span></div>
+            <h2 class="section-title">Take your time, <span class="grad-text">${esc(state.firstName.trim())}</span>.</h2>
+            <p class="wb-text">It's ${QUESTIONS.length} questions and some little games. If anything goes wrong, your phone locks, or you just need a break — no stress. <b>Come back any time and enter the same name to pick up right where you left off.</b></p>
+            <div class="quiz-nav" style="justify-content:center;margin-top:8px">
+              <button class="btn btn-primary btn-lg" id="tip-begin">Got it — let's go →</button>
+            </div>
+          </div>`);
+        shellEl.appendChild(node);
+        $("#tip-begin", node).addEventListener("click", proceedAfterTip);
         return;
       }
 

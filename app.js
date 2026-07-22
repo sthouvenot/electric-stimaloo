@@ -589,6 +589,78 @@
     },
   ];
   const MAX_RAW = QUESTIONS.length * 3;
+
+  // ── Relative curve scoring ────────────────────────────────────────────────
+  // Some games have no intrinsic "right" score — a Flappy run of 8 pipes only
+  // means something next to everyone else's runs. Those games are scored on a
+  // curve across all approved contestants: bottom third → 1pt, middle → 2pt,
+  // top → 3pt, ties grouped together. Games with an intrinsic target (TV volume
+  // 67, Queen's birthday date, PINs, image quizzes) keep their fixed scoring and
+  // are NOT listed here. World's Hardest is also excluded (1pt per level).
+  //   metric: the stored metric that measures performance
+  //   dir:    "high" = bigger is better, "low" = smaller is better
+  // A guest only enters the curve if they actually completed the game (has a
+  // finite metric > 0 for counts / a recorded time). Non-finishers keep raw 0.
+  const CURVE_GAMES = [
+    { kind: "flappy", metric: "flappyBest",  dir: "high" },
+    { kind: "eggs",   metric: "eggsFed",     dir: "high" },
+    { kind: "subway", metric: "subwayTime",  dir: "high" },
+    { kind: "simon",  metric: "simonRounds", dir: "high" },
+    { kind: "dodge",  metric: "dodge",       dir: "high" },
+    { kind: "train",  metric: "trainWatch",  dir: "high" },
+    { kind: "rps",    metric: "rpsGames",    dir: "high" },
+    { kind: "bricks", metric: "brickTime",   dir: "low"  },
+    { kind: "rings",  metric: "ringTime",    dir: "low"  },
+    { kind: "typing", metric: "typeSecs",    dir: "low"  },
+  ];
+  // canonical QUESTIONS index for each curved game's kind (answers[] is keyed by it)
+  const kindIndex = k => QUESTIONS.findIndex(q => (q.kind || "choice") === k);
+
+  // Given the pool of guests, return a bottom/middle/top-third points map keyed
+  // by guest id for one curved game. Ties share the same band. Guests without a
+  // valid completed metric are omitted (they keep their raw 0).
+  function curveOneGame(guests, g) {
+    const scored = guests
+      .map(gu => ({ id: gu.id, v: gu.metrics ? gu.metrics[g.metric] : undefined }))
+      .filter(x => typeof x.v === "number" && isFinite(x.v) && x.v > 0);
+    const out = {};
+    const n = scored.length;
+    if (!n) return out;
+    // rank so that a HIGHER-performing run gets a HIGHER point band regardless of dir
+    const better = (a, b) => g.dir === "high" ? a - b : b - a; // ascending in "worse→better"
+    scored.sort((a, b) => better(a.v, b.v));
+    // assign each DISTINCT value a band by where its group's midpoint falls in [0,n)
+    // (ties grouped: every guest with the same value gets the same band)
+    let i = 0;
+    while (i < n) {
+      let j = i;
+      while (j < n && scored[j].v === scored[i].v) j++;   // [i,j) share one value
+      const mid = (i + j - 1) / 2;                        // group's central rank
+      const frac = n === 1 ? 0.5 : mid / (n - 1);          // 0 = worst, 1 = best
+      const band = frac < 1 / 3 ? 1 : frac < 2 / 3 ? 2 : 3;
+      for (let k = i; k < j; k++) out[scored[k].id] = band;
+      i = j;
+    }
+    return out;
+  }
+
+  // Return a shallow-cloned guest list with curved games' answers overridden and
+  // each guest's score recomputed. Fixed-score games are left untouched. Pure —
+  // does not mutate stored submissions.
+  function applyCurve(guests) {
+    if (!guests.length) return guests;
+    const bands = CURVE_GAMES.map(g => ({ g, idx: kindIndex(g.kind), map: curveOneGame(guests, g) }))
+      .filter(b => b.idx >= 0);
+    return guests.map(gu => {
+      const answers = (gu.answers || []).slice();
+      bands.forEach(b => { if (b.map[gu.id] != null) answers[b.idx] = b.map[gu.id]; });
+      const raw = answers.reduce((a, v) => a + (v == null ? 0 : v), 0);
+      const score = Math.min(100, Math.round((raw / MAX_RAW) * 100));
+      return Object.assign({}, gu, { answers, score });
+    });
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   // Games keep their authored order (bank PIN must come before re-enter PIN, and
   // it stays last). The multiple-choice questions get dropped into random gaps
   // between them, so no two players see them in the same places.
@@ -650,7 +722,7 @@
 
   const store = {
     all() { const s = DB.submissions || {}; return Object.keys(s).map(k => s[k]).filter(Boolean); },
-    approved() { return this.all().filter(s => s.status === "approved").sort((a, b) => a.score - b.score); },
+    approved() { return applyCurve(this.all().filter(s => s.status === "approved")).sort((a, b) => a.score - b.score); },
     pending() { return this.all().filter(s => s.status === "pending"); },
     add(sub) { DB.submissions[sub.id] = sub; fbWrite("PUT", "submissions/" + sub.id, sub); },
     update(id, patch) { if (DB.submissions[id]) Object.assign(DB.submissions[id], patch); fbWrite("PATCH", "submissions/" + id, patch); },

@@ -529,9 +529,10 @@ a { color: inherit; }
 .rps-move span { font-family: var(--font-head); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); }
 .rps-move:hover:not(:disabled) { transform: translate(-1px, -1px); background: var(--c3); }
 .rps-move:disabled { opacity: .45; cursor: default; }
-.rps-giveup { font-family: var(--font-head); font-weight: 800; font-size: 18px; color: var(--ink); background: var(--c3); border: var(--border); border-radius: 999px; box-shadow: var(--shadow); padding: 15px 34px; cursor: pointer; transition: transform .1s, box-shadow .1s; }
-.rps-giveup:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-lg); }
-.rps-giveup:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+/* Play again (top) + I give up (below), stacked and both the same big size,
+   matching the quiz Next button's footprint */
+.rps-btns { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 4px; }
+.rps-bigbtn { justify-content: center; min-width: 220px; padding: 14px 26px; font-size: 16px; }
 .rps-reveal { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--ink-soft); text-align: center; line-height: 1.5; max-width: 480px; }
 .rps-twist { color: var(--c6); }
 .start-row { align-items: center; flex-wrap: wrap; }
@@ -1221,6 +1222,10 @@ body.present-fs .mp-rank { font-size: 22px; }
 .brick-target { font-family: var(--font-head); font-weight: 700; font-size: 13px; text-align: center; color: var(--ink-soft); min-height: 18px; }
 .brick-bin { position: relative; height: 168px; border: var(--border); border-radius: 14px; box-shadow: var(--shadow-sm); overflow: hidden; touch-action: none;
   background: #d8c3a4; background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 2px, transparent 2px 26px), repeating-linear-gradient(0deg, rgba(0,0,0,.04) 0 2px, transparent 2px 26px); }
+/* on phones the bin is narrow, so give it much more height to spread the 20
+   bricks out — otherwise wide bricks stack on top of each other and you can't
+   grab the one you need (the wide green chest especially). */
+@media (max-width: 600px) { .brick-bin { height: 300px; } }
 .brick-bin-label { position: absolute; bottom: 5px; right: 10px; font-family: var(--font-head); font-weight: 800; font-size: 11px; color: rgba(0,0,0,.3); letter-spacing: .04em; text-transform: uppercase; pointer-events: none; }
 .brick-piece { position: absolute; line-height: 0; cursor: grab; transform: rotate(var(--rot, 0deg)); filter: drop-shadow(1px 2px 1px rgba(0,0,0,.35)); transition: transform .18s; touch-action: none; }
 .brick-piece svg { display: block; }

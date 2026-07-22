@@ -1780,11 +1780,13 @@
           <button class="rps-move" data-m="paper" type="button">📄<span>Paper</span></button>
           <button class="rps-move" data-m="scissors" type="button">✂️<span>Scissors</span></button>
         </div>
-        <button class="rps-giveup" id="rps-giveup" type="button">I give up →</button>
         <div class="rps-reveal" hidden></div>
+        <div class="rps-btns" id="rps-btns">
+          <button class="btn btn-ghost rps-bigbtn" id="rps-giveup" type="button">I give up →</button>
+        </div>
       </div>`;
     const youPick = $("#rps-you", body), cpuPick = $("#rps-cpu", body), scoreEl = $("#rps-score", body), resultEl = $("#rps-result", body);
-    const movesEl = $("#rps-moves", body), reveal = $(".rps-reveal", body), giveBtn = $("#rps-giveup", body);
+    const movesEl = $("#rps-moves", body), reveal = $(".rps-reveal", body), giveBtn = $("#rps-giveup", body), btns = $("#rps-btns", body);
     let outcomes = [], round = 0, you = 0, cpu = 0, busy = false, games = 0, done = false;
     // best 3 of 5: computer always reaches 3 first; human gets 0-2 (weighted to feel close)
     function rig() {
@@ -1802,6 +1804,7 @@
       scoreEl.textContent = "You 0 — 0 CPU";
       resultEl.textContent = "Best 3 of 5. Make your move.";
       reveal.hidden = true; reveal.innerHTML = "";
+      const retry = btns.querySelector(".rps-retry"); if (retry) retry.remove(); // gone until the next match ends
       setMovesEnabled(true);
     }
     function play(human) {
@@ -1838,9 +1841,13 @@
       resultEl.textContent = `💻 Computer wins it, ${cpu}–${you}.`;
       // NO gag here — just nudge them to try again
       reveal.hidden = false;
-      reveal.innerHTML = `${you === 2 ? "Agonizingly close." : "Tough one."}
-        <div class="rps-again"><button class="btn btn-primary rps-retry" type="button">🔁 Play again</button></div>`;
-      reveal.querySelector(".rps-retry").addEventListener("click", newMatch);
+      reveal.innerHTML = `${you === 2 ? "Agonizingly close." : "Tough one."}`;
+      // stack Play again (top) over I give up (below), both the same big size
+      if (!btns.querySelector(".rps-retry")) {
+        const retry = el(`<button class="btn btn-primary rps-bigbtn rps-retry" type="button">🔁 Play again</button>`);
+        retry.addEventListener("click", newMatch);
+        btns.insertBefore(retry, giveBtn);
+      }
     }
     function giveUp() {
       if (done) return;
@@ -3075,6 +3082,7 @@
     }
     function endDrag(e) {
       const el = drag.el;
+      document.body.style.overflow = ""; // release the scroll lock from pointerdown
       el.removeEventListener("pointermove", moveDrag);
       el.removeEventListener("pointerup", endDrag);
       el.removeEventListener("pointercancel", endDrag);
@@ -3126,6 +3134,9 @@
         drag = { el, gx, gy, home };
         el.style.left = (e.clientX - gx) + "px";
         el.style.top = (e.clientY - gy) + "px";
+        // lock page scroll for the duration of the drag so a long drag from the bin
+        // up to the plate on mobile can't scroll the plate out from under the drop.
+        document.body.style.overflow = "hidden";
         try { el.setPointerCapture(e.pointerId); } catch (_) {}
         el.addEventListener("pointermove", moveDrag);
         el.addEventListener("pointerup", endDrag);

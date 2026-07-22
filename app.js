@@ -2651,19 +2651,16 @@
     function spawn() {
       const kind = Math.random();
       const l1 = Math.floor(Math.random() * 3);
-      // coins in a run are spaced well apart in depth (0.22) so they don't visually
-      // bunch up near the player and get swept together — each one is a distinct,
-      // separately-collected pickup instead of a blob worth several at once.
-      const COIN_GAP = 0.22;
+      // one coin at a time — a single coin is always worth exactly 1, no runs to
+      // scoop together and no way to over-award.
       if (kind < 0.42) addEnt("train", l1, 1.15);
       else if (kind < 0.6) addEnt("barrier", l1, 1.05);
-      else { const run = 3 + Math.floor(Math.random() * 3); for (let k = 0; k < run; k++) addEnt("coin", l1, 1.05 + k * COIN_GAP); }
-      // when an obstacle spawns, drop a coin line in one of the OTHER lanes so
-      // there's almost always coins to grab while you dodge
+      else addEnt("coin", l1, 1.05);
+      // when an obstacle spawns, also drop a single coin in one of the OTHER lanes
+      // so there's usually a coin to grab while you dodge
       if (kind < 0.6) {
         const cl = (l1 + 1 + Math.floor(Math.random() * 2)) % 3;
-        const run = 2 + Math.floor(Math.random() * 3);
-        for (let k = 0; k < run; k++) addEnt("coin", cl, 1.15 + k * COIN_GAP);
+        addEnt("coin", cl, 1.15);
       }
       // second obstacle in a different lane once you're warmed up (never all 3)
       if (elapsed > 10 && kind < 0.6 && Math.random() < 0.4) {

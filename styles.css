@@ -759,9 +759,14 @@ a { color: inherit; }
 .graph { position: relative; height: 210px; margin: 18px 0 0; }
 .graph-axis { position: absolute; left: 0; right: 0; bottom: 58px; height: 20px; border-radius: 999px; background: var(--rainbow); border: var(--border); }
 .graph-axis-labels { position: absolute; left: 0; right: 0; bottom: 24px; display: flex; justify-content: space-between; color: var(--ink); font-family: var(--font-head); font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
-.guest-dot { position: absolute; bottom: 58px; transform: translate(-50%, 50%); display: flex; flex-direction: column; align-items: center; gap: 6px; transition: left .9s cubic-bezier(.2,.8,.2,1), opacity .5s; opacity: 0; }
+.guest-dot { position: absolute; bottom: 58px; transform: translate(-50%, 50%); display: flex; flex-direction: column; align-items: center; gap: 6px; transition: left .9s cubic-bezier(.2,.8,.2,1), opacity .5s; opacity: 0; z-index: 2; }
 .guest-dot.show { opacity: 1; }
-.guest-dot .pin { width: 38px; height: 38px; border-radius: 50%; background: var(--white); border: var(--border); box-shadow: var(--shadow-sm); overflow: hidden; }
+/* hovering a guest brings them to the front so overlapping dots don't hide them,
+   and pops their pin + name flag up over the neighbours */
+.guest-dot:hover { z-index: 50; }
+.guest-dot:hover:not(.current) .pin { transform: scale(1.35); box-shadow: 0 0 0 3px var(--c3), var(--shadow); }
+.guest-dot:hover .flag { z-index: 50; box-shadow: var(--shadow); }
+.guest-dot .pin { width: 38px; height: 38px; border-radius: 50%; background: var(--white); border: var(--border); box-shadow: var(--shadow-sm); overflow: hidden; transition: transform .12s ease, box-shadow .12s ease; cursor: pointer; }
 .guest-dot .pin svg { width: 100%; height: 100%; display: block; }
 .guest-dot .flag { position: absolute; bottom: 38px; white-space: nowrap; background: var(--white); border: var(--border); border-radius: 999px; padding: 6px 13px; font-family: var(--font-head); font-weight: 800; font-size: 13px; box-shadow: var(--shadow-sm); }
 .guest-dot .flag .s { color: var(--ink-faint); font-weight: 700; margin-left: 6px; }

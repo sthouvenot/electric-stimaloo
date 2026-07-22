@@ -360,16 +360,6 @@
       ],
     },
     {
-      kind: "subway",
-      q: "Surf the subway — dodge the trains, grab the coins.",
-      opts: [
-        ["Clipped by the first train", 0],
-        ["Survived a bit", 1],
-        ["A proper run", 2],
-        ["Certified surfer", 3],
-      ],
-    },
-    {
       kind: "whg",
       q: "Get the red square across. Don't touch the blue.",
       opts: [
@@ -500,6 +490,16 @@
       ],
     },
     {
+      kind: "choice", mc: true, label: "Met twice",
+      q: "You bump into someone you've met exactly twice. What's going on in your head?",
+      opts: [
+        ["Greeting them by name", 0],
+        ["I know the face, I've lost the name", 1],
+        ["I know where we met and what they said — but not the name", 3], // context-keyed memory
+        ["No idea who this is", 2],
+      ],
+    },
+    {
       kind: "choice", mc: true, label: "Season to taste",
       q: "A recipe says \"season to taste.\" You:",
       opts: [
@@ -526,7 +526,6 @@
   const CURVE_GAMES = [
     { kind: "flappy", metric: "flappyBest",  dir: "high" },
     { kind: "eggs",   metric: "eggsFed",     dir: "high" },
-    { kind: "subway", metric: "subwayTime",  dir: "high" },
     { kind: "simon",  metric: "simonRounds", dir: "high" },
     { kind: "dodge",  metric: "dodge",       dir: "high" },
     { kind: "train",  metric: "trainWatch",  dir: "high" },
@@ -601,12 +600,12 @@
     { kind: "rps" },
     { kind: "boxes" },
     { kind: "typing" },
-    { kind: "subway" },
     { kind: "whg" },
     // all multiple-choice questions grouped between World's Hardest and Ring sort
     { label: "Hunger" },
     { label: "Ruins the day" },
     { label: "Season to taste" },
+    { label: "Met twice" },
     { kind: "rings" },
     { kind: "eggs" },
     { kind: "imgtext" },

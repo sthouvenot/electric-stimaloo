@@ -677,9 +677,10 @@
   function saveProgress(state) {
     if (!state.firstName.trim() || !state.lastInitial.trim()) return;
     const rec = state.done
-      ? { submitted: true }
+      ? { submitted: true, serverId: state.serverId || null }
       : {
-          submitted: false, step: state.step, order: state.order,
+          submitted: false, serverId: state.serverId || null,
+          step: state.step, order: state.order,
           answers: state.answers, metrics: state.metrics, bankPin: state.bankPin,
           avatar: state.avatar, agreed: state.agreed, updatedAt: Date.now(),
         };
@@ -3166,12 +3167,13 @@
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
-    const state = { step: -1, order: buildQuizOrder(), firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "", dateSurvey: null, alreadyDone: false, resuming: false, resumeTip: false };
+    const state = { step: -1, order: buildQuizOrder(), firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "", dateSurvey: null, alreadyDone: false, resuming: false, resumeTip: false, serverId: null };
 
     // after the "you can resume" heads-up: run the date-guest / returning-guest
     // intros (if any), otherwise drop straight into Q1.
     function proceedAfterTip() {
       state.resumeTip = false;
+      saveInProgress(state); // record the attempt in the admin panel the moment they begin
       const date = findDateGuest(state.firstName, state.lastInitial);
       if (date) { state.dateStep = "survey"; state.welcome = false; state.step = 0; paint(); window.scrollTo({ top: 0, behavior: "auto" }); return; }
       const ret = findReturningGuest(state.firstName, state.lastInitial);
@@ -3385,6 +3387,7 @@
             state.metrics = prog.metrics || {};
             state.bankPin = prog.bankPin || "";
             if (prog.avatar) state.avatar = prog.avatar;
+            state.serverId = prog.serverId || null; // keep updating the same admin record
             state.resuming = true;
             state.step = Math.max(0, Math.min(prog.step || 0, state.order.length - 1));
             paint(); window.scrollTo({ top: 0 }); return;
@@ -3590,7 +3593,12 @@
           state.score = computeScore();
           submitToQueue(state);
           state.done = true; saveProgress(state); paint(); // mark this name submitted
-        } else { state.step++; saveProgress(state); paint(); } // snapshot progress for resume
+        } else {
+          state.step++;
+          saveInProgress(state); // update the admin record with their latest answers
+          saveProgress(state);   // and the local resume snapshot
+          paint();
+        }
       });
       shellEl.appendChild(node);
     }
@@ -3643,10 +3651,13 @@
   }
   const GAME_LABELS = { choice: "Choice", bankpin: "Bank PIN", train: "Train stare", color: "Color memory", simon: "Repeat the pattern", tvvol: "TV volume", rings: "Ring sort", bricks: "Brick build", dodge: "Sensory dodge", flappy: "Flappy routine", subway: "Subway surf", whg: "World's Hardest", rps: "Rock Paper Scissors", eggs: "Feed eggs", boxes: "3 boxes", typing: "Typing race", qebday: "Queen's birthday", imgquiz: "What's happening", imgtext: "What's happening (typed)", polo: "Polo holes", reenterpin: "Re-enter PIN" };
 
-  function submitToQueue(state) {
-    bumpCtr();
-    store.add({
-      id: uid(),
+  // build the server record from the current quiz state. answered = how many of
+  // the 25 questions have a value; progress-scored so unfinished attempts still
+  // get a (partial) score.
+  function buildSubmission(state, status) {
+    const answered = state.answers.filter(a => a != null).length;
+    return {
+      id: state.serverId,
       name: (state.name || "").trim(),
       firstName: state.firstName.trim(),
       lastInitial: state.lastInitial.trim().toUpperCase(),
@@ -3657,9 +3668,26 @@
       agreed: !!state.agreed,
       returning: state.returningFull || "",
       dateSurvey: state.dateSurvey || null,
-      status: "pending",
-      createdAt: Date.now(),
-    });
+      answered, total: QUESTIONS.length,
+      status,
+      createdAt: state.createdAt || Date.now(),
+      updatedAt: Date.now(),
+    };
+  }
+  // called the moment they start + on every step: writes/updates an in-progress
+  // record so the host can see (and optionally score) unfinished attempts.
+  function saveInProgress(state) {
+    if (state.done || !state.firstName.trim() || !state.lastInitial.trim()) return;
+    if (!state.serverId) { state.serverId = uid(); state.createdAt = Date.now(); bumpCtr(); }
+    const raw = state.answers.reduce((a, v) => a + (v == null ? 0 : v), 0);
+    state.score = Math.min(100, Math.round((raw / MAX_RAW) * 100));
+    store.add(buildSubmission(state, "in_progress"));
+    saveProgress(state); // persist the serverId locally too
+  }
+  function submitToQueue(state) {
+    if (!state.serverId) { state.serverId = uid(); state.createdAt = Date.now(); bumpCtr(); }
+    // flip the same record (in-progress or new) to a completed, pending entry
+    store.add(buildSubmission(state, "pending"));
   }
 
   /* ----------------------------------------------------------
@@ -3817,7 +3845,7 @@
     function paintQueue() {
       updateStats();
       const list = store.all().slice().sort((a, b) => {
-        const order = { pending: 0, approved: 1, rejected: 2 };
+        const order = { pending: 0, in_progress: 1, approved: 2, rejected: 3 };
         if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
         return b.createdAt - a.createdAt;
       });
@@ -3836,8 +3864,8 @@
     const row = el(`
       <div class="sub-row ${s.status}">
         <div>
-          <div class="sub-name">${avatarChip(s.avatar, 30)} ${esc(s.name)} ${s.seeded ? "<span style='font-size:11px;color:var(--ink-faint)'>(demo)</span>" : ""}</div>
-          <div class="sub-meta">Score ${s.score}/100 · ${fmtTime(s.createdAt)} · <span style="text-transform:capitalize">${s.status}</span></div>
+          <div class="sub-name">${avatarChip(s.avatar, 30)} ${esc(s.name)} ${s.seeded ? "<span style='font-size:11px;color:var(--ink-faint)'>(demo)</span>" : ""}${s.status === "in_progress" ? `<span class="sub-inprog">🕓 in progress · ${s.answered || 0}/${s.total || QUESTIONS.length}</span>` : ""}</div>
+          <div class="sub-meta">Score ${s.score}/100 · ${fmtTime(s.createdAt)} · <span style="text-transform:capitalize">${s.status === "in_progress" ? "in progress" : s.status}</span></div>
           <div class="sub-tier">${t.emoji} ${t.name}</div>
           ${s.dateSurvey ? `<div class="date-survey-note">💘 <b>${esc(s.name)}</b> rated dating the host <b>${s.dateSurvey.rating ? esc(s.dateSurvey.rating) + "/10" : "—"}</b>${s.dateSurvey.feedback ? `<div class="dsn-fb">“${esc(s.dateSurvey.feedback)}”</div>` : ""}</div>` : ""}
           ${s.answers && s.answers.some(a => a != null) ? `<button class="link-btn" data-act="toggle">View answers</button>` : ""}
@@ -3847,7 +3875,7 @@
       </div>`);
 
     const actions = $(".sub-actions", row);
-    if (s.status === "pending") {
+    if (s.status === "pending" || s.status === "in_progress") {
       const ap = el(`<button class="btn-mini btn-approve">✅ Approve</button>`);
       const rj = el(`<button class="btn-mini btn-reject">Reject</button>`);
       ap.addEventListener("click", () => { store.update(s.id, { status: "approved" }); toast(s.name + " approved!"); confetti.burst(40); refresh(); });

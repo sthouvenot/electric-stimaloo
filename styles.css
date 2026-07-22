@@ -652,6 +652,7 @@ a { color: inherit; }
 @keyframes sealSlide { 0%, 100% { left: 16%; } 50% { left: 84%; } }
 .sealed-tag { font-family: var(--font-head); font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); margin-top: 12px; }
 .result-joke { color: var(--ink-faint); font-style: italic; font-size: 14px; max-width: 430px; margin: 16px auto 14px; line-height: 1.45; }
+.result-nodo { color: var(--ink-soft); font-size: 14px; max-width: 440px; margin: 0 auto 6px; line-height: 1.45; padding: 10px 14px; background: var(--paper-2); border: 2px solid var(--ink-faint); border-radius: 12px; }
 @keyframes pop { from { transform: scale(0) rotate(-20deg); } to { transform: scale(1) rotate(0); } }
 .result-tier { font-family: var(--font-display); font-weight: 400; font-size: clamp(30px, 6.5vw, 52px); margin: 8px 0; line-height: .95;
   background: var(--rainbow); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
@@ -1355,6 +1356,12 @@ body.present-fs .mp-rank { font-size: 22px; }
 .whg-up { grid-area: up; } .whg-left { grid-area: left; } .whg-down { grid-area: down; } .whg-right { grid-area: right; }
 .whg-dbtn { font-size: 22px; font-weight: 800; border: var(--border); border-radius: 14px; background: var(--paper-2); box-shadow: var(--shadow-sm); cursor: pointer; touch-action: none; user-select: none; display: flex; align-items: center; justify-content: center; transition: transform .05s, background .1s; }
 .whg-dbtn.active { background: var(--c5); color: #fff; transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
+/* on phones, make the d-pad much bigger and packed almost edge-to-edge so it's
+   easy to thumb the arrows without missing */
+@media (max-width: 600px) {
+  .whg-dpad { grid-template-columns: repeat(3, 84px); grid-template-rows: repeat(3, 80px); gap: 3px; }
+  .whg-dbtn { font-size: 30px; border-radius: 16px; }
+}
 .whg-field.whg-hit { animation: whgHit .16s ease; }
 @keyframes whgHit { 0%,100%{ box-shadow: var(--shadow); } 50%{ box-shadow: 0 0 0 4px #ff3d3d inset, var(--shadow); } }
 .whg-giveup { background: none; border: none; font-family: var(--font-head); font-weight: 700; font-size: 13px; color: var(--ink-faint); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; opacity: .7; }

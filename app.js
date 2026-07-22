@@ -1456,8 +1456,9 @@
       if (livesEl) livesEl.textContent = lives > 0 ? "❤️".repeat(lives) : "💀";
       const points = best < 3 ? 0 : best < 7 ? 1 : best < 13 ? 2 : 3;
       const verdicts = ["Overwhelmed on contact. Honestly relatable.", "You held on a bit before the meltdown.", "Impressively unbothered. Noise-cancelling soul.", "Total sensory zen. Nothing rattles you."];
-      // best run so far is always the answer; once lives run out, Next is forced
-      setAnswer(points, { dodge: +best.toFixed(1) });
+      // best run so far is always the answer; Next stays locked until lives are
+      // gone — no bailing early on a lives-based game.
+      setAnswer(points, { dodge: +best.toFixed(1) }, lives > 0);
       reveal.hidden = false;
       reveal.innerHTML = `Survived <b>${best.toFixed(1)}s</b> of overload — ${verdicts[points]}<br><span class="dodge-twist">…the longer you can tune out the chaos, the more we suspect you've had practice. 😅</span>`;
       ov.style.display = "";
@@ -1561,7 +1562,9 @@
       if (passedFirst) { lives = Math.max(0, lives - 1); livesEl.textContent = lives > 0 ? "❤️".repeat(lives) : "💀"; }
       const points = best < 1 ? 0 : best < 3 ? 1 : best < 6 ? 2 : 3;
       const verdicts = ["Gravity won instantly. We respect the commitment.", "A few gaps cleared — not bad.", "Genuinely solid flapping.", "Inhuman focus. The pattern is yours."];
-      setAnswer(points, { flappyBest: best });
+      // Next stays locked until you've truly run out of lives (and actually
+      // started a counted run) — no bailing early.
+      setAnswer(points, { flappyBest: best }, !passedFirst || lives > 0);
       reveal.hidden = false;
       reveal.innerHTML = `Best run: <b>${best}</b> pipe${best === 1 ? "" : "s"} — ${verdicts[points]}`;
       ov.style.display = "";
@@ -2661,11 +2664,18 @@
     function spawn() {
       const kind = Math.random();
       const l1 = Math.floor(Math.random() * 3);
-      if (kind < 0.5) addEnt("train", l1, 1.15);
-      else if (kind < 0.72) addEnt("barrier", l1, 1.05);
-      else { for (let k = 0; k < 3; k++) addEnt("coin", l1, 1.05 + k * 0.11); }
+      if (kind < 0.42) addEnt("train", l1, 1.15);
+      else if (kind < 0.6) addEnt("barrier", l1, 1.05);
+      else { const run = 4 + Math.floor(Math.random() * 3); for (let k = 0; k < run; k++) addEnt("coin", l1, 1.05 + k * 0.1); } // longer coin runs, more often
+      // when an obstacle spawns, drop a coin line in one of the OTHER lanes so
+      // there's almost always coins to grab while you dodge
+      if (kind < 0.6) {
+        const cl = (l1 + 1 + Math.floor(Math.random() * 2)) % 3;
+        const run = 3 + Math.floor(Math.random() * 3);
+        for (let k = 0; k < run; k++) addEnt("coin", cl, 1.08 + k * 0.1);
+      }
       // second obstacle in a different lane once you're warmed up (never all 3)
-      if (elapsed > 10 && kind < 0.72 && Math.random() < 0.4) {
+      if (elapsed > 10 && kind < 0.6 && Math.random() < 0.4) {
         const l2 = (l1 + 1 + Math.floor(Math.random() * 2)) % 3;
         addEnt(Math.random() < 0.6 ? "train" : "barrier", l2, 1.3);
       }
@@ -2710,7 +2720,8 @@
       lives = Math.max(0, lives - 1);
       updateHud();
       const pts = best < 6 ? 0 : best < 14 ? 1 : best < 25 ? 2 : 3;
-      setAnswer(pts, { subwayTime: +best.toFixed(1), subwayCoins: coins });
+      // Next stays locked until all lives are spent — no giving up early.
+      setAnswer(pts, { subwayTime: +best.toFixed(1), subwayCoins: coins }, lives > 0);
       reveal.hidden = false;
       reveal.innerHTML = `Best run: <b>${best.toFixed(1)}s</b> · 🪙 ${coins}`;
       ov.style.display = "";
@@ -3435,15 +3446,14 @@
             </div>
             <div class="sealed-tag">🤫 your spot · revealed at the party</div>
             <p class="result-joke">We'd tell you your score… but then we couldn't plot you publicly in front of everyone for maximum drama. Patience. 😈</p>
+            <p class="result-nodo">🔒 No do-overs — <b>your first submission is the one that counts.</b> You can't retake the test, so this is officially your spot on the spectrum.</p>
             <div class="quiz-nav" style="justify-content:center;margin-top:10px">
-              <button class="btn btn-ghost btn-sm" id="retake">Take it again</button>
+              <button class="btn btn-primary btn-sm" id="to-details">📍 Party details →</button>
             </div>
           </div>`);
         shellEl.appendChild(node);
         confetti.burst(180);
-        $("#retake", node).addEventListener("click", () => {
-          state.step = -1; state.order = buildQuizOrder(); state.done = false; state.welcome = false; state.dateStep = ""; state.returningFull = ""; state.returningSentence = ""; state.answers = QUESTIONS.map(() => null); state.metrics = {}; state.bankPin = ""; paint();
-        });
+        $("#to-details", node).addEventListener("click", () => navigate("/details"));
         return;
       }
 
@@ -3495,11 +3505,15 @@
           </div>
         </div>`);
       const qbody = $(".q-body", node);
-      const setAnswer = (points, meta) => {
+      // keepLocked: record the answer/metric but DON'T enable Next yet. Lives-based
+      // games use this on every death so the score stays current, but the player
+      // can't advance (no giving up) until all lives are spent — then they call
+      // setAnswer normally to unlock Next.
+      const setAnswer = (points, meta, keepLocked) => {
         state.answers[qi] = points;
         if (meta) Object.assign(state.metrics, meta);
         const nb = $("#next-btn", node);
-        if (nb) nb.disabled = false;
+        if (nb && !keepLocked) nb.disabled = false;
       };
       dispatchGame(qbody, Q, qi, state, setAnswer, state.step + 1);
       const isLast = state.step === total - 1;

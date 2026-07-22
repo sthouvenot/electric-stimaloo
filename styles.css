@@ -1354,7 +1354,12 @@ body.present-fs .mp-rank { font-size: 22px; }
 }
 
 /* ---- World's Hardest Game ---- */
-.whg-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+/* the whole game area is non-selectable — dragging to move the player was
+   highlighting the HUD text / overlay across the entire game. */
+.whg-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px;
+  -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
+  -webkit-user-select: none; -moz-user-select: none; user-select: none; }
+.whg-wrap * { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
 .whg-hud { display: flex; align-items: center; gap: 14px; width: min(640px, 96vw); font-family: var(--font-head); font-weight: 800; font-size: 15px; }
 .whg-level { background: var(--c5); color: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 3px 12px; }
 .whg-levelnum { color: var(--ink-soft); }

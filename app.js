@@ -371,7 +371,7 @@
     },
     {
       kind: "rps",
-      q: "Beat the computer in rock paper scissors — best 3 of 5.",
+      q: "Beat the computer in rock paper scissors — best of 5.",
       opts: [["Gave up fast",0],["A couple tries",1],["Kept grinding",2],["Would not quit",3]],
     },
     {
@@ -1783,7 +1783,7 @@
       outcomes = rig(); round = 0; you = 0; cpu = 0; busy = false;
       youPick.textContent = "❔"; cpuPick.textContent = "❔";
       scoreEl.textContent = "You 0 — 0 CPU";
-      resultEl.textContent = "Best 3 of 5. Make your move.";
+      resultEl.textContent = "Best of 5. Make your move.";
       reveal.hidden = true; reveal.innerHTML = "";
       const retry = btns.querySelector(".rps-retry"); if (retry) retry.remove(); // gone until the next match ends
       setMovesEnabled(true);

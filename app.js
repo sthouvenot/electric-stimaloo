@@ -3122,7 +3122,7 @@
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
-    const state = { step: -1, order: buildQuizOrder(), firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", unlocked: load(LS.pin, false), done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "" };
+    const state = { step: -1, order: buildQuizOrder(), firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", unlocked: load(LS.pin, false), done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "", dateSurvey: null };
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
     const container = el(`<section class="section"><div class="quiz-shell"></div></section>`);
     const shellEl = $(".quiz-shell", container);
@@ -3371,7 +3371,13 @@
             </div>
           </div>`);
         shellEl.appendChild(node);
-        $("#date-submit", node).addEventListener("click", () => { state.dateStep = "kidding"; paint(); window.scrollTo({ top: 0 }); });
+        $("#date-submit", node).addEventListener("click", () => {
+          // capture the survey so it rides along to the admin panel (tagged with their name)
+          const rating = ($("#date-rating", node).value || "").trim();
+          const feedback = ($("#date-feedback", node).value || "").trim();
+          if (rating || feedback) state.dateSurvey = { rating, feedback };
+          state.dateStep = "kidding"; paint(); window.scrollTo({ top: 0 });
+        });
         return;
       }
       if (state.dateStep === "kidding") {
@@ -3564,6 +3570,7 @@
       metrics: Object.assign({}, state.metrics),
       agreed: !!state.agreed,
       returning: state.returningFull || "",
+      dateSurvey: state.dateSurvey || null,
       status: "pending",
       createdAt: Date.now(),
     });
@@ -3746,6 +3753,7 @@
           <div class="sub-name">${avatarChip(s.avatar, 30)} ${esc(s.name)} ${s.seeded ? "<span style='font-size:11px;color:var(--ink-faint)'>(demo)</span>" : ""}</div>
           <div class="sub-meta">Score ${s.score}/100 · ${fmtTime(s.createdAt)} · <span style="text-transform:capitalize">${s.status}</span></div>
           <div class="sub-tier">${t.emoji} ${t.name}</div>
+          ${s.dateSurvey ? `<div class="date-survey-note">💘 <b>${esc(s.name)}</b> rated dating the host <b>${s.dateSurvey.rating ? esc(s.dateSurvey.rating) + "/10" : "—"}</b>${s.dateSurvey.feedback ? `<div class="dsn-fb">“${esc(s.dateSurvey.feedback)}”</div>` : ""}</div>` : ""}
           ${s.answers && s.answers.some(a => a != null) ? `<button class="link-btn" data-act="toggle">View answers</button>` : ""}
           <div class="answers-detail"></div>
         </div>

@@ -895,13 +895,30 @@ body.present-fs .present-view > .wrap, body.present-fs .awards-view > .wrap {
   display: flex; flex-direction: column; width: 100%; max-width: 96vw; height: 100%; min-height: 0; }
 /* presentation */
 body.present-fs .present-view .graph-wrap { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: 14px 18px 12px; }
-body.present-fs .present-view .reveal-stage { flex: 0 0 auto; min-height: 0; margin-bottom: 6px; }
+/* let the reveal stage grow and center its guest/preview content vertically,
+   instead of pinning it to the top with a big empty void below the name */
+body.present-fs .present-view .reveal-stage { flex: 1 1 auto; min-height: 0; margin-bottom: 6px; justify-content: center; }
 /* width:100% is load-bearing — as a flex item, `margin:auto` alone makes the
    podium shrink-to-fit and squash the slots into narrow strips */
 body.present-fs .present-view .podium { flex: 0 0 auto; width: 100%; max-width: 780px; align-self: center; margin: 2px auto 8px; }
 body.present-fs .present-view .graph { flex: 1 1 auto; height: auto; min-height: 120px; }
 body.present-fs .present-view .present-controls { flex: 0 0 auto; margin-top: 8px; }
 body.present-fs .present-view .reveal-stage .name { font-size: clamp(40px, 6vw, 76px); }
+/* champion moment: the whole stage celebrates, not just the crown card — the
+   rotating sunburst + warm spotlight fill the entire graph-wrap behind everything */
+.present-view.champ-mode .graph-wrap { position: relative; overflow: hidden; }
+.present-view.champ-mode .graph-wrap::before {
+  content: ""; position: absolute; left: 50%; top: 42%; width: 150%; aspect-ratio: 1; transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg, rgba(255,210,63,.22) 0deg 11deg, transparent 11deg 22deg);
+  animation: rayspin 22s linear infinite; pointer-events: none; z-index: 0; }
+.present-view.champ-mode .graph-wrap::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(circle at 50% 42%, rgba(255,210,63,.24), rgba(255,210,63,.05) 46%, transparent 70%); }
+/* keep the actual content above the backdrop */
+.present-view.champ-mode .graph-wrap > * { position: relative; z-index: 1; }
+/* the crown card no longer needs its own local backdrop — the whole stage has one */
+.present-view.champ-mode .finale-crown.champ::before,
+.present-view.champ-mode .finale-crown.champ::after { display: none; }
 /* champion moment: keep the spectrum on screen under the podium, and size the
    whole celebration in vh so it scales to the screen and can never scroll */
 body.present-fs .present-view.champ-mode .graph { min-height: 128px; }
@@ -966,6 +983,8 @@ body.present-fs .mp-rank { font-size: 22px; }
 .sub-name { font-family: var(--font-head); font-weight: 800; font-size: 19px; }
 .sub-meta { color: var(--ink-faint); font-size: 13px; margin-top: 3px; font-weight: 500; }
 .sub-tier { display: inline-block; margin-top: 6px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.date-survey-note { margin-top: 8px; padding: 8px 11px; border-radius: 10px; background: #ffe9f1; border: 2px solid #ffb8d2; font-size: 13px; color: #a11f57; font-weight: 600; line-height: 1.4; }
+.date-survey-note .dsn-fb { margin-top: 4px; font-style: italic; font-weight: 500; color: #7a2f52; }
 .sub-actions { display: flex; gap: 8px; }
 .btn-mini { font-family: var(--font-head); font-weight: 800; font-size: 13px; border: var(--border); border-radius: 999px; padding: 9px 16px; cursor: pointer; background: var(--white); box-shadow: 2px 2px 0 var(--ink); transition: transform .1s, box-shadow .1s; }
 .btn-mini:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--ink); }

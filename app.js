@@ -2694,15 +2694,19 @@
     function spawn() {
       const kind = Math.random();
       const l1 = Math.floor(Math.random() * 3);
+      // coins in a run are spaced well apart in depth (0.22) so they don't visually
+      // bunch up near the player and get swept together — each one is a distinct,
+      // separately-collected pickup instead of a blob worth several at once.
+      const COIN_GAP = 0.22;
       if (kind < 0.42) addEnt("train", l1, 1.15);
       else if (kind < 0.6) addEnt("barrier", l1, 1.05);
-      else { const run = 4 + Math.floor(Math.random() * 3); for (let k = 0; k < run; k++) addEnt("coin", l1, 1.05 + k * 0.1); } // longer coin runs, more often
+      else { const run = 3 + Math.floor(Math.random() * 3); for (let k = 0; k < run; k++) addEnt("coin", l1, 1.05 + k * COIN_GAP); }
       // when an obstacle spawns, drop a coin line in one of the OTHER lanes so
       // there's almost always coins to grab while you dodge
       if (kind < 0.6) {
         const cl = (l1 + 1 + Math.floor(Math.random() * 2)) % 3;
-        const run = 3 + Math.floor(Math.random() * 3);
-        for (let k = 0; k < run; k++) addEnt("coin", cl, 1.08 + k * 0.1);
+        const run = 2 + Math.floor(Math.random() * 3);
+        for (let k = 0; k < run; k++) addEnt("coin", cl, 1.15 + k * COIN_GAP);
       }
       // second obstacle in a different lane once you're warmed up (never all 3)
       if (elapsed > 10 && kind < 0.6 && Math.random() < 0.4) {
@@ -2711,6 +2715,10 @@
       }
     }
     function addEnt(type, l, z) {
+      // don't let coins pile up: if a coin already sits in this lane within a
+      // depth window, skip this one. Stops runs (and overlapping spawns) from
+      // stacking coins on the same spot so you scoop several that look like one.
+      if (type === "coin" && ents.some(e => e.type === "coin" && e.lane === l && Math.abs(e.z - z) < 0.2)) return;
       const el = document.createElement("div");
       el.className = "sub-ent sub-" + type;
       if (type === "train") el.innerHTML = subTrainSVG(SUB_TRAIN_COLORS[Math.floor(Math.random() * SUB_TRAIN_COLORS.length)]);

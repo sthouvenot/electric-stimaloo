@@ -488,16 +488,6 @@
        one ("I'd recalculated by minute six", "drained even though it went well").
        ---------------------------------------------------------- */
     {
-      kind: "choice", mc: true, label: "Apartment",
-      q: "You're in a friend's new apartment for the first time. What do you clock first?",
-      opts: [
-        ["The overall feel of the place", 0],
-        ["The one thing that's crooked, mismatched, or slightly off", 3], // detail-first perception
-        ["Who's already there", 0],
-        ["The layout — what's where", 2],
-      ],
-    },
-    {
       kind: "choice", mc: true, label: "Your name",
       q: "Someone says your name while you're absorbed in something. Honestly, what happens?",
       opts: [
@@ -538,16 +528,6 @@
       ],
     },
     {
-      kind: "choice", mc: true, label: "Cancelled plans",
-      q: "Plans you didn't even want to go to get cancelled last minute. You feel:",
-      opts: [
-        ["Relief. Pure relief.", 0],
-        ["Relieved — and still annoyed the plan changed", 3], // predictability > preference
-        ["Annoyed", 2],
-        ["No strong feeling", 0],
-      ],
-    },
-    {
       kind: "choice", mc: true, label: "Ruins the day",
       q: "Which of these ruins your day the fastest?",
       opts: [
@@ -555,16 +535,6 @@
         ["A passive-aggressive email", 0],
         ["Running 20 minutes behind", 2],
         ["A flickering light nobody else has noticed", 3],          // sensory
-      ],
-    },
-    {
-      kind: "choice", mc: true, label: "After the party",
-      q: "Three hours at a party. It genuinely went well. Afterwards you feel:",
-      opts: [
-        ["Great — could do it all again", 0],
-        ["Fine", 0],
-        ["Completely drained, even though it was good", 3], // the cost of masking
-        ["Ready to leave, glad I went", 2],
       ],
     },
     {
@@ -1422,8 +1392,8 @@
       let dt = last ? t - last : 16; last = t; if (dt > 60) dt = 60;
       elapsed = (t - startT) / 1000;
       timeEl.textContent = elapsed.toFixed(1) + "s";
-      // move left/right while held
-      const move = 6.2 * (dt / 16);
+      // move left/right while held (snappier so dodging feels responsive)
+      const move = 8.5 * (dt / 16);
       if (mvL) px -= move; if (mvR) px += move;
       clampPlayer();
       const speed = 1 + elapsed * 0.07;
@@ -1471,12 +1441,26 @@
     }
     body.querySelectorAll(".dodge-dbtn").forEach(b => {
       const d = b.getAttribute("data-dir");
-      const on = (e) => { e.preventDefault(); if (!running) start(); if (d === "left") mvL = true; else mvR = true; b.classList.add("active"); };
-      const off = (e) => { e.preventDefault(); if (d === "left") mvL = false; else mvR = false; b.classList.remove("active"); };
+      const on = (e) => {
+        e.preventDefault();
+        if (!running) start();
+        if (d === "left") mvL = true; else mvR = true;
+        b.classList.add("active");
+        // capture the pointer so holding keeps moving even if the finger drifts
+        // off the button — no more drops mid-hold on mobile.
+        try { b.setPointerCapture(e.pointerId); } catch (_) {}
+      };
+      const off = (e) => {
+        e.preventDefault();
+        if (d === "left") mvL = false; else mvR = false;
+        b.classList.remove("active");
+      };
       b.addEventListener("pointerdown", on);
       b.addEventListener("pointerup", off);
-      b.addEventListener("pointerleave", off);
       b.addEventListener("pointercancel", off);
+      // NOTE: no pointerleave handler — with pointer capture the finger can wander
+      // off the button and keep steering; releasing (pointerup) is what stops it.
+      b.addEventListener("contextmenu", e => e.preventDefault()); // no long-press menu on the arrow
     });
     ov.querySelector(".dodge-go").addEventListener("click", start);
   }
@@ -1497,9 +1481,10 @@
         </div>
       </div>
       <div class="flap-dpad"><button class="flap-btn" id="flap-flap" type="button">⬆ FLAP</button></div>
+      <div class="flap-giveup-wrap"><button class="btn btn-ghost btn-sm flap-giveup" id="flap-giveup" type="button">I give up →</button></div>
       <div class="flap-reveal" hidden></div>`;
     const stage = $("#flap-stage", body), layer = $("#flap-layer", body), bird = $("#flap-bird", body);
-    const ov = $("#flap-ov", body), reveal = $(".flap-reveal", body), scoreEl = $("#flap-score", body), livesEl = $("#flap-lives", body);
+    const ov = $("#flap-ov", body), reveal = $(".flap-reveal", body), scoreEl = $("#flap-score", body), livesEl = $("#flap-lives", body), giveupBtn = $("#flap-giveup", body);
     const BIRD = 40, GROUND = 26, PW = 60, GAP = 145;
     let running = false, loop = null, last = 0, W = 0, H = 0, by = 0, vy = 0, pipes = [], spawnAcc = 0, score = 0, best = 0, lives = 3;
     function birdX() { return W * 0.26; }
@@ -1578,9 +1563,23 @@
         ov.innerHTML = `<div class="flap-msg">💀 Out of lives<small>Best: ${best} pipes — hit Next →</small></div>`;
       }
     }
+    // give up early — even with lives left. Records your best so far and unlocks
+    // Next (keepLocked omitted), then ends the game.
+    function giveUp() {
+      cleanup();
+      if (score > best) best = score;
+      const points = best < 1 ? 0 : best < 3 ? 1 : best < 6 ? 2 : 3;
+      setAnswer(points, { flappyBest: best });
+      giveupBtn.disabled = true;
+      reveal.hidden = false;
+      reveal.innerHTML = best >= 1 ? `Called it a run at <b>${best}</b> pipe${best === 1 ? "" : "s"} — hit Next →` : `Bowed out early — hit Next →`;
+      ov.style.display = "";
+      ov.innerHTML = `<div class="flap-msg">🏳️ You gave up<small>Best: ${best} pipe${best === 1 ? "" : "s"} — hit Next →</small></div>`;
+    }
     stage.addEventListener("pointerdown", (e) => { if (!running && ov.style.display !== "none") return; e.preventDefault(); flap(); });
     $("#flap-flap", body).addEventListener("pointerdown", (e) => { e.preventDefault(); flap(); });
     ov.querySelector(".flap-go").addEventListener("click", start);
+    giveupBtn.addEventListener("click", giveUp);
   }
 
   // "FEED EGGS" — a deadpan drag-to-feed game (homage to the ITYSL bit, drawn

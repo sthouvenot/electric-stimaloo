@@ -468,9 +468,15 @@ a { color: inherit; }
 .dodge-player { position: absolute; bottom: 10px; left: 0; width: 52px; height: 52px; z-index: 3; pointer-events: none; transition: left .03s linear; }
 /* just the player — no box, no backdrop, only the little human */
 .dodge-player svg { width: 100%; height: 100%; display: block; }
-.dodge-dpad { display: flex; gap: 14px; justify-content: center; margin-top: 10px; }
-.dodge-dbtn { width: 110px; height: 54px; font-size: 22px; font-weight: 800; border: var(--border); border-radius: 14px; background: var(--paper-2); box-shadow: var(--shadow-sm); cursor: pointer; touch-action: none; user-select: none; }
+.dodge-dpad { display: flex; gap: 12px; justify-content: center; margin-top: 10px; }
+.dodge-dbtn { width: 130px; height: 60px; font-size: 26px; font-weight: 800; border: var(--border); border-radius: 14px; background: var(--paper-2); box-shadow: var(--shadow-sm); cursor: pointer; touch-action: none; user-select: none; display: flex; align-items: center; justify-content: center; }
 .dodge-dbtn.active { background: var(--c5); color: #fff; transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
+/* on phones, make the move buttons much bigger and split them wide apart so you
+   can thumb left/right without fumbling */
+@media (max-width: 600px) {
+  .dodge-dpad { gap: 10px; justify-content: space-between; padding: 0 4px; }
+  .dodge-dbtn { flex: 1 1 0; width: auto; height: 84px; font-size: 34px; border-radius: 16px; }
+}
 .dodge-rock { position: absolute; top: 0; left: 0; z-index: 2; display: flex; align-items: center; justify-content: center; line-height: 1;
   font-size: 24px; pointer-events: none; will-change: top; }
 .dodge-overlay { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -498,6 +504,8 @@ a { color: inherit; }
 .flap-dpad { display: flex; justify-content: center; margin-top: 10px; }
 .flap-btn { font-family: var(--font-head); font-weight: 800; font-size: 18px; padding: 12px 34px; border: var(--border); border-radius: 14px; background: var(--c3); box-shadow: var(--shadow-sm); cursor: pointer; touch-action: none; user-select: none; }
 .flap-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.flap-giveup-wrap { display: flex; justify-content: center; margin-top: 8px; }
+.flap-giveup:disabled { opacity: .4; cursor: default; }
 .flap-reveal { margin: 16px auto 0; max-width: 470px; text-align: center; font-size: 16px; line-height: 1.4; background: var(--paper-2); border: var(--border); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow-sm); }
 
 /* debug game sandbox */
@@ -1159,13 +1167,19 @@ body.present-fs .mp-rank { font-size: 22px; }
 .simon-pad { aspect-ratio: 1; border: var(--border); border-radius: 18px; background: var(--pad); opacity: .55; cursor: pointer; box-shadow: var(--shadow-sm); transition: opacity .12s, transform .08s; }
 /* on-screen game controls: kill the iOS tap-highlight/text-selection and the
    double-tap-to-zoom so tapping arrows/pads doesn't select or zoom on iPhone */
-.whg-dbtn, .sub-btn, .flap-btn, .simon-pad, .tv-btn {
+.whg-dbtn, .sub-btn, .flap-btn, .simon-pad, .tv-btn, .dodge-dbtn {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
+  -moz-user-select: none;
   user-select: none;
   touch-action: manipulation;
 }
+/* the dodge d-pad is a hold-to-move control, so it needs touch-action:none to
+   stop the page panning while you hold — override the shared manipulation above.
+   Also kill highlight on the arrow glyph itself so you can NEVER select it. */
+.dodge-dbtn { touch-action: none; }
+.dodge-dbtn, .dodge-dbtn * { -webkit-tap-highlight-color: transparent; -webkit-user-select: none; -moz-user-select: none; user-select: none; -webkit-touch-callout: none; pointer-events: auto; }
 .simon-pad:disabled { cursor: default; }
 .simon-pad.lit { opacity: 1; transform: scale(1.04); box-shadow: var(--shadow); }
 .simon-pad:not(:disabled):active { transform: scale(.97); }

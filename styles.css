@@ -573,6 +573,19 @@ a { color: inherit; }
 
 /* ---------- character creator ---------- */
 .char-create { max-width: 760px; margin: 0 auto; }
+/* rejoin banner above the character-create form */
+.rejoin-card { max-width: 760px; margin: 0 auto 16px; border-left: 10px solid var(--c3); }
+.rejoin-head { font-family: var(--font-display); font-weight: 400; font-size: 26px; margin-bottom: 4px; }
+.rejoin-intro { color: var(--ink-soft); font-weight: 500; font-size: 15px; margin: 0 0 14px; line-height: 1.4; }
+.rejoin-list { display: flex; flex-direction: column; gap: 10px; }
+.rejoin-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--paper-2); border: var(--border); border-radius: 12px; padding: 10px 14px; }
+.rejoin-who { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.rejoin-av .avchip, .rj-av { border: 2px solid var(--ink); background: var(--white); flex: 0 0 auto; }
+.rejoin-name { font-family: var(--font-head); font-weight: 800; font-size: 16px; }
+.rejoin-sub { font-family: var(--font-head); font-weight: 700; font-size: 12px; color: var(--ink-soft); }
+.rejoin-sub.rejoin-done { color: var(--c4); }
+.rejoin-continue { flex: 0 0 auto; }
+.rejoin-locked { flex: 0 0 auto; font-family: var(--font-head); font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); background: #eef1f4; border: 2px solid #c7ced6; border-radius: 999px; padding: 5px 11px; }
 .step-tag { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-head); font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: .03em; color: var(--ink); background: var(--c3); border: var(--border); border-radius: 999px; padding: 7px 16px; box-shadow: var(--shadow-sm); margin: 0 auto 16px; }
 .step-tag .step-num { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: var(--c3); font-size: 12px; }
 .step-tag .step-arrow { color: var(--ink-soft); }

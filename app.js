@@ -676,10 +676,11 @@
   }
   function saveProgress(state) {
     if (!state.firstName.trim() || !state.lastInitial.trim()) return;
+    const who = { firstName: state.firstName.trim(), lastInitial: state.lastInitial.trim().toUpperCase().slice(0, 1) };
     const rec = state.done
-      ? { submitted: true, serverId: state.serverId || null }
+      ? { submitted: true, serverId: state.serverId || null, ...who, updatedAt: Date.now() }
       : {
-          submitted: false, serverId: state.serverId || null,
+          submitted: false, serverId: state.serverId || null, ...who,
           step: state.step, order: state.order,
           answers: state.answers, metrics: state.metrics, bankPin: state.bankPin,
           avatar: state.avatar, agreed: state.agreed, updatedAt: Date.now(),
@@ -688,6 +689,17 @@
   }
   function clearProgress(first, initial) {
     try { localStorage.removeItem(progKey(first, initial)); } catch (e) {}
+  }
+  // every saved attempt on THIS device, newest first — powers the rejoin banner
+  function listAllProgress() {
+    const out = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || k.indexOf("ap_prog_") !== 0) continue;
+      const rec = load(k, null);
+      if (rec && rec.firstName) out.push(rec);
+    }
+    return out.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   }
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -3190,6 +3202,23 @@
       else { state.returningFull = ""; state.returningSentence = ""; state.welcome = false; }
       state.step = 0; paint(); window.scrollTo({ top: 0, behavior: "auto" });
     }
+    // resume a saved in-progress attempt (rec = a stored progress record) — jumps
+    // straight back to the question they were on with their original avatar/answers.
+    function resumeAttempt(rec) {
+      state.firstName = rec.firstName || state.firstName;
+      state.lastInitial = rec.lastInitial || state.lastInitial;
+      state.name = state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
+      state.order = rec.order || state.order;
+      state.answers = rec.answers || state.answers;
+      state.metrics = rec.metrics || {};
+      state.bankPin = rec.bankPin || "";
+      if (rec.avatar) state.avatar = rec.avatar;
+      state.agreed = rec.agreed != null ? rec.agreed : state.agreed;
+      state.serverId = rec.serverId || null; // keep updating the same admin record
+      state.resuming = true;
+      state.step = Math.max(0, Math.min(rec.step || 0, state.order.length - 1));
+      paint(); window.scrollTo({ top: 0 });
+    }
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
     const container = el(`<section class="section"><div class="quiz-shell"></div></section>`);
     const shellEl = $(".quiz-shell", container);
@@ -3321,6 +3350,31 @@
             </div>
           </div>`);
         shellEl.appendChild(node);
+        // rejoin banner: if this device has saved attempts, show them ABOVE the
+        // create form — in-progress ones get a Continue button, finished ones show
+        // as locked-in. New people just use the form below as normal.
+        const saved = listAllProgress();
+        if (saved.length) {
+          const rows = saved.map((rec, i) => {
+            const nm = esc((rec.firstName || "") + (rec.lastInitial ? " " + rec.lastInitial + "." : ""));
+            const av = `<span class="avchip rj-av" style="width:44px;height:44px">${avatarSVG(rec.avatar || DEFAULT_AVATAR)}</span>`;
+            if (rec.submitted) {
+              return `<div class="rejoin-row"><div class="rejoin-who">${av}<div><div class="rejoin-name">${nm}</div><div class="rejoin-sub rejoin-done">✓ already submitted</div></div></div><span class="rejoin-locked">🔒 locked in</span></div>`;
+            }
+            const answered = (rec.answers || []).filter(a => a != null).length;
+            return `<div class="rejoin-row"><div class="rejoin-who">${av}<div><div class="rejoin-name">${nm}</div><div class="rejoin-sub">🕓 in progress · ${answered}/${QUESTIONS.length}</div></div></div><button class="btn btn-primary btn-sm rejoin-continue" data-ri="${i}" type="button">Continue →</button></div>`;
+          }).join("");
+          const banner = el(`
+            <div class="card rejoin-card fade-in">
+              <div class="rejoin-head">👋 Welcome back!</div>
+              <p class="rejoin-intro">Looks like the test was started on this device before. Pick up where you left off — or make a new character below.</p>
+              <div class="rejoin-list">${rows}</div>
+            </div>`);
+          banner.querySelectorAll(".rejoin-continue").forEach(btn => {
+            btn.addEventListener("click", () => resumeAttempt(saved[+btn.dataset.ri]));
+          });
+          shellEl.prepend(banner); // sits above the char-create card
+        }
         const first = $("#first-in", node);
         const lasti = $("#lasti-in", node);
         const agree = $("#agree", node);
@@ -3389,18 +3443,7 @@
           // resume / already-done: if this name has saved progress on THIS device
           const prog = loadProgress(state.firstName, state.lastInitial);
           if (prog && prog.submitted) { state.alreadyDone = true; state.step = 0; paint(); window.scrollTo({ top: 0 }); return; }
-          if (prog && !prog.submitted && Array.isArray(prog.order)) {
-            // restore the in-progress snapshot and jump straight to their question
-            state.order = prog.order;
-            state.answers = prog.answers || state.answers;
-            state.metrics = prog.metrics || {};
-            state.bankPin = prog.bankPin || "";
-            if (prog.avatar) state.avatar = prog.avatar;
-            state.serverId = prog.serverId || null; // keep updating the same admin record
-            state.resuming = true;
-            state.step = Math.max(0, Math.min(prog.step || 0, state.order.length - 1));
-            paint(); window.scrollTo({ top: 0 }); return;
-          }
+          if (prog && !prog.submitted && Array.isArray(prog.order)) { resumeAttempt(prog); return; }
           // fresh start: first show the "you can come back" heads-up, then the
           // date/returning intros and Q1 follow when they continue.
           state.resumeTip = true; state.step = 0; paint(); window.scrollTo({ top: 0, behavior: "auto" });

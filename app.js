@@ -664,6 +664,32 @@
   }
   function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
+  // ── Per-name quiz progress (this device only) ─────────────────────────────
+  // Lets someone who closes the tab / locks their phone resume where they left
+  // off if they re-enter the SAME name. Keyed by normalized first name + last
+  // initial. Records either an in-progress snapshot or a "submitted" marker.
+  const progKey = (first, initial) =>
+    "ap_prog_" + (first || "").trim().toLowerCase() + "|" + (initial || "").trim().toUpperCase().slice(0, 1);
+  function loadProgress(first, initial) {
+    if (!(first || "").trim() || !(initial || "").trim()) return null;
+    return load(progKey(first, initial), null);
+  }
+  function saveProgress(state) {
+    if (!state.firstName.trim() || !state.lastInitial.trim()) return;
+    const rec = state.done
+      ? { submitted: true }
+      : {
+          submitted: false, step: state.step, order: state.order,
+          answers: state.answers, metrics: state.metrics, bankPin: state.bankPin,
+          avatar: state.avatar, agreed: state.agreed, updatedAt: Date.now(),
+        };
+    save(progKey(state.firstName, state.lastInitial), rec);
+  }
+  function clearProgress(first, initial) {
+    try { localStorage.removeItem(progKey(first, initial)); } catch (e) {}
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   // in-memory mirror of the cloud DB, kept live by the subscription below
   const DB = { submissions: {}, results_public: false };
   let dbReady = false, liveRefresh = null;
@@ -3140,7 +3166,7 @@
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
-    const state = { step: -1, order: buildQuizOrder(), firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "", dateSurvey: null };
+    const state = { step: -1, order: buildQuizOrder(), firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "", dateSurvey: null, alreadyDone: false, resuming: false };
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
     const container = el(`<section class="section"><div class="quiz-shell"></div></section>`);
     const shellEl = $(".quiz-shell", container);
@@ -3337,6 +3363,20 @@
           if (!state.lastInitial.trim()) { lasti.focus(); toast("Add your last initial!"); return; }
           if (!agree.checked) { toast("Check the honesty box to start 🤝"); return; }
           state.name = displayName();
+          // resume / already-done: if this name has saved progress on THIS device
+          const prog = loadProgress(state.firstName, state.lastInitial);
+          if (prog && prog.submitted) { state.alreadyDone = true; state.step = 0; paint(); window.scrollTo({ top: 0 }); return; }
+          if (prog && !prog.submitted && Array.isArray(prog.order)) {
+            // restore the in-progress snapshot and jump straight to their question
+            state.order = prog.order;
+            state.answers = prog.answers || state.answers;
+            state.metrics = prog.metrics || {};
+            state.bankPin = prog.bankPin || "";
+            if (prog.avatar) state.avatar = prog.avatar;
+            state.resuming = true;
+            state.step = Math.max(0, Math.min(prog.step || 0, state.order.length - 1));
+            paint(); window.scrollTo({ top: 0 }); return;
+          }
           const date = findDateGuest(state.firstName, state.lastInitial);
           if (date) { state.dateStep = "survey"; state.welcome = false; state.step = 0; paint(); window.scrollTo({ top: 0, behavior: "auto" }); return; }
           const ret = findReturningGuest(state.firstName, state.lastInitial);
@@ -3432,6 +3472,29 @@
         return;
       }
 
+      // already-submitted: this name already finished on this device — no retakes.
+      // (A different name still gets a fresh test, so a shared phone works.)
+      if (state.alreadyDone) {
+        const node = el(`
+          <div class="card result-card submitted-card fade-in">
+            <div class="result-avatar"><span class="avchip" style="width:116px;height:116px">${avatarSVG(state.avatar)}</span><div class="ra-stamp">✓ IN</div></div>
+            <div class="q-count">You're already in, ${esc(state.firstName || state.name)} 🎉</div>
+            <h2 class="result-tier"><span class="grad">Already submitted!</span></h2>
+            <p class="result-blurb">Looks like you already finished the test on this device. <b>Your first submission is the one that counts</b> — no do-overs. Your spot on the spectrum is sealed for the big reveal at the party.</p>
+            <div class="sealed-spectrum">
+              <div class="sealed-bar"></div>
+              <div class="sealed-pin">?</div>
+            </div>
+            <div class="sealed-tag">🤫 your spot · revealed at the party</div>
+            <div class="quiz-nav" style="justify-content:center;margin-top:10px">
+              <button class="btn btn-primary btn-sm" id="ad-details">📍 Party details →</button>
+            </div>
+          </div>`);
+        shellEl.appendChild(node);
+        $("#ad-details", node).addEventListener("click", () => navigate("/details"));
+        return;
+      }
+
       // result step — NO score reveal; results go live at the party
       if (state.done) {
         const node = el(`
@@ -3499,8 +3562,8 @@
         if (isLast) {
           state.score = computeScore();
           submitToQueue(state);
-          state.done = true; paint();
-        } else { state.step++; paint(); }
+          state.done = true; saveProgress(state); paint(); // mark this name submitted
+        } else { state.step++; saveProgress(state); paint(); } // snapshot progress for resume
       });
       shellEl.appendChild(node);
     }

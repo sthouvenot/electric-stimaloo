@@ -478,26 +478,6 @@
        one ("I'd recalculated by minute six", "drained even though it went well").
        ---------------------------------------------------------- */
     {
-      kind: "choice", mc: true, label: "Your name",
-      q: "Someone says your name while you're absorbed in something. Honestly, what happens?",
-      opts: [
-        ["I hear it and answer", 0],
-        ["I hear it, but it takes me a second to surface", 2],
-        ["I genuinely don't hear it — not ignoring, just gone", 3], // monotropic attention tunnel
-        ["Depends how interesting the thing is", 1],
-      ],
-    },
-    {
-      kind: "choice", mc: true, label: "Five minutes",
-      q: "\"I'll be there in five minutes.\" They arrive in twelve. Your real reaction?",
-      opts: [
-        ["Didn't notice", 0],
-        ["That's just what \"five minutes\" means", 0],
-        ["Noted: they say five, they mean fifteen", 2],
-        ["I'd already recalculated the whole evening by minute six", 3], // literal time + precision
-      ],
-    },
-    {
       kind: "choice", mc: true, label: "Hunger",
       q: "How do you usually find out that you're hungry?",
       opts: [
@@ -508,16 +488,6 @@
       ],
     },
     {
-      kind: "choice", mc: true, label: "New song",
-      q: "A song you love comes on. What actually happens next?",
-      opts: [
-        ["Add it to a playlist and move on", 0],
-        ["Play it on repeat until I've completely worn it out", 3], // repetition as regulation
-        ["Go read about who made it and how", 2],
-        ["Send it to someone", 0],
-      ],
-    },
-    {
       kind: "choice", mc: true, label: "Ruins the day",
       q: "Which of these ruins your day the fastest?",
       opts: [
@@ -525,16 +495,6 @@
         ["A passive-aggressive email", 0],
         ["Running 20 minutes behind", 2],
         ["A flickering light nobody else has noticed", 3],          // sensory
-      ],
-    },
-    {
-      kind: "choice", mc: true, label: "Met twice",
-      q: "You bump into someone you've met exactly twice. What's going on in your head?",
-      opts: [
-        ["Greeting them by name", 0],
-        ["I know the face, I've lost the name", 1],
-        ["I know where we met and what they said — but not the name", 3], // context-keyed memory
-        ["No idea who this is", 2],
       ],
     },
     {
@@ -635,17 +595,13 @@
     { label: "Hunger" },
     { kind: "color" },
     { kind: "simon" },
-    { label: "Five minutes" },
     { kind: "tvvol" },
     { kind: "qebday" },
-    { label: "New song" },
     { kind: "bricks" },
     { kind: "rps" },
     { kind: "boxes" },
     { label: "Ruins the day" },
-    { label: "Your name" },
     { kind: "typing" },
-    { label: "Met twice" },
     { kind: "subway" },
     { kind: "whg" },
     { label: "Season to taste" },
@@ -3913,14 +3869,20 @@
     </div></section>`);
 
     const menu = $("#dbg-menu", root), bodyHost = $("#dbg-body", root), scoreEl = $("#dbg-score", root);
-    QUESTIONS.forEach((Q, idx) => {
-      const b = el(`<button class="dbg-item" type="button">${idx + 1}. ${Q.mc ? esc(Q.label || "Multiple choice") : (GAME_LABELS[Q.kind] || Q.kind)}</button>`);
-      b.addEventListener("click", () => { debugStep = idx; mount(); });
+    // list the games in the REAL quiz order (numbered by position), not array order.
+    // multiple-choice questions get a 💬 so you can tell them apart from the games.
+    const quizOrder = buildQuizOrder();
+    quizOrder.forEach((qi, pos) => {
+      const Q = QUESTIONS[qi];
+      const name = Q.mc ? `💬 ${esc(Q.label || "Multiple choice")}` : (GAME_LABELS[Q.kind] || Q.kind);
+      const b = el(`<button class="dbg-item" type="button">${pos + 1}. ${name}</button>`);
+      b.addEventListener("click", () => { debugStep = qi; mount(); });
       menu.appendChild(b);
     });
 
     function mount() {
-      menu.querySelectorAll(".dbg-item").forEach((b, idx) => b.classList.toggle("active", idx === debugStep));
+      // menu buttons are in quiz order; highlight the one whose question index is active
+      menu.querySelectorAll(".dbg-item").forEach((b, pos) => b.classList.toggle("active", quizOrder[pos] === debugStep));
       const Q = QUESTIONS[debugStep];
       scoreEl.textContent = "score: —";
       // throwaway state so games that read state work (avatar, bankPin, etc.)

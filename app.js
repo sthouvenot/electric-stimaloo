@@ -348,16 +348,6 @@
       opts: [["Gave up",0],["Half-built",1],["Finished it",2],["Finished it flawlessly",3]],
     },
     {
-      kind: "dodge",
-      q: "Sensory overload incoming — dodge it as long as you can.",
-      opts: [
-        ["Overwhelmed instantly", 0],
-        ["Coped a little", 1],
-        ["Held it together a while", 2],
-        ["Unbothered. Master of the chaos.", 3],
-      ],
-    },
-    {
       kind: "flappy",
       q: "Keep the routine going — flap through the gaps.",
       opts: [
@@ -634,22 +624,56 @@
   // Games keep their authored order (bank PIN must come before re-enter PIN, and
   // it stays last). The multiple-choice questions get dropped into random gaps
   // between them, so no two players see them in the same places.
+  // Fixed, deterministic quiz order (everyone sees the same sequence). Each entry
+  // identifies a question by kind — and, for the repeated kinds (imgquiz, choice),
+  // an nth index into that kind's questions in array order or the choice label.
+  // Built to match the host's chosen ordering.
+  const QUIZ_ORDER = [
+    { kind: "bankpin" },
+    { kind: "imgquiz", nth: 0 }, { kind: "imgquiz", nth: 1 }, { kind: "imgquiz", nth: 2 }, { kind: "imgquiz", nth: 3 },
+    { kind: "train" },
+    { label: "Hunger" },
+    { kind: "color" },
+    { kind: "simon" },
+    { label: "Five minutes" },
+    { kind: "tvvol" },
+    { kind: "qebday" },
+    { label: "New song" },
+    { kind: "bricks" },
+    { kind: "rps" },
+    { kind: "boxes" },
+    { label: "Ruins the day" },
+    { label: "Your name" },
+    { kind: "typing" },
+    { label: "Met twice" },
+    { kind: "subway" },
+    { kind: "whg" },
+    { label: "Season to taste" },
+    { kind: "rings" },
+    { kind: "eggs" },
+    { kind: "imgtext" },
+    { kind: "polo" },
+    { kind: "flappy" },
+    { kind: "reenterpin" },
+  ];
   function buildQuizOrder() {
-    const games = [], mc = [];
-    QUESTIONS.forEach((q, i) => (q.mc ? mc : games).push(i));
-    const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
-    shuffle(mc);
-    // Pick DISTINCT gaps between games (1..games.length-1 keeps the first game
-    // first and the last game last). One MC per gap means they can never land
-    // back-to-back — random placement, but always spread through the quiz.
-    const gaps = [];
-    for (let g = 1; g < games.length; g++) gaps.push(g);
-    shuffle(gaps);
-    let chosen = gaps.slice(0, mc.length);
-    while (chosen.length < mc.length) chosen.push(1 + Math.floor(Math.random() * Math.max(1, games.length - 1))); // more MC than gaps
-    chosen.sort((a, b) => b - a); // descending, so each splice can't shift the next
-    const order = games.slice();
-    chosen.forEach((pos, k) => order.splice(pos, 0, mc[k]));
+    // track how many of each kind we've consumed, for the nth-based lookups
+    const seen = {};
+    const order = QUIZ_ORDER.map(spec => {
+      if (spec.label != null) return QUESTIONS.findIndex(q => q.label === spec.label);
+      // find the nth question of this kind in array order
+      let target = spec.nth == null ? 0 : spec.nth, count = 0;
+      for (let i = 0; i < QUESTIONS.length; i++) {
+        if ((QUESTIONS[i].kind || "choice") === spec.kind) {
+          if (count === target) return i;
+          count++;
+        }
+      }
+      return -1;
+    }).filter(i => i >= 0);
+    // safety net: append any question not covered by QUIZ_ORDER so nothing is ever
+    // silently dropped if the array and the order list drift out of sync.
+    QUESTIONS.forEach((_, i) => { if (!order.includes(i)) order.push(i); });
     return order;
   }
 

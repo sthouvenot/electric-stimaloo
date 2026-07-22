@@ -17,7 +17,6 @@
     date: "Friday, July 24th",
     time: "8 PM EST", // doors / start time
     adminPassword: "spectrum", // mock-only gate; not real security
-    devPin: "4444", // gag "under development" gate shown before the test
     firebaseUrl: "https://electric-d1aec-default-rtdb.firebaseio.com", // shared realtime DB (public, not sensitive)
   };
 
@@ -654,9 +653,9 @@
      STORE - Firebase Realtime Database backed (live + cross-device).
      Submissions and the results_public flag live in the shared cloud DB and
      update in real time via Server-Sent Events (with a polling fallback).
-     Admin auth and the dev-gate unlock stay PER-DEVICE in localStorage.
+     Admin auth stays PER-DEVICE in localStorage.
      ---------------------------------------------------------- */
-  const LS = { auth: "ap_admin_auth_v1", pin: "ap_dev_unlocked_v1" };
+  const LS = { auth: "ap_admin_auth_v1" };
   function load(key, fallback) {
     try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); }
     catch (e) { return fallback; }
@@ -3136,7 +3135,7 @@
      QUIZ VIEW (stateful sub-component)
      ---------------------------------------------------------- */
   function quizView() {
-    const state = { step: -1, order: buildQuizOrder(), firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", unlocked: load(LS.pin, false), done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "", dateSurvey: null };
+    const state = { step: -1, order: buildQuizOrder(), firstName: "", lastInitial: "", avatar: Object.assign({}, DEFAULT_AVATAR), name: "", answers: QUESTIONS.map(() => null), metrics: {}, bankPin: "", done: false, score: 0, welcome: false, returningFull: "", returningSentence: "", dateStep: "", dateSurvey: null };
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
     const container = el(`<section class="section"><div class="quiz-shell"></div></section>`);
     const shellEl = $(".quiz-shell", container);
@@ -3453,35 +3452,7 @@
         return;
       }
 
-      // dev "under construction" gate — shows AFTER the start button and AFTER
-      // the returning/date gags, right before the real questions. Once the
-      // correct code is entered it's remembered, so it won't nag on retakes.
-      if (!state.unlocked) {
-        const node = el(`
-          <div class="card dev-gate fade-in">
-            <div class="dev-glyph">🚧</div>
-            <span class="dev-tag">⚠ Restricted area</span>
-            <h2 class="section-title">You shouldn't be here.</h2>
-            <p class="wb-text">This site is still <b>under development</b>. If someone gave you the access code, punch it in. If not… how did you even get this far? 👀</p>
-            <input class="dev-pin" id="dev-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off" />
-            <div class="dev-err" id="dev-err" hidden>🚫 That's not the code. Nice try.</div>
-            <div class="quiz-nav" style="justify-content:center;margin-top:10px">
-              <button class="btn btn-primary btn-lg" id="dev-enter">Enter →</button>
-            </div>
-          </div>`);
-        shellEl.appendChild(node);
-        const inp = $("#dev-pin", node), err = $("#dev-err", node);
-        const tryUnlock = () => {
-          const v = inp.value.replace(/\D/g, "").slice(0, 4);
-          if (v === CONFIG.devPin) { state.unlocked = true; save(LS.pin, true); confetti.burst(60); paint(); window.scrollTo({ top: 0 }); }
-          else { err.hidden = false; node.classList.remove("shake"); void node.offsetWidth; node.classList.add("shake"); inp.value = ""; inp.focus(); }
-        };
-        inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(0, 4); err.hidden = true; });
-        inp.addEventListener("keydown", e => { if (e.key === "Enter") tryUnlock(); });
-        $("#dev-enter", node).addEventListener("click", tryUnlock);
-        setTimeout(() => inp.focus(), 60);
-        return;
-      }
+      // (the "under development" access-code gate has been removed — the test is live)
 
       // question step — state.step walks the shuffled order; qi is the canonical
       // QUESTIONS index, so stored answers always line up for the host's recap

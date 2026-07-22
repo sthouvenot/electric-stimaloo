@@ -505,6 +505,9 @@ a { color: inherit; }
 .flap-btn { font-family: var(--font-head); font-weight: 800; font-size: 18px; padding: 12px 34px; border: var(--border); border-radius: 14px; background: var(--c3); box-shadow: var(--shadow-sm); cursor: pointer; touch-action: none; user-select: none; }
 .flap-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
 .flap-giveup-wrap { display: flex; justify-content: center; margin-top: 8px; }
+/* on mobile, push give up well clear of the FLAP button so a fast tapper can't
+   hit it by accident while flapping */
+@media (max-width: 600px) { .flap-giveup-wrap { margin-top: 40px; } }
 .flap-giveup:disabled { opacity: .4; cursor: default; }
 .flap-reveal { margin: 16px auto 0; max-width: 470px; text-align: center; font-size: 16px; line-height: 1.4; background: var(--paper-2); border: var(--border); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow-sm); }
 

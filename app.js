@@ -1776,13 +1776,20 @@
   function renderRpsGame(body, Q, setAnswer, avatar) {
     body.innerHTML = `
       <div class="rps-wrap">
-        <div class="rps-hud"><span class="rps-score" id="rps-score">You 0 — 0 CPU</span></div>
+        <div class="rps-hud">
+          <div class="rps-scoreboard">
+            <div class="rps-scorecol"><span class="rps-scorenum" id="rps-you-score">0</span><span class="rps-scorelbl">You</span></div>
+            <span class="rps-scoredash">—</span>
+            <div class="rps-scorecol"><span class="rps-scorenum" id="rps-cpu-score">0</span><span class="rps-scorelbl">Computer</span></div>
+          </div>
+          <div class="rps-goal">First to <b>3 rounds</b> wins the match</div>
+        </div>
         <div class="rps-arena">
           <div class="rps-side"><div class="rps-av">${avatarSVG(avatar, { noBg: true })}</div><div class="rps-pick" id="rps-you">❔</div><div class="rps-label">You</div></div>
           <div class="rps-vs">VS</div>
           <div class="rps-side"><div class="rps-av rps-cpu">🤖</div><div class="rps-pick" id="rps-cpu">❔</div><div class="rps-label">Computer</div></div>
         </div>
-        <div class="rps-result" id="rps-result">Best 3 of 5. Make your move.</div>
+        <div class="rps-result" id="rps-result">Best of 5 — first to 3 wins. Make your move.</div>
         <div class="rps-moves" id="rps-moves">
           <button class="rps-move" data-m="rock" type="button">🪨<span>Rock</span></button>
           <button class="rps-move" data-m="paper" type="button">📄<span>Paper</span></button>
@@ -1793,7 +1800,9 @@
           <button class="btn btn-ghost rps-bigbtn" id="rps-giveup" type="button">I give up →</button>
         </div>
       </div>`;
-    const youPick = $("#rps-you", body), cpuPick = $("#rps-cpu", body), scoreEl = $("#rps-score", body), resultEl = $("#rps-result", body);
+    const youPick = $("#rps-you", body), cpuPick = $("#rps-cpu", body), resultEl = $("#rps-result", body);
+    const youScoreEl = $("#rps-you-score", body), cpuScoreEl = $("#rps-cpu-score", body);
+    const setScore = () => { youScoreEl.textContent = you; cpuScoreEl.textContent = cpu; };
     const movesEl = $("#rps-moves", body), reveal = $(".rps-reveal", body), giveBtn = $("#rps-giveup", body), btns = $("#rps-btns", body);
     let outcomes = [], round = 0, you = 0, cpu = 0, busy = false, games = 0, done = false;
     // best 3 of 5: computer always reaches 3 first; human gets 0-2 (weighted to feel close)
@@ -1809,8 +1818,8 @@
     function newMatch() {
       outcomes = rig(); round = 0; you = 0; cpu = 0; busy = false;
       youPick.textContent = "❔"; cpuPick.textContent = "❔";
-      scoreEl.textContent = "You 0 — 0 CPU";
-      resultEl.textContent = "Best of 5. Make your move.";
+      setScore();
+      resultEl.textContent = "Best of 5 — first to 3 wins. Make your move.";
       reveal.hidden = true; reveal.innerHTML = "";
       const retry = btns.querySelector(".rps-retry"); if (retry) retry.remove(); // gone until the next match ends
       setMovesEnabled(true);
@@ -1836,9 +1845,9 @@
         } else {
           if (want === "C") { cpu++; } else { you++; }
           round++;
-          scoreEl.textContent = `You ${you} — ${cpu} CPU`;
+          setScore();
           if (cpu === 3) { matchOver(); return; }
-          resultEl.textContent = (want === "C" ? "💻 Computer takes the round." : "🎉 You win that one!") + " Keep going →";
+          resultEl.textContent = (want === "C" ? `💻 Computer wins the round (${cpu}–${you}).` : `🎉 You win the round (${you}–${cpu})!`) + " Keep going →";
         }
         busy = false; setMovesEnabled(true);
       }, 700);
@@ -1846,7 +1855,7 @@
     function matchOver() {
       games++;
       setMovesEnabled(false);
-      resultEl.textContent = `💻 Computer wins it, ${cpu}–${you}.`;
+      resultEl.textContent = `💻 Computer wins the match ${cpu}–${you} (first to 3).`;
       // NO gag here — just nudge them to try again
       reveal.hidden = false;
       reveal.innerHTML = `${you === 2 ? "Agonizingly close." : "Tough one."}`;

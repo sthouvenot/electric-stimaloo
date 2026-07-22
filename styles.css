@@ -522,8 +522,15 @@ a { color: inherit; }
 
 /* rock-paper-scissors (rigged) */
 .rps-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.rps-hud { display: flex; justify-content: space-between; width: 100%; max-width: 420px; font-family: var(--font-head); font-weight: 800; font-size: 16px; }
-.rps-hud .rps-games { color: var(--ink-faint); }
+.rps-hud { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
+/* big, clear round-score board: two large numbers with You / Computer labels */
+.rps-scoreboard { display: flex; align-items: center; justify-content: center; gap: 20px; }
+.rps-scorecol { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.rps-scorenum { font-family: var(--font-display); font-weight: 400; font-size: 52px; line-height: 1; color: var(--ink); }
+.rps-scorelbl { font-family: var(--font-head); font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); margin-top: 2px; }
+.rps-scoredash { font-family: var(--font-display); font-size: 34px; color: var(--ink-faint); align-self: flex-start; margin-top: 4px; }
+.rps-goal { font-family: var(--font-head); font-weight: 700; font-size: 13px; color: var(--ink-soft); }
+.rps-goal b { color: var(--c5); }
 .rps-again { margin: 10px 0 6px; }
 .rps-hint { font-size: 13px; color: var(--ink-faint); font-weight: 600; }
 .rps-arena { display: flex; align-items: center; justify-content: center; gap: 18px; }
@@ -534,7 +541,7 @@ a { color: inherit; }
 .rps-pick { font-size: 38px; line-height: 1; min-height: 42px; }
 .rps-label { font-family: var(--font-head); font-weight: 800; font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
 .rps-vs { font-family: var(--font-display); font-size: 22px; color: var(--ink-faint); }
-.rps-result { font-family: var(--font-head); font-weight: 800; min-height: 24px; text-align: center; }
+.rps-result { font-family: var(--font-head); font-weight: 800; font-size: 17px; min-height: 26px; text-align: center; }
 .rps-moves { display: flex; gap: 12px; }
 .rps-move { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 30px; padding: 12px 16px; border: var(--border); border-radius: 16px; background: var(--paper-2); box-shadow: var(--shadow-sm); cursor: pointer; transition: transform .06s, background .1s; }
 .rps-move span { font-family: var(--font-head); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); }

@@ -592,24 +592,25 @@
     { kind: "bankpin" },
     { kind: "imgquiz", nth: 0 }, { kind: "imgquiz", nth: 1 }, { kind: "imgquiz", nth: 2 }, { kind: "imgquiz", nth: 3 },
     { kind: "train" },
-    { label: "Hunger" },
     { kind: "color" },
-    { kind: "simon" },
     { kind: "tvvol" },
     { kind: "qebday" },
     { kind: "bricks" },
     { kind: "rps" },
     { kind: "boxes" },
-    { label: "Ruins the day" },
     { kind: "typing" },
     { kind: "subway" },
     { kind: "whg" },
+    // all multiple-choice questions grouped between World's Hardest and Ring sort
+    { label: "Hunger" },
+    { label: "Ruins the day" },
     { label: "Season to taste" },
     { kind: "rings" },
     { kind: "eggs" },
     { kind: "imgtext" },
     { kind: "polo" },
     { kind: "flappy" },
+    { kind: "simon" }, // Simon is the last game before the closing re-enter-PIN
     { kind: "reenterpin" },
   ];
   function buildQuizOrder() {

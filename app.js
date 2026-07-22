@@ -159,7 +159,10 @@
     const w = fem ? 2.6 : 2.4;
     switch (mood) {
       case "grin": {
-        const lips = fem ? `<path d="M41.5,52.4 Q50,49.4 58.5,52.4" stroke="#d6334c" stroke-width="2.2" fill="none" stroke-linecap="round"/>` : "";
+        // femme: outline BOTH lips (top + bottom) in lipstick red so the whole
+        // grin reads as one lip colour — before, only the top lip got the red
+        // line while the bottom edge stayed maroon, looking like two colours.
+        const lips = fem ? `<path d="M42,52.5 Q50,63 58,52.5 Q50,55 42,52.5 Z" fill="none" stroke="#d6334c" stroke-width="2.2" stroke-linejoin="round"/>` : "";
         return `<g><path d="M42,52.5 Q50,63 58,52.5 Q50,55 42,52.5 Z" fill="#9c2c3e"/><path d="M44,53 Q50,55.4 56,53 Q50,53.4 44,53 Z" fill="#fff"/>${lips}</g>`;
       }
       case "chill":

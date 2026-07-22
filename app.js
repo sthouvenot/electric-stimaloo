@@ -346,7 +346,7 @@
     },
     {
       kind: "bricks",
-      q: "Follow the instructions and build the thing.",
+      q: "Build a LEGO parrot",
       opts: [["Gave up",0],["Half-built",1],["Finished it",2],["Finished it flawlessly",3]],
     },
     {
@@ -2973,19 +2973,13 @@
     body.innerHTML = `
       <div class="brickq">
         <div class="brickq-main">
-          <div class="brick-instr">
-            <div class="brick-instr-head">📘 Build the parrot</div>
-            <ol class="brick-steps" id="brick-steps">
-              ${M.steps.map((s, i) => `<li data-i="${i}"><span class="brick-swatch" style="background:${BRICK_COLORS[s.color].top}"></span>${s.label}</li>`).join("")}
-            </ol>
-            <div class="brick-hint">You have spare bricks you won't need — only use what the steps ask for.</div>
-          </div>
           <div class="brick-build">
             <div class="brick-plate" id="brick-plate" style="width:${M.cols * U}px;height:${M.rows * (U * 0.87)}px">
               <div class="brick-ghost" id="brick-ghost" hidden></div>
             </div>
             <div class="brick-baseplate" style="width:${M.cols * U + 16}px"></div>
-            <div class="brick-target" id="brick-target">Next: <b class="brick-target-txt">${M.steps[0].label}</b></div>
+            <div class="brick-target" id="brick-target"><span class="brick-target-lead">Next brick:</span> <b class="brick-target-txt">${M.steps[0].label}</b></div>
+            <div class="brick-hint">Grab it from the bin — you have spare bricks you won't need.</div>
           </div>
         </div>
         <div class="brick-bin" id="brick-bin">
@@ -2995,7 +2989,7 @@
         <div class="brickq-hud"><span id="brick-timer">0.0s</span><button class="btn btn-ghost btn-sm" id="brick-giveup" type="button">Give up</button></div>
         <div class="brickq-note" id="brick-note" hidden></div>
       </div>`;
-    const plate = $("#brick-plate", body), ghost = $("#brick-ghost", body), stepsEl = $("#brick-steps", body);
+    const plate = $("#brick-plate", body), ghost = $("#brick-ghost", body);
     const targetTxt = $(".brick-target-txt", body), targetBox = $("#brick-target", body);
     const binEl = $("#brick-bin", body), timerEl = $("#brick-timer", body), note = $("#brick-note", body), giveupBtn = $("#brick-giveup", body);
     const ROWH = U * 0.87; // a brick body is a touch shorter than a stud pitch
@@ -3021,7 +3015,6 @@
       ghost.style.height = BRICK_BODY_H + "px";
     }
     const highlight = () => {
-      stepsEl.querySelectorAll("li").forEach((li, i) => { li.classList.toggle("done", i < step); li.classList.toggle("cur", i === step); });
       if (step < M.steps.length) targetTxt.textContent = M.steps[step].label;
       showGhost();
     };

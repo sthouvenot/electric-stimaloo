@@ -1215,7 +1215,7 @@ body.present-fs .mp-rank { font-size: 22px; }
 
 /* ---- Brick build ---- */
 .brickq { display: flex; flex-direction: column; gap: 14px; max-width: 620px; margin: 0 auto; }
-.brickq-main { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.brickq-main { display: flex; justify-content: center; gap: 14px; }
 .brick-instr { background: var(--paper-2); border: var(--border); border-radius: 14px; box-shadow: var(--shadow-sm); padding: 12px 14px; }
 .brick-instr-head { font-family: var(--font-head); font-weight: 800; font-size: 15px; margin-bottom: 8px; }
 .brick-steps { list-style: none; counter-reset: step; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
@@ -1236,7 +1236,11 @@ body.present-fs .mp-rank { font-size: 22px; }
 .brick-set svg { display: block; }
 @keyframes brickDrop { 0% { transform: translateY(-20px); opacity: .3; } 100% { transform: none; opacity: 1; } }
 .brick-baseplate { height: 13px; background: repeating-linear-gradient(90deg,#5a6068 0 12px,#4a4f57 12px 24px); border: 2.5px solid var(--ink); border-radius: 5px; margin-top: 2px; }
-.brick-target { font-family: var(--font-head); font-weight: 700; font-size: 13px; text-align: center; color: var(--ink-soft); min-height: 18px; }
+/* the "Next brick" callout is now the only instruction, so make it big and clear */
+.brick-target { font-family: var(--font-head); font-weight: 800; font-size: 17px; text-align: center; color: var(--ink); min-height: 22px; margin-top: 4px;
+  background: #fff6d8; border: var(--border); border-radius: 12px; box-shadow: var(--shadow-sm); padding: 9px 16px; max-width: 340px; }
+.brick-target-lead { color: var(--ink-soft); font-weight: 700; }
+.brick-target-txt { color: var(--ink); }
 .brick-bin { position: relative; height: 168px; border: var(--border); border-radius: 14px; box-shadow: var(--shadow-sm); overflow: hidden; touch-action: none;
   background: #d8c3a4; background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 2px, transparent 2px 26px), repeating-linear-gradient(0deg, rgba(0,0,0,.04) 0 2px, transparent 2px 26px); }
 /* on phones the bin is narrow, so give it much more height to spread the 20

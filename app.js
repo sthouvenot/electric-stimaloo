@@ -2901,6 +2901,7 @@
     brown:  { top: "#a9713f", side: "#7d4f28", stud: "#c08a55" },
   };
   const BRICK_U = 24; // one stud = 24px
+  const BRICK_BODY_H = 22, BRICK_STUD_H = 7, BRICK_SIDE_STUD = 8; // brick body/stud geometry (shared with the ghost)
   // grid model, built bottom-up. Each step places one brick at [col,row] (row 0
   // = bottom). This silhouette reads as a little parrot perched on a branch —
   // a chunkier, more intricate build than a plain stack. Original brick art.
@@ -2923,8 +2924,8 @@
   // instead of only stacking on top. The SVG widens to fit the protruding stud.
   function brickSVG(color, w, studless, side) {
     const c = BRICK_COLORS[color] || BRICK_COLORS.grey;
-    const U = BRICK_U, bodyH = 22, studH = 7, studR = 7.5;
-    const bodyW = w * U, sideStud = 8; // how far the side stud sticks out
+    const U = BRICK_U, bodyH = BRICK_BODY_H, studH = BRICK_STUD_H, studR = 7.5;
+    const bodyW = w * U, sideStud = BRICK_SIDE_STUD; // how far the side stud sticks out
     const padL = side === "left" ? sideStud : 0, padR = side === "right" ? sideStud : 0;
     const W = bodyW + padL + padR, H = bodyH + studH;
     const bx = padL; // body left edge inside the widened viewBox
@@ -3006,8 +3007,14 @@
       if (step >= M.steps.length) { ghost.hidden = true; return; }
       const s = M.steps[step], p = slotXY(step);
       ghost.hidden = false;
-      ghost.style.left = p.x + "px"; ghost.style.top = p.y + "px";
-      ghost.style.width = s.w * U + "px"; ghost.style.height = ROWH + "px";
+      // outline the brick BODY exactly where it will land: the placed brick's SVG
+      // top sits at p.y and its body starts BRICK_STUD_H below that (studs poke up
+      // into the row above), so the visible body cell is offset down by the stud
+      // height. Width/height track the real body, not the full stud-pitch cell.
+      ghost.style.left = p.x + "px";
+      ghost.style.top = (p.y + BRICK_STUD_H) + "px";
+      ghost.style.width = s.w * U + "px";
+      ghost.style.height = BRICK_BODY_H + "px";
     }
     const highlight = () => {
       stepsEl.querySelectorAll("li").forEach((li, i) => { li.classList.toggle("done", i < step); li.classList.toggle("cur", i === step); });

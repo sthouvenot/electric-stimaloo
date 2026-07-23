@@ -3230,6 +3230,11 @@
       state.serverId = rec.serverId || null; // keep updating the same admin record
       state.resuming = true;
       state.step = Math.max(0, Math.min(rec.step || 0, state.order.length - 1));
+      // date guest resuming without a saved survey (e.g. it was lost before we
+      // saved surveys server-side) — re-show the survey so it can be captured.
+      if (!state.dateSurvey && findDateGuest(state.firstName, state.lastInitial)) {
+        state.dateStep = "survey"; paint(); window.scrollTo({ top: 0 }); return;
+      }
       paint(); window.scrollTo({ top: 0 });
     }
     const displayName = () => state.firstName.trim() + (state.lastInitial.trim() ? " " + state.lastInitial.trim().toUpperCase() + "." : "");
@@ -3547,7 +3552,8 @@
           </div>`);
         shellEl.appendChild(node);
         confetti.burst(80);
-        $("#date-continue", node).addEventListener("click", () => { state.dateStep = ""; state.step = 0; paint(); window.scrollTo({ top: 0 }); });
+        // if they were resuming (survey re-shown), keep their saved question; else start at Q1
+        $("#date-continue", node).addEventListener("click", () => { state.dateStep = ""; if (!state.resuming) state.step = 0; paint(); window.scrollTo({ top: 0 }); });
         return;
       }
 

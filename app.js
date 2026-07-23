@@ -2214,16 +2214,23 @@
       if (dist > 182) dist = 365 - dist; // wrap around the calendar
       const yearOff = Math.abs(y - QE_BIRTH.y);
       const exact = m === QE_BIRTH.m && d === QE_BIRTH.d && y === QE_BIRTH.y;
+      // both the day AND the year have to be close — a wildly-wrong year can't
+      // earn the top tiers just for landing near April 21.
       let pts;
-      if (exact || (dist === 0 && yearOff <= 1)) pts = 3;
-      else if (dist <= 7 && yearOff <= 5) pts = 2;
-      else if (dist <= 31) pts = 1;
-      else pts = 0;
+      if (exact || (dist === 0 && yearOff <= 1)) pts = 3;      // nailed day + year
+      else if (dist <= 7 && yearOff <= 5) pts = 2;              // close on both
+      else if (dist <= 31 && yearOff <= 25) pts = 1;            // ballpark on both
+      else pts = 0;                                            // off on day OR way off on year
+      // pick a comment: if the DAY was close but the YEAR was wildly off, call that
+      // out specifically instead of praising them.
+      const yearBlown = dist <= 31 && yearOff > 25;
       const roasts = [
-        "Way off — honestly, healthy. Normal people don't keep this filed away.",
-        "Right season, at least. We'll allow it.",
-        "Spookily close. Slightly concerned about you.",
-        "You KNEW that. Why do you know that? (You're among friends.)",
+        yearBlown
+          ? `Right day-ish… but <b>${yearOff} years</b> off. Were you even alive in the right century?`
+          : "Way off — honestly, healthy. Normal people don't keep this filed away.",
+        "Right ballpark on both the day and the year. We'll allow it.",
+        "Spookily close on the day AND the year. Slightly concerned about you.",
+        "You KNEW that — day and year. Why do you know that? (You're among friends.)",
       ];
       reveal.hidden = false;
       reveal.innerHTML = `📅 <b>${MONTHS[m-1]} ${d}</b>: ${factFor(m, d)}. <i>Are you fond of that?</i><br><br>The answer was <b>21 April 1926</b>. ${exact ? "🎯 Exact match! " : ""}${roasts[pts]}`;

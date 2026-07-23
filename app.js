@@ -1130,6 +1130,54 @@
   });
 
   /* ----------------------------------------------------------
+     ROUTE: /dateform — hidden, shareable, ANONYMOUS dating survey.
+     Send this link to someone; they rate + leave feedback and it drops
+     straight into the host's admin panel with no name attached.
+     ---------------------------------------------------------- */
+  route("/dateform", function () {
+    const root = wrapDiv(`<section class="section fade-in"><div class="wrap" style="max-width:600px">
+      <div class="card date-survey" id="df-card">
+        <span class="wb-tag date-tag">💘 Anonymous date review</span>
+        <h2 class="section-title">Rate the host 💌</h2>
+        <p class="wb-text">Totally anonymous — no name, no login. Be honest, be generous. Only the host sees it.</p>
+        <div class="date-q">
+          <label class="field-label">Rate dating me on a scale of 1–10</label>
+          <input class="name-input date-rating" id="df-rating" type="number" min="1" max="10" inputmode="numeric" placeholder="10, obviously" />
+        </div>
+        <div class="date-q">
+          <label class="field-label">Any feedback? (be honest, be generous)</label>
+          <textarea class="date-feedback" id="df-feedback" rows="4" placeholder="e.g. elite texter, slightly too into trains, would date again…"></textarea>
+        </div>
+        <div class="quiz-nav" style="justify-content:center;margin-top:6px">
+          <button class="btn btn-primary btn-lg" id="df-submit">Send anonymously →</button>
+        </div>
+        <div class="df-note" id="df-note" hidden></div>
+      </div>
+    </div></section>`);
+    const card = $("#df-card", root), rating = $("#df-rating", root), feedback = $("#df-feedback", root), submit = $("#df-submit", root);
+    submit.addEventListener("click", () => {
+      const r = (rating.value || "").trim(), f = (feedback.value || "").trim();
+      if (!r && !f) { toast("Add a rating or some feedback first 💌"); return; }
+      const id = uid();
+      // an anonymous review lands as its own pending entry; no real name/avatar.
+      store.add({
+        id, name: "Anonymous 💘", firstName: "Anonymous", lastInitial: "",
+        avatar: Object.assign({}, DEFAULT_AVATAR),
+        score: 0, answers: [], metrics: {}, agreed: true, returning: "",
+        dateSurvey: { rating: r, feedback: f }, anonymousDate: true,
+        answered: 0, total: QUESTIONS.length,
+        status: "date_review", createdAt: Date.now(), updatedAt: Date.now(),
+      });
+      card.innerHTML = `<div style="text-align:center;padding:20px 6px">
+        <div style="font-size:52px;line-height:1">💌</div>
+        <h2 class="section-title" style="margin:10px 0 8px">Sent anonymously!</h2>
+        <p class="wb-text">Your review is on its way to the host — no name attached. Thank you 🙏</p>
+      </div>`;
+    });
+    return root;
+  });
+
+  /* ----------------------------------------------------------
      ROUTE: DETAILS (festival-grade logistics for an apartment)
      ---------------------------------------------------------- */
   route("/details", function () {
@@ -3922,7 +3970,7 @@
     function paintQueue() {
       updateStats();
       const list = store.all().slice().sort((a, b) => {
-        const order = { pending: 0, in_progress: 1, approved: 2, rejected: 3 };
+        const order = { date_review: 0, pending: 1, in_progress: 2, approved: 3, rejected: 4 };
         if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
         return b.createdAt - a.createdAt;
       });
@@ -3938,6 +3986,22 @@
 
   function subRow(s, refresh) {
     const t = tierFor(s.score);
+    // anonymous date review: no score/tier, just the survey — its own compact row
+    if (s.status === "date_review" || s.anonymousDate) {
+      const row = el(`
+        <div class="sub-row date_review">
+          <div>
+            <div class="sub-name">💘 Anonymous date review</div>
+            <div class="sub-meta">${fmtTime(s.createdAt)}</div>
+            <div class="date-survey-note">Rated dating the host <b>${s.dateSurvey && s.dateSurvey.rating ? esc(s.dateSurvey.rating) + "/10" : "—"}</b>${s.dateSurvey && s.dateSurvey.feedback ? `<div class="dsn-fb">“${esc(s.dateSurvey.feedback)}”</div>` : ""}</div>
+          </div>
+          <div class="sub-actions"></div>
+        </div>`);
+      const del = el(`<button class="btn-mini" style="color:var(--ink-faint);background:transparent">Delete</button>`);
+      del.addEventListener("click", () => { store.remove(s.id); refresh(); });
+      $(".sub-actions", row).append(del);
+      return row;
+    }
     const row = el(`
       <div class="sub-row ${s.status}">
         <div>

@@ -1020,6 +1020,7 @@ body.present-fs .mp-rank { font-size: 22px; }
 .sub-row { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; background: var(--white); border: var(--border); border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; box-shadow: var(--shadow-sm); }
 .sub-row.pending { border-left: 10px solid var(--c3); }
 .sub-row.in_progress { border-left: 10px solid #9aa1ab; }
+.sub-row.date_review { border-left: 10px solid #ff6fa5; }
 .sub-row.approved { border-left: 10px solid var(--c4); }
 .sub-row.rejected { border-left: 10px solid var(--c1); opacity: .55; }
 .sub-name { font-family: var(--font-head); font-weight: 800; font-size: 19px; }

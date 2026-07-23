@@ -567,23 +567,44 @@
     return out;
   }
 
+  // Reflex/arcade skill games count HALF what trait questions do, so being a
+  // gamer helps but can never dominate someone's spot on the spectrum — the
+  // autism-trait signal (choices, eye-reading, TV volume, PINs, the year…) is
+  // what mostly places you.
+  const SKILL_KINDS = new Set(["flappy", "whg", "rps", "simon", "rings", "bricks", "typing", "train", "eggs"]);
+  const QUESTION_WEIGHT = QUESTIONS.map(q => SKILL_KINDS.has(q.kind) ? 1 : 2);
+
+  // Final displayed scores live in this band, spread EVENLY by rank so results
+  // are high, spread out, and the top raw scorer is unambiguously The Most
+  // Autistic (they get the band max). Ties in raw share a displayed score.
+  const SCORE_MIN = 40, SCORE_MAX = 95;
+
   // Return a shallow-cloned guest list with curved games' answers overridden and
-  // each guest's score recomputed. Fixed-score games are left untouched. Pure —
-  // does not mutate stored submissions.
+  // each guest's DISPLAYED score computed: weighted raw -> rank -> even spacing
+  // across [SCORE_MIN, SCORE_MAX]. Pure — does not mutate stored submissions.
   function applyCurve(guests) {
     if (!guests.length) return guests;
     const bands = CURVE_GAMES.map(g => ({ g, idx: kindIndex(g.kind), map: curveOneGame(guests, g) }))
       .filter(b => b.idx >= 0);
-    return guests.map(gu => {
+    const scored = guests.map(gu => {
       // Firebase can hand answers back as an object (sparse array) or null — coerce
       // to a real array so .slice/.reduce below never throw.
       const answers = Array.isArray(gu.answers) ? gu.answers.slice()
-        : (gu.answers && typeof gu.answers === "object") ? Object.assign(Array(MAX_RAW / 3).fill(null), gu.answers) : [];
+        : (gu.answers && typeof gu.answers === "object") ? Object.assign(Array(QUESTIONS.length).fill(null), gu.answers) : [];
       bands.forEach(b => { if (b.map[gu.id] != null) answers[b.idx] = b.map[gu.id]; });
-      const raw = answers.reduce((a, v) => a + (v == null ? 0 : v), 0);
-      const score = Math.min(100, Math.round((raw / MAX_RAW) * 100));
-      return Object.assign({}, gu, { answers, score });
+      const rawWeighted = answers.reduce((a, v, i) => a + (v == null ? 0 : v * (QUESTION_WEIGHT[i] || 1)), 0);
+      return Object.assign({}, gu, { answers, rawWeighted });
     });
+    // rank-normalize: sort raws ascending, each guest's displayed score is set by
+    // the (tie-averaged) position of their raw in that order.
+    const raws = scored.map(g => g.rawWeighted).sort((a, b) => a - b);
+    const n = raws.length;
+    const displayFor = v => {
+      const first = raws.indexOf(v), last = raws.lastIndexOf(v);
+      const frac = n === 1 ? 0.5 : ((first + last) / 2) / (n - 1);
+      return Math.round(SCORE_MIN + (SCORE_MAX - SCORE_MIN) * frac);
+    };
+    return scored.map(g => Object.assign(g, { score: displayFor(g.rawWeighted) }));
   }
   // ──────────────────────────────────────────────────────────────────────────
 

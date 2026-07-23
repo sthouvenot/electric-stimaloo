@@ -69,6 +69,7 @@
     { first: "Mollie", initial: "W" },
     { first: "Rachel", initial: "W" },
     { first: "Rachell", initial: "W" },
+    { first: "Racheline", initial: "W" },
   ];
   function findDateGuest(firstName, lastInitial) {
     const f = (firstName || "").trim().toLowerCase();

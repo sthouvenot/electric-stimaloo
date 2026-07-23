@@ -575,7 +575,10 @@
     const bands = CURVE_GAMES.map(g => ({ g, idx: kindIndex(g.kind), map: curveOneGame(guests, g) }))
       .filter(b => b.idx >= 0);
     return guests.map(gu => {
-      const answers = (gu.answers || []).slice();
+      // Firebase can hand answers back as an object (sparse array) or null — coerce
+      // to a real array so .slice/.reduce below never throw.
+      const answers = Array.isArray(gu.answers) ? gu.answers.slice()
+        : (gu.answers && typeof gu.answers === "object") ? Object.assign(Array(MAX_RAW / 3).fill(null), gu.answers) : [];
       bands.forEach(b => { if (b.map[gu.id] != null) answers[b.idx] = b.map[gu.id]; });
       const raw = answers.reduce((a, v) => a + (v == null ? 0 : v), 0);
       const score = Math.min(100, Math.round((raw / MAX_RAW) * 100));
@@ -4002,6 +4005,11 @@
       $(".sub-actions", row).append(del);
       return row;
     }
+    // Firebase turns sparse/empty arrays into objects (or drops them), so answers
+    // can come back as an object or null — normalize to a real array before use,
+    // otherwise .some/.map throw and blank the whole admin page.
+    const answers = Array.isArray(s.answers) ? s.answers
+      : (s.answers && typeof s.answers === "object") ? Object.assign(Array(QUESTIONS.length).fill(null), s.answers) : [];
     const row = el(`
       <div class="sub-row ${s.status}">
         <div>
@@ -4009,7 +4017,7 @@
           <div class="sub-meta">Score ${s.score}/100 · ${fmtTime(s.createdAt)} · <span style="text-transform:capitalize">${s.status === "in_progress" ? "in progress" : s.status}</span></div>
           <div class="sub-tier">${t.emoji} ${t.name}</div>
           ${s.dateSurvey ? `<div class="date-survey-note">💘 <b>${esc(s.name)}</b> rated dating the host <b>${s.dateSurvey.rating ? esc(s.dateSurvey.rating) + "/10" : "—"}</b>${s.dateSurvey.feedback ? `<div class="dsn-fb">“${esc(s.dateSurvey.feedback)}”</div>` : ""}</div>` : ""}
-          ${s.answers && s.answers.some(a => a != null) ? `<button class="link-btn" data-act="toggle">View answers</button>` : ""}
+          ${answers.some(a => a != null) ? `<button class="link-btn" data-act="toggle">View answers</button>` : ""}
           <div class="answers-detail"></div>
         </div>
         <div class="sub-actions"></div>
@@ -4035,7 +4043,7 @@
       const detail = $(".answers-detail", row);
       // guard against submissions saved under an older/longer QUESTIONS set:
       // a missing QUESTIONS[i] used to throw and blank the whole admin page.
-      detail.innerHTML = s.answers.map((a, i) => {
+      detail.innerHTML = answers.map((a, i) => {
         const Q = QUESTIONS[i];
         if (a == null || !Q) return "";
         const opt = (Q.opts || []).find(o => o[1] === a) || ["-"];

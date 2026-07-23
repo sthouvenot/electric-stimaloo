@@ -683,21 +683,33 @@
           submitted: false, serverId: state.serverId || null, ...who,
           step: state.step, order: state.order,
           answers: state.answers, metrics: state.metrics, bankPin: state.bankPin,
-          avatar: state.avatar, agreed: state.agreed, updatedAt: Date.now(),
+          avatar: state.avatar, agreed: state.agreed, dateSurvey: state.dateSurvey || null, updatedAt: Date.now(),
         };
     save(progKey(state.firstName, state.lastInitial), rec);
   }
   function clearProgress(first, initial) {
     try { localStorage.removeItem(progKey(first, initial)); } catch (e) {}
   }
-  // every saved attempt on THIS device, newest first — powers the rejoin banner
+  // every saved attempt on THIS device, newest first — powers the rejoin banner.
+  // Older records (saved before we stored the display name) don't have firstName,
+  // so fall back to parsing it out of the "ap_prog_<first>|<INITIAL>" key.
   function listAllProgress() {
     const out = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k || k.indexOf("ap_prog_") !== 0) continue;
       const rec = load(k, null);
-      if (rec && rec.firstName) out.push(rec);
+      if (!rec) continue;
+      if (!rec.firstName) {
+        const nameKey = k.slice("ap_prog_".length);         // "<first>|<INITIAL>"
+        const sep = nameKey.lastIndexOf("|");
+        if (sep > 0) {
+          const f = nameKey.slice(0, sep);
+          rec.firstName = f.charAt(0).toUpperCase() + f.slice(1); // best-effort display casing
+          rec.lastInitial = nameKey.slice(sep + 1).toUpperCase().slice(0, 1);
+        }
+      }
+      if (rec.firstName) out.push(rec);
     }
     return out.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   }
@@ -3214,6 +3226,7 @@
       state.bankPin = rec.bankPin || "";
       if (rec.avatar) state.avatar = rec.avatar;
       state.agreed = rec.agreed != null ? rec.agreed : state.agreed;
+      state.dateSurvey = rec.dateSurvey || null; // don't lose their survey on resume
       state.serverId = rec.serverId || null; // keep updating the same admin record
       state.resuming = true;
       state.step = Math.max(0, Math.min(rec.step || 0, state.order.length - 1));
@@ -3516,6 +3529,8 @@
           const rating = ($("#date-rating", node).value || "").trim();
           const feedback = ($("#date-feedback", node).value || "").trim();
           if (rating || feedback) state.dateSurvey = { rating, feedback };
+          saveInProgress(state); // push the survey to the admin record NOW, even if they never finish
+          saveProgress(state);
           state.dateStep = "kidding"; paint(); window.scrollTo({ top: 0 });
         });
         return;

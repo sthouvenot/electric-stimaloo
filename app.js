@@ -2178,9 +2178,11 @@
       reveal.innerHTML = `📅 <b>${MONTHS[m-1]} ${d}</b>: ${factFor(m, d)}. <i>Are you fond of that?</i><br><br>The answer was <b>21 April 1926</b>. ${exact ? "🎯 Exact match! " : ""}${roasts[pts]}`;
       btn.disabled = true; btn.textContent = "Locked in";
       mSel.disabled = dIn.disabled = yIn.disabled = true;
-      // dist = days off from April 21 (wrapped) — powers the "Closest Queen Birthday"
-      // award. Also save the raw guess + year offset so it can be re-scored later.
-      setAnswer(pts, { qeDaysOff: dist, qeYearOff: yearOff, qeGuess: `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}` });
+      // qeOff = TOTAL distance in days (years counted as 365) so the award ranks by
+      // how close the whole date was, not just the day/month. Keep the components +
+      // raw guess too so it can be re-scored differently later.
+      const qeOff = yearOff * 365 + dist;
+      setAnswer(pts, { qeDaysOff: dist, qeYearOff: yearOff, qeOff, qeGuess: `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}` });
     });
   }
 
@@ -4006,8 +4008,15 @@
       { emoji: "💍", title: "Ring Master",             key: "ringTime",    dir: "low",  suffix: "s", desc: "Sorted the rings by color the fastest.", stat: v => `sorted every ring in <b>${v} seconds</b>`, roast: "sorted by color at speed. The shelves at home must be immaculate.", min: 2 },
       { emoji: "🧱", title: "Master Builder",          key: "brickTime",   dir: "low",  suffix: "s", desc: "Followed the brick instructions and built the fastest.", stat: v => `built the whole thing in <b>${v} seconds</b>`, roast: "followed the instructions to the letter, at speed. No notes.", min: 2 },
       { emoji: "⌨️", title: "Fastest Typer",           key: "typeSecs",    dir: "low",  suffix: "s", desc: "Typed the sentence correctly in the fewest seconds.", stat: v => `typed the whole sentence in <b>${v} seconds</b>`, roast: "typed it clean and fast. You've done this before.", min: 1 },
-      { emoji: "👑", title: "Closest Queen Birthday",  key: "qeDaysOff",   dir: "low",  suffix: " days off", desc: "Guessed closest to Queen Elizabeth II's real birthday (21 April 1926).", stat: v => v === 0 ? `nailed her birthday <b>exactly</b>` : `guessed <b>${v} day${v === 1 ? "" : "s"}</b> away from her birthday`, roast: "why do you know when the Queen was born? (You're among friends.)", min: 1 },
+      { emoji: "👑", title: "Closest Queen Birthday",  key: "qeOff",   dir: "low",  suffix: " off", desc: "Guessed closest to Queen Elizabeth II's real birthday (21 April 1926) — day AND year.", stat: v => v === 0 ? `nailed her birthday <b>exactly</b>` : `guessed <b>${v}</b> total day${v === 1 ? "" : "s"} away (day + year)`, roast: "why do you know when the Queen was born? (You're among friends.)", min: 1 },
     ];
+    // backfill qeOff (total distance) for guests who only have the old components,
+    // so the award ranks everyone by day+year even if they submitted earlier.
+    guests.forEach(g => {
+      if (g.metrics && typeof g.metrics.qeOff !== "number" && typeof g.metrics.qeDaysOff === "number") {
+        g.metrics.qeOff = (g.metrics.qeYearOff || 0) * 365 + g.metrics.qeDaysOff;
+      }
+    });
     return defs.map(d => {
       const pool = guests.filter(g => g.metrics && typeof g.metrics[d.key] === "number");
       return pool.length >= (d.min || 1) ? Object.assign({}, d, { pool }) : null;

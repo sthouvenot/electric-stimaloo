@@ -567,17 +567,37 @@
     return out;
   }
 
-  // Reflex/arcade skill games count HALF what trait questions do, so being a
-  // gamer helps but can never dominate someone's spot on the spectrum — the
-  // autism-trait signal (choices, eye-reading, TV volume, PINs, the year…) is
-  // what mostly places you.
-  const SKILL_KINDS = new Set(["flappy", "whg", "rps", "simon", "rings", "bricks", "typing", "train", "eggs"]);
-  const QUESTION_WEIGHT = QUESTIONS.map(q => SKILL_KINDS.has(q.kind) ? 1 : 2);
+  // ── Question weights (the tuned ladder) ─────────────────────────────────
+  // Each question's weighted ceiling ("counts as"), chosen so no block dominates
+  // (games ≈ ⅓ of the 136-pt ceiling; a pure gamer can't be crowned, but gaming
+  // genuinely matters — gamers do skew autistic):
+  //   8    TV volume        raw 0–4 ×2 (the sacred 67 bonus)
+  //   6    behavioral traits raw 0–3 ×2   (PIN, color, Queen, boxes, iceberg,
+  //          polo, re-enter) AND disposition games (train, RPS, eggs — what you
+  //          CHOSE to do: stare, regrind an unwinnable match, keep feeding)
+  //   5    eyes ×4          raw 0/2 ×2.5  (misreading = the signal)
+  //   5    self-report MC   raw 0–3 ×5/3  (what you SAY about yourself)
+  //   5    memory/precision raw 0–3 ×5/3  (Simon, typing — autism-flavored ability)
+  //   4.5  reflex games     raw 0–3 ×1.5  (WHG, rings, flappy, bricks — pure skill)
+  const KIND_WEIGHT = {
+    imgquiz: 2.5,                                      // eyes → counts 5
+    choice: 5 / 3, simon: 5 / 3, typing: 5 / 3,        // MC + memory/precision → 5
+    whg: 1.5, rings: 1.5, flappy: 1.5, bricks: 1.5,    // reflex → 4.5
+  };
+  const QUESTION_WEIGHT = QUESTIONS.map(q => {
+    const k = q.kind || "choice";
+    return KIND_WEIGHT[k] != null ? KIND_WEIGHT[k] : 2; // everything else → counts 6 (TV 8)
+  });
+  // weighted ceiling (TV's raw max is 4, eyes' is 2, everything else 3)
+  const MAX_WEIGHTED = QUESTIONS.reduce((a, q, i) => {
+    const rawMax = q.kind === "tvvol" ? 4 : q.kind === "imgquiz" ? 2 : 3;
+    return a + rawMax * QUESTION_WEIGHT[i];
+  }, 0);
 
   // Final displayed scores live in this band, spread EVENLY by rank so results
   // are high, spread out, and the top raw scorer is unambiguously The Most
   // Autistic (they get the band max). Ties in raw share a displayed score.
-  const SCORE_MIN = 40, SCORE_MAX = 95;
+  const SCORE_MIN = 41, SCORE_MAX = 96;
 
   // Return a shallow-cloned guest list with curved games' answers overridden and
   // each guest's DISPLAYED score computed: weighted raw -> rank -> even spacing
@@ -3322,9 +3342,10 @@
     const shellEl = $(".quiz-shell", container);
 
     function computeScore() {
-      const raw = state.answers.reduce((a, v) => a + (v == null ? 0 : v), 0);
-      // the 67 TV-volume bonus can push raw past MAX_RAW — cap at 100
-      return Math.min(100, Math.round((raw / MAX_RAW) * 100));
+      // stored as a weighted % of the ceiling — placement is recomputed live by
+      // applyCurve() at reveal time, so this stored number is informational only
+      const raw = state.answers.reduce((a, v, i) => a + (v == null ? 0 : v * (QUESTION_WEIGHT[i] || 1)), 0);
+      return Math.min(100, Math.round((raw / MAX_WEIGHTED) * 100));
     }
 
     function paint() {
@@ -3832,8 +3853,8 @@
   function saveInProgress(state) {
     if (state.done || !state.firstName.trim() || !state.lastInitial.trim()) return;
     if (!state.serverId) { state.serverId = uid(); state.createdAt = Date.now(); bumpCtr(); }
-    const raw = state.answers.reduce((a, v) => a + (v == null ? 0 : v), 0);
-    state.score = Math.min(100, Math.round((raw / MAX_RAW) * 100));
+    const raw = state.answers.reduce((a, v, i) => a + (v == null ? 0 : v * (QUESTION_WEIGHT[i] || 1)), 0);
+    state.score = Math.min(100, Math.round((raw / MAX_WEIGHTED) * 100));
     store.add(buildSubmission(state, "in_progress"));
     saveProgress(state); // persist the serverId locally too
   }
@@ -4004,7 +4025,11 @@
       });
       if (!list.length) { queue.innerHTML = `<p class="empty">No submissions yet. Go take the test!</p>`; return; }
       queue.innerHTML = "";
-      list.forEach(s => queue.appendChild(subRow(s, paintQueue)));
+      // approved rows show the LIVE curved spectrum score (same number the
+      // reveal/results graph shows), so admin and the graph never disagree
+      const curved = {};
+      store.approved().forEach(g => { curved[g.id] = g.score; });
+      list.forEach(s => queue.appendChild(subRow(s, paintQueue, curved)));
     }
     paintQueue();
     // live: repaint the queue (and stats) whenever a phone submits / data changes
@@ -4012,8 +4037,11 @@
     return root;
   }
 
-  function subRow(s, refresh) {
-    const t = tierFor(s.score);
+  function subRow(s, refresh, curvedMap) {
+    // approved guests: show the rank-curved spectrum score (matches the graph);
+    // everyone else: the stored weighted-% raw score
+    const curvedScore = curvedMap && curvedMap[s.id] != null ? curvedMap[s.id] : null;
+    const t = tierFor(curvedScore != null ? curvedScore : s.score);
     // anonymous date review: no score/tier, just the survey — its own compact row
     if (s.status === "date_review" || s.anonymousDate) {
       const row = el(`
@@ -4039,7 +4067,7 @@
       <div class="sub-row ${s.status}">
         <div>
           <div class="sub-name">${avatarChip(s.avatar, 30)} ${esc(s.name)} ${s.seeded ? "<span style='font-size:11px;color:var(--ink-faint)'>(demo)</span>" : ""}${s.status === "in_progress" ? `<span class="sub-inprog">🕓 in progress · ${s.answered || 0}/${s.total || QUESTIONS.length}</span>` : ""}</div>
-          <div class="sub-meta">Score ${s.score}/100 · ${fmtTime(s.createdAt)} · <span style="text-transform:capitalize">${s.status === "in_progress" ? "in progress" : s.status}</span></div>
+          <div class="sub-meta">${curvedScore != null ? `Spectrum <b>${curvedScore}</b> · raw ${s.score}%` : `Raw score ${s.score}%`} · ${fmtTime(s.createdAt)} · <span style="text-transform:capitalize">${s.status === "in_progress" ? "in progress" : s.status}</span></div>
           <div class="sub-tier">${t.emoji} ${t.name}</div>
           ${s.dateSurvey ? `<div class="date-survey-note">💘 <b>${esc(s.name)}</b> rated dating the host <b>${s.dateSurvey.rating ? esc(s.dateSurvey.rating) + "/10" : "—"}</b>${s.dateSurvey.feedback ? `<div class="dsn-fb">“${esc(s.dateSurvey.feedback)}”</div>` : ""}</div>` : ""}
           ${answers.some(a => a != null) ? `<button class="link-btn" data-act="toggle">View answers</button>` : ""}

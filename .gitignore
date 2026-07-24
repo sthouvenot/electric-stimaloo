@@ -17,3 +17,6 @@ dist/
 # Local-only guest list (real names) - kept out of the public repo
 *.xlsx
 *.py
+
+# Local DB backups - real guest data, never commit
+backups/

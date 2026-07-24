@@ -539,11 +539,32 @@
   // canonical QUESTIONS index for each curved game's kind (answers[] is keyed by it)
   const kindIndex = k => QUESTIONS.findIndex(q => (q.kind || "choice") === k);
 
+  // ── Insider handicap ────────────────────────────────────────────────────
+  // A guest who CO-DESIGNED a game knows the trick (train: longer = better;
+  // RPS: keep regrinding), so their run on it is untrustworthy. For each such
+  // guest+game we (a) pull their metric OUT of that game's curve so their rigged
+  // number can't shove real guests into lower thirds, and (b) pin their raw to a
+  // fixed value. Keyed by "firstname|lastinitial" (lowercased), matching the
+  // returning-guest convention. `points` is the raw band they're locked to (1 =
+  // bottom third: "you built it, you don't get to win on it").
+  const INSIDER_GAMES = {
+    "rob|m": { kinds: ["train", "rps"], points: 1 },
+  };
+  const insiderName = g =>
+    ((g.firstName || (g.name || "").trim().split(/\s+/)[0] || "").trim().toLowerCase()) + "|" +
+    ((g.lastInitial || (g.name || "").trim().split(/\s+/).slice(-1)[0][0] || "").trim().toLowerCase());
+  // raw points a guest is pinned to for a curved kind, or null if not an insider there
+  function insiderFor(g, kind) {
+    const rec = INSIDER_GAMES[insiderName(g)];
+    return rec && rec.kinds.indexOf(kind) >= 0 ? rec.points : null;
+  }
+
   // Given the pool of guests, return a bottom/middle/top-third points map keyed
   // by guest id for one curved game. Ties share the same band. Guests without a
   // valid completed metric are omitted (they keep their raw 0).
   function curveOneGame(guests, g) {
     const scored = guests
+      .filter(gu => insiderFor(gu, g.kind) == null)   // co-designers don't skew the field
       .map(gu => ({ id: gu.id, v: gu.metrics ? gu.metrics[g.metric] : undefined }))
       .filter(x => typeof x.v === "number" && isFinite(x.v) && x.v > 0);
     const out = {};
@@ -594,14 +615,14 @@
     return a + rawMax * QUESTION_WEIGHT[i];
   }, 0);
 
-  // Final displayed scores live in this band, spread EVENLY by rank so results
-  // are high, spread out, and the top raw scorer is unambiguously The Most
-  // Autistic (they get the band max). Ties in raw share a displayed score.
+  // Final displayed scores live in this band. Scores track the ACTUAL weighted
+  // raw (see applyCurve): the lowest raw lands at 41, the highest at 96, everyone
+  // else linearly between — so similar players cluster and truly-equal raws tie,
+  // rather than marching up in even rank steps. Top raw = 96 = The Most Autistic.
   const SCORE_MIN = 41, SCORE_MAX = 96;
 
   // Return a shallow-cloned guest list with curved games' answers overridden and
-  // each guest's DISPLAYED score computed: weighted raw -> rank -> even spacing
-  // across [SCORE_MIN, SCORE_MAX]. Pure — does not mutate stored submissions.
+  // each guest's DISPLAYED score computed. Pure — does not mutate stored subs.
   function applyCurve(guests) {
     if (!guests.length) return guests;
     const bands = CURVE_GAMES.map(g => ({ g, idx: kindIndex(g.kind), map: curveOneGame(guests, g) }))
@@ -611,19 +632,23 @@
       // to a real array so .slice/.reduce below never throw.
       const answers = Array.isArray(gu.answers) ? gu.answers.slice()
         : (gu.answers && typeof gu.answers === "object") ? Object.assign(Array(QUESTIONS.length).fill(null), gu.answers) : [];
-      bands.forEach(b => { if (b.map[gu.id] != null) answers[b.idx] = b.map[gu.id]; });
+      bands.forEach(b => {
+        const pin = insiderFor(gu, b.g.kind);
+        if (pin != null) answers[b.idx] = pin;             // co-designer: pinned, run ignored
+        else if (b.map[gu.id] != null) answers[b.idx] = b.map[gu.id];
+      });
       const rawWeighted = answers.reduce((a, v, i) => a + (v == null ? 0 : v * (QUESTION_WEIGHT[i] || 1)), 0);
       return Object.assign({}, gu, { answers, rawWeighted });
     });
-    // rank-normalize: sort raws ascending, each guest's displayed score is set by
-    // the (tie-averaged) position of their raw in that order.
-    const raws = scored.map(g => g.rawWeighted).sort((a, b) => a - b);
-    const n = raws.length;
-    const displayFor = v => {
-      const first = raws.indexOf(v), last = raws.lastIndexOf(v);
-      const frac = n === 1 ? 0.5 : ((first + last) / 2) / (n - 1);
-      return Math.round(SCORE_MIN + (SCORE_MAX - SCORE_MIN) * frac);
-    };
+    // VALUE-normalize (not rank): map the actual weighted raws linearly onto
+    // [SCORE_MIN, SCORE_MAX]. Equal raws → identical scores (real ties); people
+    // who answered similarly cluster together; gaps mirror the true point spread
+    // instead of a mechanical +4/+5 per rank. Lowest raw = 41, highest = 96.
+    const raws = scored.map(g => g.rawWeighted);
+    const lo = Math.min.apply(null, raws), hi = Math.max.apply(null, raws);
+    const displayFor = v => hi === lo
+      ? Math.round((SCORE_MIN + SCORE_MAX) / 2)
+      : Math.round(SCORE_MIN + (SCORE_MAX - SCORE_MIN) * (v - lo) / (hi - lo));
     return scored.map(g => Object.assign(g, { score: displayFor(g.rawWeighted) }));
   }
   // ──────────────────────────────────────────────────────────────────────────

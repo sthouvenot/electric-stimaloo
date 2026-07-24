@@ -603,12 +603,13 @@
   //   6    behavioral traits raw 0–3 ×2   (PIN, color, Queen, boxes, iceberg,
   //          polo, re-enter) AND disposition games (train, RPS, eggs — what you
   //          CHOSE to do: stare, regrind an unwinnable match, keep feeding)
-  //   5    eyes ×4          raw 0/2 ×2.5  (misreading = the signal)
+  //   7.25 eyes ×4          raw 0/2 ×3.625 (misreading = the signal — bumped so the
+  //          block is 29 = 20% of the 145-pt ceiling, up from 15%)
   //   5    self-report MC   raw 0–3 ×5/3  (what you SAY about yourself)
   //   5    memory/precision raw 0–3 ×5/3  (Simon, typing — autism-flavored ability)
   //   4.5  reflex games     raw 0–3 ×1.5  (WHG, rings, flappy, bricks — pure skill)
   const KIND_WEIGHT = {
-    imgquiz: 2.5,                                      // eyes → counts 5
+    imgquiz: 3.625,                                    // eyes → counts 7.25 (block = 20%)
     choice: 5 / 3, simon: 5 / 3, typing: 5 / 3,        // MC + memory/precision → 5
     whg: 1.5, rings: 1.5, flappy: 1.5, bricks: 1.5,    // reflex → 4.5
   };

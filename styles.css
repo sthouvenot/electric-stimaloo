@@ -836,6 +836,14 @@ a { color: inherit; }
 .sc-body { flex: 1; min-width: 0; text-align: left; }
 .sc-name { font-family: var(--font-head); font-weight: 800; font-size: 15px; color: var(--ink); margin-bottom: 2px; }
 .sc-quote { font-style: italic; font-weight: 600; font-size: 15px; line-height: 1.35; color: var(--c1); word-break: break-word; }
+.sc-row.sc-win { background: rgba(255,210,63,.28); box-shadow: inset 0 0 0 3px var(--ink); }
+.sc-badge { display: inline-block; vertical-align: middle; margin-left: 6px; padding: 1px 8px; border-radius: 999px;
+  font-family: var(--font-head); font-weight: 800; font-size: 11px; letter-spacing: .2px; border: 2px solid var(--ink); }
+.sc-badge.sc-3 { background: var(--c3, #7ed957); color: var(--ink); }
+.sc-badge.sc-2 { background: #ffd23f; color: var(--ink); }
+.sc-badge.sc-0 { background: transparent; color: var(--ink-soft); border-color: var(--ink-soft); }
+.sc-rules { margin: 8px auto 2px; max-width: 520px; font-family: var(--font-head); font-weight: 600; font-size: 12.5px;
+  color: var(--ink-soft); line-height: 1.5; padding: 7px 12px; border-radius: 12px; background: rgba(0,0,0,.04); box-shadow: inset 0 0 0 2px var(--ink-soft); }
 @keyframes scIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 /* Mario-Party-style animated bar race */
 .mp-chart { display: grid; gap: 9px; margin: 18px auto 4px; max-width: 540px; text-align: left; }

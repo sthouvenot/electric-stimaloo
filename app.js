@@ -401,7 +401,12 @@
       q: "What's happening in this picture?",
       img: "photos/iceberg.webp",
       imgAlt: "A huge crowd of Club Penguin penguins all packed onto one side of the iceberg",
-      keywords: ["tip", "flip"], // award points if the answer mentions tipping/flipping
+      // Tiered: the real answer is TIPPING the iceberg (3). "flip/sink/capsize/
+      // topple" have the right idea but the wrong word (2). Anything else = 0.
+      scoreTiers: [
+        { pts: 3, words: ["tip"] },                              // tip/tips/tipping/tipped
+        { pts: 2, words: ["flip", "sink", "capsize", "topple"] }, // right idea, wrong word
+      ],
       opts: [["No idea",0],["Nailed it",3]],
     },
     // "Reading the Mind in the Eyes" test — an actual autism-research instrument.
@@ -2583,10 +2588,21 @@
     });
   }
 
-  // Image + free-text answer. Type what's happening; you get points if the
-  // answer contains one of Q.keywords (matched at a word boundary, case-
-  // insensitive — so "tip" also catches tips/tipping/tipped). No right/wrong
-  // reveal; submit locks it and enables Next.
+  // Score a free-text image answer against Q.scoreTiers (highest tier first).
+  // Each tier's words match at a word boundary, case-insensitively — so "tip"
+  // also catches tips/tipping/tipped. Returns the first matching tier's points,
+  // else 0. Shared by the live game AND the awards showcase so they never drift.
+  function imgTextPoints(text, Q) {
+    if (!text) return 0;
+    const tiers = (Q && Q.scoreTiers) || [];
+    for (let i = 0; i < tiers.length; i++) {
+      if (tiers[i].words.some(w => new RegExp("\\b" + w, "i").test(text))) return tiers[i].pts;
+    }
+    return 0;
+  }
+
+  // Image + free-text answer. Type what's happening; scored by imgTextPoints()
+  // against Q.scoreTiers. No right/wrong reveal; submit locks it and enables Next.
   function renderImgTextGame(body, Q, setAnswer) {
     body.innerHTML = `
       <div class="imgq">
@@ -2599,16 +2615,14 @@
         <div class="imgtext-note" id="imgtext-note" hidden></div>
       </div>`;
     const inp = $("#imgtext-in", body), btn = $("#imgtext-submit", body), note = $("#imgtext-note", body);
-    const kw = Q.keywords || [];
     inp.addEventListener("input", () => { btn.disabled = inp.value.trim().length === 0; });
     inp.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) btn.click(); });
     btn.addEventListener("click", () => {
       const v = inp.value.trim();
       if (!v) return;
-      const hit = kw.some(k => new RegExp("\\b" + k, "i").test(v));
       inp.disabled = true; btn.disabled = true; btn.textContent = "Locked in ✓";
       note.hidden = false; note.textContent = "Answer locked in.";
-      setAnswer(hit ? (Q.score || 3) : 0, { imgTextAnswer: v });
+      setAnswer(imgTextPoints(v, Q), { imgTextAnswer: v });
     });
     setTimeout(() => inp.focus(), 60);
   }
@@ -4190,7 +4204,8 @@
 
     // Special text-showcase round: read out the funniest "what's happening in
     // this picture?" (iceberg) answers. Curated by name — not a ranked metric.
-    const PICKS = ["Rachel W", "Carter R", "Anthony M", "Justin C", "Dan S", "Alicia W"];
+    // funny/wrong reads first, Rachel's near-miss, then the two who nailed it
+    const PICKS = ["Carter R", "Anthony M", "Justin C", "Dan S", "Alicia W", "Rachel W", "Brian R", "Rob M"];
     const findByName = nm => {
       const p = nm.trim().toLowerCase().split(/\s+/);
       const f = p[0], li = (p[1] || "")[0] || "";
@@ -4200,7 +4215,7 @@
     if (showcasePool.length) {
       built.push({
         emoji: "🐧", title: "Reading the Iceberg", showcase: "imgTextAnswer",
-        desc: "We showed everyone a screenshot and asked what was happening. These are the real answers.",
+        desc: "We showed everyone a screenshot and asked what was happening. The penguins are tipping the iceberg — here's who saw it.",
         pool: showcasePool,
       });
     }
@@ -4332,18 +4347,26 @@
     // Text-showcase round: a stack of quoted answers (no winner, no bars). Rows
     // fade in one at a time so the host can read them out for laughs.
     function showShowcase(a, n) {
-      const rows = a.pool.map((g, idx) =>
-        `<div class="sc-row" style="animation-delay:${(idx * 0.5).toFixed(2)}s">
+      const icebergQ = QUESTIONS.find(q => q.kind === "imgtext");
+      const rows = a.pool.map((g, idx) => {
+        const ans = g.metrics[a.showcase] || "";
+        const pts = imgTextPoints(ans, icebergQ);
+        const badge = pts === 3 ? `<span class="sc-badge sc-3">🎯 3 · correct</span>`
+          : pts === 2 ? `<span class="sc-badge sc-2">2 · close</span>`
+          : `<span class="sc-badge sc-0">0</span>`;
+        return `<div class="sc-row${pts === 3 ? " sc-win" : ""}" style="animation-delay:${(idx * 0.5).toFixed(2)}s">
           <span class="avchip" style="width:44px;height:44px;flex:0 0 auto">${avatarSVG(g.avatar)}</span>
           <div class="sc-body">
-            <div class="sc-name">${esc(g.firstName || g.name)}</div>
-            <div class="sc-quote">“${esc(g.metrics[a.showcase])}”</div>
+            <div class="sc-name">${esc(g.firstName || g.name)} ${badge}</div>
+            <div class="sc-quote">“${esc(ans)}”</div>
           </div>
-        </div>`).join("");
+        </div>`;
+      }).join("");
       stageEl.innerHTML = `<div class="award-card fade-in">
         <div class="award-kicker">${a.emoji} Award ${n + 1} of ${awards.length}</div>
         <div class="award-title">${esc(a.title)}</div>
         <div class="award-desc">${esc(a.desc || "")}</div>
+        <div class="sc-rules">Any spelling of <b>“tip”</b> → <b>3</b> &nbsp;·&nbsp; <b>flip / sink / capsize / topple</b> → <b>2</b> &nbsp;·&nbsp; anything else → <b>0</b></div>
         <div class="mp-chart">${rows}</div>
       </div>`;
       toons.forEach(t => t.classList.remove("spotlight", "dim"));

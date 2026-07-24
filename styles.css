@@ -830,6 +830,13 @@ a { color: inherit; }
   -webkit-text-stroke: 2.5px var(--ink); paint-order: stroke fill; filter: drop-shadow(4px 5px 0 var(--ink)); animation: rainbowRun 2.6s linear infinite; }
 .as-sub { font-family: var(--font-head); font-weight: 700; font-size: 16px; color: var(--ink-soft); max-width: 460px; }
 .award-start .btn { margin-top: 8px; }
+/* Iceberg answer showcase — quoted answers that fade in one at a time */
+.sc-row { display: flex; align-items: flex-start; gap: 12px; padding: 8px 10px; border-radius: 14px;
+  background: var(--paper, #fffdf5); box-shadow: inset 0 0 0 2.5px var(--ink); opacity: 0; animation: scIn .5s ease-out forwards; }
+.sc-body { flex: 1; min-width: 0; text-align: left; }
+.sc-name { font-family: var(--font-head); font-weight: 800; font-size: 15px; color: var(--ink); margin-bottom: 2px; }
+.sc-quote { font-style: italic; font-weight: 600; font-size: 15px; line-height: 1.35; color: var(--c1); word-break: break-word; }
+@keyframes scIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 /* Mario-Party-style animated bar race */
 .mp-chart { display: grid; gap: 9px; margin: 18px auto 4px; max-width: 540px; text-align: left; }
 .mp-row { display: grid; grid-template-columns: 26px 42px 84px 1fr 64px; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 12px; }

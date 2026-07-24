@@ -401,7 +401,7 @@
       q: "What's happening in this picture?",
       img: "photos/iceberg.webp",
       imgAlt: "A huge crowd of Club Penguin penguins all packed onto one side of the iceberg",
-      keywords: ["tip"], // award points if the typed answer mentions tipping
+      keywords: ["tip", "flip"], // award points if the answer mentions tipping/flipping
       opts: [["No idea",0],["Nailed it",3]],
     },
     // "Reading the Mind in the Eyes" test — an actual autism-research instrument.
@@ -4183,10 +4183,28 @@
         g.metrics.qeOff = (g.metrics.qeYearOff || 0) * 365 + g.metrics.qeDaysOff;
       }
     });
-    return defs.map(d => {
+    const built = defs.map(d => {
       const pool = guests.filter(g => g.metrics && typeof g.metrics[d.key] === "number");
       return pool.length >= (d.min || 1) ? Object.assign({}, d, { pool }) : null;
     }).filter(Boolean);
+
+    // Special text-showcase round: read out the funniest "what's happening in
+    // this picture?" (iceberg) answers. Curated by name — not a ranked metric.
+    const PICKS = ["Rachel W", "Carter R", "Anthony M", "Justin C", "Dan S", "Alicia W"];
+    const findByName = nm => {
+      const p = nm.trim().toLowerCase().split(/\s+/);
+      const f = p[0], li = (p[1] || "")[0] || "";
+      return guests.find(g => (g.firstName || "").trim().toLowerCase() === f && (g.lastInitial || "").trim().toLowerCase() === li);
+    };
+    const showcasePool = PICKS.map(findByName).filter(g => g && g.metrics && (g.metrics.imgTextAnswer || "").trim());
+    if (showcasePool.length) {
+      built.push({
+        emoji: "🐧", title: "Reading the Iceberg", showcase: "imgTextAnswer",
+        desc: "We showed everyone a screenshot and asked what was happening. These are the real answers.",
+        pool: showcasePool,
+      });
+    }
+    return built;
   }
 
   let awardsKeyHandler = null;
@@ -4279,6 +4297,7 @@
 
     function showAward(n) {
       const a = awards[n];
+      if (a.showcase) { showShowcase(a, n); return; }
       const ranked = a.pool.slice().sort((x, y) => a.dir === "high" ? (y.metrics[a.key] - x.metrics[a.key]) : (x.metrics[a.key] - y.metrics[a.key]));
       const winner = ranked[0], wi = guests.indexOf(winner);
       const shown = ranked.slice(0, 8);
@@ -4306,6 +4325,28 @@
       </div>`;
       toons.forEach((t, i) => { t.classList.toggle("spotlight", i === wi); t.classList.toggle("dim", i !== wi); });
       if (toons[wi]) toons[wi].scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+      countEl.textContent = `${n + 1} / ${awards.length}`;
+      nextBtn.textContent = n >= awards.length - 1 ? "Start the Reveal →" : "Next award →";
+      confetti.burst(80);
+    }
+    // Text-showcase round: a stack of quoted answers (no winner, no bars). Rows
+    // fade in one at a time so the host can read them out for laughs.
+    function showShowcase(a, n) {
+      const rows = a.pool.map((g, idx) =>
+        `<div class="sc-row" style="animation-delay:${(idx * 0.5).toFixed(2)}s">
+          <span class="avchip" style="width:44px;height:44px;flex:0 0 auto">${avatarSVG(g.avatar)}</span>
+          <div class="sc-body">
+            <div class="sc-name">${esc(g.firstName || g.name)}</div>
+            <div class="sc-quote">“${esc(g.metrics[a.showcase])}”</div>
+          </div>
+        </div>`).join("");
+      stageEl.innerHTML = `<div class="award-card fade-in">
+        <div class="award-kicker">${a.emoji} Award ${n + 1} of ${awards.length}</div>
+        <div class="award-title">${esc(a.title)}</div>
+        <div class="award-desc">${esc(a.desc || "")}</div>
+        <div class="mp-chart">${rows}</div>
+      </div>`;
+      toons.forEach(t => t.classList.remove("spotlight", "dim"));
       countEl.textContent = `${n + 1} / ${awards.length}`;
       nextBtn.textContent = n >= awards.length - 1 ? "Start the Reveal →" : "Next award →";
       confetti.burst(80);

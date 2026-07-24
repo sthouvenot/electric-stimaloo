@@ -406,6 +406,7 @@
       scoreTiers: [
         { pts: 3, words: ["tip"] },                              // tip/tips/tipping/tipped
         { pts: 2, words: ["flip", "sink", "capsize", "topple"] }, // right idea, wrong word
+        { pts: 1, words: ["penguin"] },                          // at least clocked the penguins
       ],
       opts: [["No idea",0],["Nailed it",3]],
     },
@@ -550,11 +551,11 @@
   // guest+game we (a) pull them OUT of that game's curve entirely so their rigged
   // number never sets a tercile boundary, and (b) pin their own raw to a fixed
   // value. Keyed by "firstname|lastinitial" (lowercased), matching the returning-
-  // guest convention. `points` is the RAW band they're locked to (2 = middle band,
-  // i.e. "counts as 4" after the ×2 weight — a neutral average placement, since we
-  // can't trust a co-designer's own run rather than punish it).
+  // guest convention. `points` is the RAW band they're locked to (1 = bottom third,
+  // i.e. "counts as 2" after the ×2 weight — you built it, you don't get to place
+  // high on it).
   const INSIDER_GAMES = {
-    "rob|m": { kinds: ["train", "rps"], points: 2 },
+    "rob|m": { kinds: ["train", "rps"], points: 1 },
   };
   const insiderName = g =>
     ((g.firstName || (g.name || "").trim().split(/\s+/)[0] || "").trim().toLowerCase()) + "|" +
@@ -4179,9 +4180,9 @@
   // winner is still longest).
   function buildAwards(guests) {
     const defs = [
-      { emoji: "🚂", title: "Longest Train Stare",     key: "trainWatch",  dir: "high", suffix: "s", desc: "Watched the looping train the longest before finally picking a car.", stat: v => `stared at the train for <b>${v} seconds</b>`, roast: "we were genuinely worried you'd missed your stop.", min: 1 },
+      { emoji: "🚂", title: "Longest Train Stare",     key: "trainWatch",  dir: "high", suffix: "s", insiderKind: "train", desc: "Watched the looping train the longest before finally picking a car.", stat: v => `stared at the train for <b>${v} seconds</b>`, roast: "we were genuinely worried you'd missed your stop.", min: 1 },
       { emoji: "🐤", title: "Flappy Legend",           key: "flappyBest",  dir: "high", suffix: " pipes", desc: "Cleared the most pipes in a single run.", stat: v => `cleared <b>${v} pipe${v === 1 ? "" : "s"}</b> in one run`, roast: "you and that bird share one beautifully focused brain.", min: 1 },
-      { emoji: "🔁", title: "Never Surrenders",        key: "rpsGames",    dir: "high", suffix: " games", desc: "Replayed the unwinnable rock-paper-scissors the most times before giving up.", stat: v => `played <b>${v} unwinnable game${v === 1 ? "" : "s"}</b> before quitting`, roast: "replayed a rigged game that many times. Iconic.", min: 1 },
+      { emoji: "🔁", title: "Never Surrenders",        key: "rpsGames",    dir: "high", suffix: " games", insiderKind: "rps", desc: "Replayed the unwinnable rock-paper-scissors the most times before giving up.", stat: v => `played <b>${v} unwinnable game${v === 1 ? "" : "s"}</b> before quitting`, roast: "replayed a rigged game that many times. Iconic.", min: 1 },
       { emoji: "🥚", title: "Fed the Most Eggs",       key: "eggsFed",     dir: "high", suffix: " eggs", desc: "Fed more eggs than anybody else.", stat: v => `fed <b>${v} egg${v === 1 ? "" : "s"}</b>`, roast: "the egg never asked for this. You kept going anyway.", min: 1 },
       { emoji: "🧠", title: "Pattern Prophet",         key: "simonRounds", dir: "high", suffix: " rounds", desc: "Repeated the longest Simon sequence from memory.", stat: v => `remembered <b>${v} round${v === 1 ? "" : "s"}</b> of the pattern`, roast: "memorized beeps like it was nothing. Unnerving.", min: 1 },
       { emoji: "🚇", title: "Subway Surfer",           key: "subwayCoins", dir: "high", suffix: " coins", desc: "Grabbed the most coins while dodging subway trains.", stat: v => `pocketed <b>${v} coin${v === 1 ? "" : "s"}</b> mid-dodge`, roast: "the trains missed. The coins didn't.", min: 1 },
@@ -4198,7 +4199,10 @@
       }
     });
     const built = defs.map(d => {
-      const pool = guests.filter(g => g.metrics && typeof g.metrics[d.key] === "number");
+      // exclude co-designers from the award for a game they built (they'd win on
+      // insider knowledge — same reason they're pulled from that game's curve)
+      const pool = guests.filter(g => g.metrics && typeof g.metrics[d.key] === "number"
+        && !(d.insiderKind && insiderFor(g, d.insiderKind) != null));
       return pool.length >= (d.min || 1) ? Object.assign({}, d, { pool }) : null;
     }).filter(Boolean);
 
@@ -4313,32 +4317,43 @@
     function showAward(n) {
       const a = awards[n];
       if (a.showcase) { showShowcase(a, n); return; }
-      const ranked = a.pool.slice().sort((x, y) => a.dir === "high" ? (y.metrics[a.key] - x.metrics[a.key]) : (x.metrics[a.key] - y.metrics[a.key]));
+      const val = g => g.metrics[a.key];
+      const ranked = a.pool.slice().sort((x, y) => a.dir === "high" ? (val(y) - val(x)) : (val(x) - val(y)));
       const winner = ranked[0], wi = guests.indexOf(winner);
+      const winVal = val(winner);
+      // everyone tied at the winning value shares 1st (competition ranking: the
+      // rank of any guest = first position of their value in the sorted list + 1)
+      const winners = ranked.filter(g => val(g) === winVal);
+      const rankOf = g => ranked.findIndex(x => val(x) === val(g)) + 1;
       const shown = ranked.slice(0, 8);
-      const maxV = Math.max.apply(null, shown.map(g => g.metrics[a.key]).concat(0.0001));
+      const maxV = Math.max.apply(null, shown.map(val).concat(0.0001));
       const barScore = (v) => a.dir === "high" ? v : (maxV - v + maxV * 0.12); // invert so the winner (low) is longest
-      const maxScore = Math.max.apply(null, shown.map(g => barScore(g.metrics[a.key])).concat(0.0001));
+      const maxScore = Math.max.apply(null, shown.map(g => barScore(val(g))).concat(0.0001));
       const rows = shown.map((g, idx) => {
-        const v = g.metrics[a.key];
+        const v = val(g), isWin = v === winVal;
         const pct = Math.max(12, Math.round(barScore(v) / maxScore * 100));
-        return `<div class="mp-row${idx === 0 ? " mp-win" : ""}">
-          <span class="mp-rank">${idx === 0 ? "🏆" : (idx + 1)}</span>
+        return `<div class="mp-row${isWin ? " mp-win" : ""}">
+          <span class="mp-rank">${isWin ? "🏆" : rankOf(g)}</span>
           <span class="avchip mp-av" style="width:42px;height:42px">${avatarSVG(g.avatar)}</span>
           <span class="mp-name">${esc(g.firstName || g.name)}</span>
           <div class="mp-track"><div class="mp-bar" style="--w:${pct}%;animation-delay:${(idx * 0.09).toFixed(2)}s"></div></div>
           <span class="mp-val">${v}${a.suffix || ""}</span>
         </div>`;
       }).join("");
+      // "Anthony", "Anthony & Rachel", or "Anthony, Rachel & Stinky"
+      const winNames = winners.map(w => esc(w.firstName || w.name));
+      const nameStr = winNames.length <= 1 ? (winNames[0] || "")
+        : winNames.slice(0, -1).join(", ") + " & " + winNames[winNames.length - 1];
       stageEl.innerHTML = `<div class="award-card fade-in">
         <div class="award-kicker">${a.emoji} Award ${n + 1} of ${awards.length}</div>
         <div class="award-title">${esc(a.title)}</div>
         <div class="award-desc">${esc(a.desc || "")}</div>
         <div class="mp-chart">${rows}</div>
-        <div class="award-stat">🏆 <b>${esc(winner.firstName || winner.name)}</b> ${a.stat ? a.stat(winner.metrics[a.key]) : ""}</div>
+        <div class="award-stat">🏆 <b>${nameStr}</b> ${a.stat ? a.stat(winVal) : ""}</div>
         <div class="award-roast">“${esc(a.roast)}”</div>
       </div>`;
-      toons.forEach((t, i) => { t.classList.toggle("spotlight", i === wi); t.classList.toggle("dim", i !== wi); });
+      const winIdx = new Set(winners.map(w => guests.indexOf(w)));
+      toons.forEach((t, i) => { t.classList.toggle("spotlight", winIdx.has(i)); t.classList.toggle("dim", !winIdx.has(i)); });
       if (toons[wi]) toons[wi].scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
       countEl.textContent = `${n + 1} / ${awards.length}`;
       nextBtn.textContent = n >= awards.length - 1 ? "Start the Reveal →" : "Next award →";
@@ -4353,6 +4368,7 @@
         const pts = imgTextPoints(ans, icebergQ);
         const badge = pts === 3 ? `<span class="sc-badge sc-3">🎯 3 · correct</span>`
           : pts === 2 ? `<span class="sc-badge sc-2">2 · close</span>`
+          : pts === 1 ? `<span class="sc-badge sc-1">1 · saw the penguins</span>`
           : `<span class="sc-badge sc-0">0</span>`;
         return `<div class="sc-row${pts === 3 ? " sc-win" : ""}" style="animation-delay:${(idx * 0.5).toFixed(2)}s">
           <span class="avchip" style="width:44px;height:44px;flex:0 0 auto">${avatarSVG(g.avatar)}</span>
@@ -4366,7 +4382,7 @@
         <div class="award-kicker">${a.emoji} Award ${n + 1} of ${awards.length}</div>
         <div class="award-title">${esc(a.title)}</div>
         <div class="award-desc">${esc(a.desc || "")}</div>
-        <div class="sc-rules">Any spelling of <b>“tip”</b> → <b>3</b> &nbsp;·&nbsp; <b>flip / sink / capsize / topple</b> → <b>2</b> &nbsp;·&nbsp; anything else → <b>0</b></div>
+        <div class="sc-rules">Any spelling of <b>“tip”</b> → <b>3</b> &nbsp;·&nbsp; <b>flip / sink / capsize / topple</b> → <b>2</b> &nbsp;·&nbsp; <b>penguin</b> → <b>1</b> &nbsp;·&nbsp; anything else → <b>0</b></div>
         <div class="mp-chart">${rows}</div>
       </div>`;
       toons.forEach(t => t.classList.remove("spotlight", "dim"));

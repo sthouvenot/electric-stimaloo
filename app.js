@@ -550,11 +550,11 @@
   // guest+game we (a) pull them OUT of that game's curve entirely so their rigged
   // number never sets a tercile boundary, and (b) pin their own raw to a fixed
   // value. Keyed by "firstname|lastinitial" (lowercased), matching the returning-
-  // guest convention. `points` is the raw score they're locked to (0 = no credit:
-  // "you built it, you don't get to score on it"). If they still top the board on
-  // everything else, the crown is honestly theirs.
+  // guest convention. `points` is the RAW band they're locked to (2 = middle band,
+  // i.e. "counts as 4" after the ×2 weight — a neutral average placement, since we
+  // can't trust a co-designer's own run rather than punish it).
   const INSIDER_GAMES = {
-    "rob|m": { kinds: ["train", "rps"], points: 0 },
+    "rob|m": { kinds: ["train", "rps"], points: 2 },
   };
   const insiderName = g =>
     ((g.firstName || (g.name || "").trim().split(/\s+/)[0] || "").trim().toLowerCase()) + "|" +

@@ -545,10 +545,11 @@
   // guest+game we (a) pull their metric OUT of that game's curve so their rigged
   // number can't shove real guests into lower thirds, and (b) pin their raw to a
   // fixed value. Keyed by "firstname|lastinitial" (lowercased), matching the
-  // returning-guest convention. `points` is the raw band they're locked to (1 =
-  // bottom third: "you built it, you don't get to win on it").
+  // returning-guest convention. `points` is the raw score they're locked to (0 =
+  // no credit: "you built it, you don't get to score on it"). If they still top
+  // the board on everything else, the crown is honestly theirs.
   const INSIDER_GAMES = {
-    "rob|m": { kinds: ["train", "rps"], points: 1 },
+    "rob|m": { kinds: ["train", "rps"], points: 0 },
   };
   const insiderName = g =>
     ((g.firstName || (g.name || "").trim().split(/\s+/)[0] || "").trim().toLowerCase()) + "|" +
@@ -794,8 +795,18 @@
     return fetch(fbUrl(path), { method, headers: { "Content-Type": "application/json" }, body: val === undefined ? undefined : JSON.stringify(val) }).catch(() => {});
   }
 
+  // Capitalize the first letter of a name for DISPLAY (guests often type "rachie").
+  // Applied only on read in store.all(); the stored value in Firebase is untouched.
+  const capFirst = s => (typeof s === "string" && s) ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
   const store = {
-    all() { const s = DB.submissions || {}; return Object.keys(s).map(k => s[k]).filter(Boolean); },
+    all() {
+      const s = DB.submissions || {};
+      return Object.keys(s).map(k => s[k]).filter(Boolean).map(sub => {
+        const fn = capFirst(sub.firstName), nm = capFirst(sub.name);
+        return (fn === sub.firstName && nm === sub.name) ? sub : Object.assign({}, sub, { firstName: fn, name: nm });
+      });
+    },
     // INVARIANT: the status filter runs BEFORE applyCurve, so game rankings
     // (curveOneGame thirds) and the 41-96 spectrum only ever compare APPROVED
     // guests — pending/in-progress/rejected can never shift anyone's bands.

@@ -542,12 +542,13 @@
   // ── Insider handicap ────────────────────────────────────────────────────
   // A guest who CO-DESIGNED a game knows the trick (train: longer = better;
   // RPS: keep regrinding), so their run on it is untrustworthy. For each such
-  // guest+game we (a) pull their metric OUT of that game's curve so their rigged
-  // number can't shove real guests into lower thirds, and (b) pin their raw to a
-  // fixed value. Keyed by "firstname|lastinitial" (lowercased), matching the
-  // returning-guest convention. `points` is the raw score they're locked to (0 =
-  // no credit: "you built it, you don't get to score on it"). If they still top
-  // the board on everything else, the crown is honestly theirs.
+  // guest+game we (a) drop them into the MIDDLE of that game's curve — they still
+  // count as one body in the field (at the median), but their rigged number never
+  // sets a boundary, so it can't shove real guests into lower thirds — and (b) pin
+  // their own raw to a fixed value. Keyed by "firstname|lastinitial" (lowercased),
+  // matching the returning-guest convention. `points` is the raw score they're
+  // locked to (0 = no credit: "you built it, you don't get to score on it"). If
+  // they still top the board on everything else, the crown is honestly theirs.
   const INSIDER_GAMES = {
     "rob|m": { kinds: ["train", "rps"], points: 0 },
   };
@@ -564,10 +565,21 @@
   // by guest id for one curved game. Ties share the same band. Guests without a
   // valid completed metric are omitted (they keep their raw 0).
   function curveOneGame(guests, g) {
+    const valid = gu => gu.metrics && typeof gu.metrics[g.metric] === "number" && isFinite(gu.metrics[g.metric]) && gu.metrics[g.metric] > 0;
+    // trustworthy runs define the distribution (co-designers excluded here)
     const scored = guests
-      .filter(gu => insiderFor(gu, g.kind) == null)   // co-designers don't skew the field
-      .map(gu => ({ id: gu.id, v: gu.metrics ? gu.metrics[g.metric] : undefined }))
-      .filter(x => typeof x.v === "number" && isFinite(x.v) && x.v > 0);
+      .filter(gu => valid(gu) && insiderFor(gu, g.kind) == null)
+      .map(gu => ({ id: gu.id, v: gu.metrics[g.metric] }));
+    // co-designers still count as a BODY, dropped at the field's median so the
+    // terciles reflect a full room — but their rigged run never sets a boundary.
+    const reals = scored.map(x => x.v).sort((a, b) => a - b);
+    if (reals.length) {
+      const med = reals.length % 2
+        ? reals[(reals.length - 1) / 2]
+        : (reals[reals.length / 2 - 1] + reals[reals.length / 2]) / 2;
+      guests.filter(gu => valid(gu) && insiderFor(gu, g.kind) != null)
+        .forEach(gu => scored.push({ id: gu.id, v: med }));
+    }
     const out = {};
     const n = scored.length;
     if (!n) return out;

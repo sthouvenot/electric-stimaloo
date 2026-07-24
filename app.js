@@ -4270,7 +4270,7 @@
       const a = awards[n];
       const ranked = a.pool.slice().sort((x, y) => a.dir === "high" ? (y.metrics[a.key] - x.metrics[a.key]) : (x.metrics[a.key] - y.metrics[a.key]));
       const winner = ranked[0], wi = guests.indexOf(winner);
-      const shown = ranked.slice(0, 10);
+      const shown = ranked.slice(0, 8);
       const maxV = Math.max.apply(null, shown.map(g => g.metrics[a.key]).concat(0.0001));
       const barScore = (v) => a.dir === "high" ? v : (maxV - v + maxV * 0.12); // invert so the winner (low) is longest
       const maxScore = Math.max.apply(null, shown.map(g => barScore(g.metrics[a.key])).concat(0.0001));

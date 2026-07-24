@@ -861,13 +861,17 @@ a { color: inherit; }
 .mp-val { font-family: var(--font-head); font-weight: 800; font-size: 14px; text-align: right; }
 @keyframes aw-pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes aw-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-.award-roster { display: flex; gap: 12px; overflow-x: auto; padding: 16px 6px 20px; border-top: 3px dashed var(--ink); margin-bottom: 18px; scrollbar-width: none; }
+/* The dashed rule is a pseudo-element (not border-top) sitting BELOW the strip's
+   clip edge, and the toons rest under it — so the spotlighted winner can bop UP
+   past the line without being clipped by the horizontal-scroll overflow. */
+.award-roster { position: relative; display: flex; gap: 12px; overflow-x: auto; padding: 40px 6px 20px; margin-bottom: 18px; scrollbar-width: none; }
+.award-roster::before { content: ""; position: absolute; left: 0; right: 0; top: 20px; border-top: 3px dashed var(--ink); z-index: 0; pointer-events: none; }
 .award-roster::-webkit-scrollbar { display: none; }
-.roster-toon { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: transform .25s, opacity .25s, filter .25s; }
+.roster-toon { position: relative; z-index: 1; flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: transform .25s, opacity .25s, filter .25s; }
 .roster-toon .avchip { border: 3px solid var(--ink); background: var(--paper-2); box-shadow: var(--shadow-sm); }
 .roster-name { font-family: var(--font-head); font-weight: 700; font-size: 11px; color: var(--ink-soft); max-width: 66px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .roster-toon.dim { opacity: .4; transform: scale(.9); filter: grayscale(.45); }
-.roster-toon.spotlight { transform: translateY(-12px) scale(1.2); }
+.roster-toon.spotlight { transform: translateY(-18px) scale(1.2); }
 .roster-toon.spotlight .avchip { box-shadow: 0 0 0 4px var(--c3), 4px 6px 0 var(--ink); animation: aw-bob 1s ease-in-out infinite; }
 .roster-toon.spotlight .roster-name { color: var(--ink); font-size: 12.5px; font-weight: 800; }
 

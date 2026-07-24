@@ -406,7 +406,7 @@
       scoreTiers: [
         { pts: 3, words: ["tip"] },                              // tip/tips/tipping/tipped
         { pts: 2, words: ["flip", "sink", "capsize", "topple"] }, // right idea, wrong word
-        { pts: 1, words: ["penguin"] },                          // at least clocked the penguins
+        { pts: 1, words: ["club penguin"] },                     // at least named the game
       ],
       opts: [["No idea",0],["Nailed it",3]],
     },
@@ -4368,7 +4368,7 @@
         const pts = imgTextPoints(ans, icebergQ);
         const badge = pts === 3 ? `<span class="sc-badge sc-3">🎯 3 · correct</span>`
           : pts === 2 ? `<span class="sc-badge sc-2">2 · close</span>`
-          : pts === 1 ? `<span class="sc-badge sc-1">1 · saw the penguins</span>`
+          : pts === 1 ? `<span class="sc-badge sc-1">1 · named Club Penguin</span>`
           : `<span class="sc-badge sc-0">0</span>`;
         return `<div class="sc-row${pts === 3 ? " sc-win" : ""}" style="animation-delay:${(idx * 0.5).toFixed(2)}s">
           <span class="avchip" style="width:44px;height:44px;flex:0 0 auto">${avatarSVG(g.avatar)}</span>
@@ -4382,7 +4382,7 @@
         <div class="award-kicker">${a.emoji} Award ${n + 1} of ${awards.length}</div>
         <div class="award-title">${esc(a.title)}</div>
         <div class="award-desc">${esc(a.desc || "")}</div>
-        <div class="sc-rules">Any spelling of <b>“tip”</b> → <b>3</b> &nbsp;·&nbsp; <b>flip / sink / capsize / topple</b> → <b>2</b> &nbsp;·&nbsp; <b>penguin</b> → <b>1</b> &nbsp;·&nbsp; anything else → <b>0</b></div>
+        <div class="sc-rules">Any spelling of <b>“tip”</b> → <b>3</b> &nbsp;·&nbsp; <b>flip / sink / capsize / topple</b> → <b>2</b> &nbsp;·&nbsp; <b>club penguin</b> → <b>1</b> &nbsp;·&nbsp; anything else → <b>0</b></div>
         <div class="mp-chart">${rows}</div>
       </div>`;
       toons.forEach(t => t.classList.remove("spotlight", "dim"));

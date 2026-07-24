@@ -771,6 +771,11 @@
 
   const store = {
     all() { const s = DB.submissions || {}; return Object.keys(s).map(k => s[k]).filter(Boolean); },
+    // INVARIANT: the status filter runs BEFORE applyCurve, so game rankings
+    // (curveOneGame thirds) and the 41-96 spectrum only ever compare APPROVED
+    // guests — pending/in-progress/rejected can never shift anyone's bands.
+    // applyCurve must never be called with a broader pool. Corollary: each
+    // approval reshuffles the curve, so finish approving before the reveal.
     approved() { return applyCurve(this.all().filter(s => s.status === "approved")).sort((a, b) => a.score - b.score); },
     pending() { return this.all().filter(s => s.status === "pending"); },
     add(sub) { DB.submissions[sub.id] = sub; fbWrite("PUT", "submissions/" + sub.id, sub); },

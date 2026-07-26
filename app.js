@@ -658,6 +658,36 @@
       : Math.round(SCORE_MIN + (SCORE_MAX - SCORE_MIN) * (v - lo) / (hi - lo));
     return scored.map(g => Object.assign(g, { score: displayFor(g.rawWeighted) }));
   }
+
+  // Score a finisher AFTER the party: rank them against the historical approved
+  // pool WITHOUT joining it (the party graph stays exactly as it was on the
+  // night). Returns their 41-96 spot, or null if there's no pool to compare to.
+  function scoreAgainstParty(state) {
+    const pool = store.all().filter(s => s.status === "approved");
+    if (!pool.length) return null;
+    // Curve the party ONCE on its own to get the fixed raw range that produced
+    // 41..96 on the night. The newcomer is then mapped onto THAT scale — they
+    // can't stretch or compress it, and they can land anywhere in between.
+    const party = applyCurve(pool);
+    const partyRaws = party.map(g => g.rawWeighted);
+    const lo = Math.min.apply(null, partyRaws), hi = Math.max.apply(null, partyRaws);
+    // Run the newcomer through the same curve alongside the party so their game
+    // bands are judged against the same field, then read their weighted raw.
+    const probeId = "__probe__";
+    const probe = {
+      id: probeId,
+      name: (state.name || "").trim(),
+      answers: (state.answers || []).slice(),
+      metrics: Object.assign({}, state.metrics),
+    };
+    const me = applyCurve(pool.concat(probe)).find(g => g.id === probeId);
+    if (!me) return null;
+    if (hi === lo) return Math.round((SCORE_MIN + SCORE_MAX) / 2);
+    const frac = (me.rawWeighted - lo) / (hi - lo);
+    const raw = SCORE_MIN + (SCORE_MAX - SCORE_MIN) * frac;
+    // clamp: beating the night's best still tops out at 96, below the worst = 41
+    return Math.max(SCORE_MIN, Math.min(SCORE_MAX, Math.round(raw)));
+  }
   // ──────────────────────────────────────────────────────────────────────────
 
   // Games keep their authored order (bank PIN must come before re-enter PIN, and
@@ -3755,27 +3785,36 @@
         return;
       }
 
-      // result step — NO score reveal; results go live at the party
+      // result step — the party is over, so reveal their score right away. They
+      // are NOT added to the party graph (that stays historical); this is just
+      // "where you would have landed on the night".
       if (state.done) {
+        const sc = state.partyScore;
+        const t = sc != null ? tierFor(sc) : null;
         const node = el(`
           <div class="card result-card submitted-card fade-in">
             <div class="result-avatar"><span class="avchip" style="width:116px;height:116px">${avatarSVG(state.avatar)}</span><div class="ra-stamp">✓ IN</div></div>
-            <div class="q-count">Locked in, ${esc(state.firstName || state.name)} 🎉</div>
-            <h2 class="result-tier"><span class="grad">Results submitted!</span></h2>
-            <p class="result-blurb">Your spot on the spectrum is sealed and sent to the host. The big reveal happens <b>LIVE at the party</b> on the giant graph — no peeking, not even for you.</p>
-            <div class="sealed-spectrum">
-              <div class="sealed-bar"></div>
-              <div class="sealed-pin">?</div>
-            </div>
-            <div class="sealed-tag">🤫 your spot · revealed at the party</div>
-            <p class="result-joke">We'd tell you your score… but then we couldn't plot you publicly in front of everyone for maximum drama. Patience. 😈</p>
-            <p class="result-nodo">🔒 No do-overs — <b>your first submission is the one that counts.</b> You can't retake the test, so this is officially your spot on the spectrum.</p>
-            <div class="quiz-nav" style="justify-content:center;margin-top:10px">
-              <button class="btn btn-primary btn-sm" id="to-details">📍 Party details →</button>
+            <div class="q-count">All done, ${esc(state.firstName || state.name)} 🎉</div>
+            ${sc == null ? `
+              <h2 class="result-tier"><span class="grad">Results submitted!</span></h2>
+              <p class="result-blurb">Your answers are locked in.</p>
+            ` : `
+              <div class="score-reveal">
+                <div class="score-reveal-label">Your autism score</div>
+                <div class="score-reveal-num">${sc}<span class="score-reveal-of">/100</span></div>
+                <div class="score-reveal-tier">${t.emoji} ${esc(t.name)}</div>
+              </div>
+              <p class="result-blurb">${esc(t.blurb)}</p>
+            `}
+            <p class="result-joke">The party already happened, so you're not on the big graph — but this is exactly where you'd have landed on the night. 😈</p>
+            <div class="quiz-nav" style="justify-content:center;margin-top:10px;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" id="to-results">📊 See everyone's results →</button>
+              <button class="btn btn-ghost btn-sm" id="to-details">📍 Party details</button>
             </div>
           </div>`);
         shellEl.appendChild(node);
         confetti.burst(180);
+        $("#to-results", node).addEventListener("click", () => navigate("/results"));
         $("#to-details", node).addEventListener("click", () => navigate("/details"));
         return;
       }
@@ -3821,6 +3860,8 @@
         if (state.answers[qi] == null) return;
         if (isLast) {
           state.score = computeScore();
+          // party's over: show them where they'd land vs the historical pool
+          state.partyScore = scoreAgainstParty(state);
           submitToQueue(state);
           state.done = true; saveProgress(state); paint(); // mark this name submitted
         } else {
